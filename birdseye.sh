@@ -1,15 +1,24 @@
 #!/bin/bash
-
 #
 # birdseye.sh
 #
-# 2012 Maxwell Spangler, maxwell@maxwellspangler.com
+# 2013 Maxwell Spangler, maxwell@maxwellspangler.com
 # http://www.maxwellspangler.com/linux/birdseye
 #
 # Birdseye records a comprehensive inventory of a Linux system's
 # environment and presents that in a single, organized html file for
 # easy communication to developers and support staff.
 
+VERSION="1.7.1"
+
+# 1.7.1-2013-05-28 Added more BIRDSEYE config varible handling
+#                  Added --year --month --time --notag filename options
+#                  Added --force option to clobber output
+#                  Renamed some variables; HOSTID now FILENAME_DATA
+#                  Do not limit tag to 8 characters -- wide open now
+# 1.7 - 2013-05-24 Porting to sles 11 sp3
+#					handling no LVM physical volumes in use
+#					handling lack of dmesg --notime
 # 1.6 - 2013-04-29 Adding a few more commands like lscpu
 #				   Added Peripherals and X-windows
 # 1.5 - 2013-04-12 check for root user: error message if not root/sudo
@@ -32,7 +41,6 @@ then
 	exit 1
 fi
 
-VERSION="1.6.1"
 
 ###########################################################
 # functions
@@ -148,6 +156,16 @@ export BIRDSEYE_NAME=""
 export BIRDSEYE_GROUP=""
 export BIRDSEYE_ISSUE=""
 export BIRDSEYE_CFG_NOTES=""
+export BIRDSEYE_FILENAME_DATE="no"
+export BIRDSEYE_FILENAME_MONTH="no"
+export BIRDSEYE_FILENAME_TIME="no"
+export BIRDSEYE_FILENAME_HOST="no"
+export BIRDSEYE_FILENAME_TAG="yes"
+export BIRDSEYE_OUTPUT_FORCE="no"
+export BIRDSEYE_PUBLIC_REPORT="no"
+export BIRDSEYE_PROMPT_USER="no"
+export BIRDSEYE_CSS_FILE="no"
+export BIRDSEYE_PUBLIC_REPORT="no"
 
 # check for config file and execute to read in BIRDSEYE variables
 if [ -f $HOME/.birdseye.cfg ]
@@ -185,7 +203,16 @@ fi
 PUBLIC_REPORT="no"
 PROMPT_USER="yes"
 CSS_FILE="null"
-SHOW_TIME="no"
+
+# default options for output filename.
+# Use options from config file if possible (see above)
+FILENAME_YEAR=$BIRDSEYE_FILENAME_YEAR
+FILENAME_MONTH=$BIRDSEYE_FILENAME_MONTH
+UILENAME_TIME=$BIRDSEYE_FILENAME_TIME
+FILENAME_HOST=$BIRDSEYE_FILENAME_HOST
+FILENAME_TAG=$BIRDSEYE_FILENAME_TAG
+
+OUTPUT_FORCE=$BIRDSEYE_OUTPUT_FORCE
 
 function usage {
 	echo "Bird's Eye $VERSION"
@@ -195,13 +222,19 @@ function usage {
 	echo "-p --public  Produce a secure report with no IP networking or firewall info."
 	echo "-q --quick   Don't prompt the user for tag and title information."
 	echo "-d --debug   Enable debugging output."
-	echo "   --time    Include 24-hour format time in filename."
 	echo
 	echo "-t --tag     Specify a tag to be included in the filename. 'rhel73' 'vers5hw'"
 	echo "-n --name    Specify the name of the user producing this report. 'Lloyd Dobler'"
 	echo "-g --group   Specify the group this report is associated with. 'Triage'"
 	echo "-i --issue   Specify an issue being investigated. 'Network Fault'"
 	echo "-h --hwnotes Specify a note about this hardware config. '1/2 cpus diabled'"
+	echo
+	echo "   --year    Include year in filename"
+	echo "   --month   Include month & day in filename"
+	echo "   --time    Include 24-hour format time in filename"
+	echo "   --host    Include system's hostname in filename"
+	echo "   --notag   Do not include report tag in filename (Default: include)"
+	echo "   --force   Overwrite an existing output directory if it exists."
 	echo
 #	echo "-c --css     Use an external CSS style file's contents '/home/user/style.css'"
 #	echo "-o --output  Specify the output filename."
@@ -225,9 +258,29 @@ do
 		-q | --quick )
 			PROMPT_USER="no";;
 
-		# don't prompt the user for information, just run it using defaults
+		# Include 24-hour format time in output filename
 		--time )
-			SHOW_TIME="yes";;
+			FILENAME_TIME="yes";;
+
+		# Include YYYY format date in output filename
+		--year )
+			FILENAME_YEAR="yes";;
+
+		# Include MMDD format date in output filename
+		--month )
+			FILENAME_MONTH="yes";;
+
+		# Include hostname in output filename
+		--host )
+			FILENAME_HOST="yes";;
+
+		# Include hostname in output filename
+		--notag )
+			FILENAME_TAG="no";;
+
+		# Include hostname in output filename
+		--force )
+			OUTPUT_FORCE="yes";;
 
 		# specify the filename tag
 		-t | --tag )
@@ -257,6 +310,10 @@ do
 		-c | --css )
 			shift
 			CSS_FILE=$1;;
+
+#		-f | --filename-host )
+#			shift
+#			FILENAME_HOST_FORMAT=$1;;
 
 		* )
 		usage
@@ -310,7 +367,7 @@ else
 		MY_TAG=${MY_TAG//[[:space:]]/}
 
 		# cut to first 8 characters
-		MY_TAG=${MY_TAG:0:8}
+		#MY_TAG=${MY_TAG:0:8}
 	else	
 		# quote required - spaces will be included!
 		MY_TAG="$DEF_TAG"
@@ -403,15 +460,52 @@ MY_HOST=`hostname`
 # fast, FQDN?
 #MY_HOST=$HOSTNAME
 
-if [[ $SHOW_TIME == "yes" ]]
+# default for all conditions.
+FILENAME_DATA="birdseye"
+
+# Include hostname in output filename?
+if [[ $FILENAME_HOST == "yes" ]]
 then
-	HOSTID=$MY_HOST.`date +%Y%m%d.%H%M`
-else
-	HOSTID=$MY_HOST.`date +%Y%m%d`
+	FILENAME_DATA=$FILENAME_DATA.$MY_HOST.
+fi
+
+# Include date in output filename?
+if [[ $FILENAME_YEAR == "yes" ]]
+then
+	FILENAME_DATA=$FILENAME_DATA.`date +%Y`
+fi
+
+# Include date in output filename?
+if [[ $FILENAME_MONTH == "yes" ]]
+then
+	FILENAME_DATA=$FILENAME_DATA.`date +%m%d`
+fi
+
+# Include 24hr time in output filename?
+if [[ $FILENAME_TIME == "yes" ]]
+then
+	FILENAME_DATA=$FILENAME_DATA.`date +%H%M`
+fi
+
+# Include user's tag in filename?
+if [[ $FILENAME_TAG == "yes" ]]
+then
+	FILENAME_DATA="$FILENAME_DATA.$MY_TAG"
 fi
 
 # Master directory for producing output files.
-export CAPDIR=birdseye.$HOSTID.$MY_TAG
+export CAPDIR="$FILENAME_DATA"
+
+if [[ -d $CAPDIR ]]
+then
+	if [[ $OUTPUT_FORCE == "no" ]]
+	then
+		echo "Directory $CAPDIR exists. Please remove or use --force"
+		exit
+	else
+		echo "Directory $CAPDIR exists, using --force to replace it."
+	fi
+fi
 
 if [[ ! -d $CAPDIR ]]
 then
@@ -423,21 +517,24 @@ then
 	fi
 else
 	# careful! don't screw this up a
-	rm -f $CAPDIR/*.txt birdseye.$HOSTID.tar birdseye.$HOSTID.tar.gz
+	rm -f $CAPDIR/*.txt birdseye.$FILENAME_DATA.tar birdseye.$FILENAME_DATA.tar.gz
 fi
 
 # summary file of small bits of info
-HTML=$CAPDIR/birdseye.$HOSTID."$MY_TAG."html
+# old way, let's assume the tag has the hostname in it?
+# this should be an option
+#HTML=$CAPDIR/birdseye.$FILENAME_DATA."$MY_TAG.".html
+HTML="$CAPDIR/$FILENAME_DATA.html"
 
 # detailed log files
-BASE_FILE_DMI=dmidecode.$HOSTID.$MY_TAG.txt
-BASE_FILE_CPU=cpuinfo.$HOSTID.$MY_TAG.txt
-BASE_FILE_MSGS=messages.$HOSTID.$MY_TAG.txt
-BASE_FILE_DMESG=dmesg.$HOSTID.$MY_TAG.txt
-BASE_FILE_DMESG_NOTIME=dmesg-notime.$HOSTID.$MY_TAG.txt
-BASE_FILE_INTER=interrupts.$HOSTID.$MY_TAG.txt
-BASE_FILE_PCI=lspci.$HOSTID.$MY_TAG.txt
-BASE_FILE_INITRD=initrd.$HOSTID.$MY_TAG.txt
+BASE_FILE_DMI=dmidecode.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_CPU=cpuinfo.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_MSGS=messages.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_DMESG=dmesg.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_DMESG_NOTIME=dmesg-notime.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_INTER=interrupts.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_PCI=lspci.$FILENAME_DATA.$MY_TAG.txt
+BASE_FILE_INITRD=initrd.$FILENAME_DATA.$MY_TAG.txt
 
 FILE_DMI=$CAPDIR/$BASE_FILE_DMI
 FILE_CPU=$CAPDIR/$BASE_FILE_CPU
@@ -1513,7 +1610,7 @@ then
 fi
 
 title "item_mount"		"Mounted filesystems (mount)"
-echo "Current mount, may not reflect status when issue occured." >> $HTML
+line "Current mount, may not reflect status when issue occured."
 raw_open
 mount >> $HTML
 raw_close
@@ -1523,19 +1620,47 @@ raw_open
 cat /proc/scsi/scsi >> $HTML
 raw_close
 
+# Enable by default (most RHEL and Fedora use LVM)
+SHOW_LVM="yes"
+
+if [ -f /usr/bin/pvscan ] || [ -f /sbin/pvscan ]
+then
+
+	PV_RESULTS=`pvscan | grep "  No matching physical volumes found" | wc -l`
+
+	if [ $PV_RESULTS -ge 1 ]
+	then
+		SHOW_LVM="no"
+	fi
+fi
+	
 title "item_pvscan" "LVM2: Physical Volumes (pvscan)"
 raw_open
+# Regardless of whether physical volumes were found above, let pvscan
+# report the status to the user.  Then use the SHOW_LVM variable set above
+# to determine whether volume groups and logical volumes are processed.
+# (Skip those commands if no physical volumes are present)
 pvscan >> $HTML
 raw_close
 
 title "item_vgscan" "LVM2: Volume Groups (vgscan)"
 raw_open
-vgscan >> $HTML
+if [ $SHOW_LVM == "yes" ]
+then
+	vgscan >> $HTML
+else
+	line "No physical volumes present per pvscan"
+fi
 raw_close
 
 title "item_lvscan" "LVM2: Logical Volumes (lvscan)"
 raw_open
-lvscan >> $HTML
+if [ $SHOW_LVM == "yes" ]
+then
+	lvscan >> $HTML
+else
+	line "No physical volumes present per pvscan"
+fi
 raw_close
 
 title "item_fstab" "Filesystem mount table (fstab)"
@@ -1561,10 +1686,26 @@ raw_close
 ###########################################################
 section "section_dmesg" "Boot messages"
 
+# SLES 11 SP2/SP3 does not have a dmesg which supports --notime
+# If we don't have --notime this will report error 1, if we do error 0
+if [ `dmesg --notime > /dev/null 2>&1; echo $?` == 0 ]
+then
+	# We have "--notime" option, use it.
+	DMESG_NOTIME="yes"
+else
+	# We don't have "--notime" option, skip this, but leave the placeholder
+	DMESG_NOTIME="no"
+fi
+
 title "item_dmesg_notime"		"Linux boot messages without timestamps (dmesg --notime)"
 raw_open
-dmesg --notime >> $HTML
-dmesg --notime >> $FILE_DMESG_NOTIME
+if [ $DMESG_NOTIME == "yes" ]
+then
+	dmesg --notime >> $HTML
+	dmesg --notime >> $FILE_DMESG_NOTIME
+else
+	line "dmesg on this system does not support the --notime option."
+fi
 raw_close
 
 title "item_dmesg"		"Linux boot messages with timestamps (dmesg)"
