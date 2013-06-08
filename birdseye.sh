@@ -9,8 +9,11 @@
 # environment and presents that in a single, organized html file for
 # easy communication to developers and support staff.
 
-VERSION="1.7.1"
+VERSION="1.7.3"
 
+# 1.7.4-2013.06-07 Typo: identification spelled wrong
+# 1.7.3-2013.06-06 Comments about detecting the root user
+# 1.7.2-2013-05-29 Adding /etc/issue
 # 1.7.1-2013-05-28 Added more BIRDSEYE config varible handling
 #                  Added --year --month --time --notag filename options
 #                  Added --force option to clobber output
@@ -35,6 +38,8 @@ VERSION="1.7.1"
 #				   removed several files not used
 # 1.0 - 2013-02-26 added lscpu
 
+# Bash variable UID returns the user id # of the user
+# Running as root, or running this script using sudo should return user 0
 if [ $UID != 0 ]
 then
 	echo "You must be root or use 'sudo' to run birdseye."
@@ -658,12 +663,13 @@ else
 	XEN_VM=no
 fi
 
-if [ `uname -a | grep xen | wc -l` -gt 0 ]
-then
-	KVM_VM=yes
-else
-	KVM_VM=no
-fi
+# Figure out if we are in a KVM virtual machine?
+#if [ `uname -a | grep xen | wc -l` -gt 0 ]
+#then
+#	KVM_VM=yes
+#else
+#	KVM_VM=no
+#fi
 
 ###########################################################
 # Produce the report
@@ -1021,7 +1027,8 @@ toc_section "toc_linux_summary" "Linux Summary" "#section_linux_summary"
 unordered_list_open
 list "item_hostname"		"System name (hostname)"
 list "item_date"			"System date/time (date)"
-list "item_uname"			"System identifcation (uname -a)"
+list "item_uname"			"System identification (uname -a)"
+list "item_issue"			"Distribution, Version (/etc/issue)"
 list "item_lsb"				"Distribution, Release (lsb_release)"
 unordered_list_close
 
@@ -1191,12 +1198,17 @@ raw_open
 date >> $HTML
 raw_close
 
-subtitle "item_uname"		"System identifcation (uname -a)"
+subtitle "item_uname"		"System identification (uname -a)"
 raw_open
 uname -a >> $HTML
 raw_close
 
-subtitle "item_lsb"			"Distribution,Release (lsb_release)"
+subtitle "item_issue"		"Distribution, Version (/etc/issue)"
+raw_open
+cat /etc/issue >> $HTML
+raw_close
+
+subtitle "item_lsb"			"Distribution, Release (lsb_release)"
 raw_open
 lsb_release -d >> $HTML
 raw_close
