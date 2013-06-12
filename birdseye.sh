@@ -9,8 +9,9 @@
 # environment and presents that in a single, organized html file for
 # easy communication to developers and support staff.
 
-VERSION="1.7.3"
+VERSION="1.7.5"
 
+# 1.7.5-2013.06.11 Adding email to report
 # 1.7.4-2013.06-07 Typo: identification spelled wrong
 # 1.7.3-2013.06-06 Comments about detecting the root user
 # 1.7.2-2013-05-29 Adding /etc/issue
@@ -337,6 +338,7 @@ then
 	echo
 	echo "DEBUG DEF_TAG $DEF_TAG"
 	echo "DEBUG DEF_NAME $DEF_NAME"
+	echo "DEBUG DEF_EMAIL $DEF_EMAIL"
 	echo "DEBUG DEF_GROUP $DEF_GROUP"
 	echo "DEBUG DEF_ISSUE $DEF_ISSUE"
 	echo "DEBUG DEF_CFG_NOTES $DEF_CFG_NOTES"
@@ -352,6 +354,7 @@ then
 	# set the working variables to the defaults
 	MY_TAG=${DEF_TAG:-"null"}
 	MY_NAME=${DEF_NAME:-"null"}
+	MY_EMAIL=${DEF_EMAIL:-"null"}
 	MY_GROUP=${DEF_GROUP:-"null"}
 	MY_ISSUE=${DEF_ISSUE:-"null"}
 	MY_CFG_NOTES=${DEF_CFG_NOTES:-"null"}
@@ -390,6 +393,20 @@ else
 	else	
 		# quote required - spaces will be included!
 		MY_NAME="$DEF_NAME"
+	fi
+
+	####################
+	#echo -en "What's your name [$DEF_EMAIL] ?"
+	#read MY_EMAIL
+	read -p "What's your name [$DEF_EMAIL] ?" MY_EMAIL
+	MY_EMAIL=${MY_EMAIL:-"null"}
+	if [ "$MY_EMAIL" != "null" ]
+	then
+		# quote required - spaces will be included!
+		MY_EMAIL="$MY_EMAIL"
+	else	
+		# quote required - spaces will be included!
+		MY_EMAIL="$DEF_EMAIL"
 	fi
 
 	####################
@@ -449,6 +466,7 @@ then
 	echo "Values after interactive prompting:"
 	echo "DEBUG MY_TAG $MY_TAG"
 	echo "DEBUG MY_NAME $MY_NAME"
+	echo "DEBUG MY_EMAIL $MY_EMAIL"
 	echo "DEBUG MY_GROUP $MY_GROUP"
 	echo "DEBUG MY_ISSUE $MY_ISSUE"
 	echo "DEBUG MY_CFG_NOTES $MY_CFG_NOTES"
@@ -976,7 +994,7 @@ line "<body>"
 
 line "<h1><a name=\"Top\"><a href=http://www.maxwellspangler.com/linux/birdseye/>Bird's Eye</a> System Inventory for $MY_HOST</a></h1>" 
 
-paragraph "Produced on `date "+%A, %B %d %Y at %H:%m"` by $MY_NAME of $MY_GROUP"
+paragraph "Produced on `date "+%A, %B %d %Y at %H:%m"` by $MY_NAME ( $MY_EMAIL ) of $MY_GROUP"
 
 if [[ $MY_ISSUE != "null" ]]
 then
