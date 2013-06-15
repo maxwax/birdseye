@@ -9,8 +9,11 @@
 # environment and presents that in a single, organized html file for
 # easy communication to developers and support staff.
 
-VERSION="1.7.6"
+VERSION="2013.0615.02"
 
+# 2013.0615.02
+#	Added -date option for --month and --year
+#	Added -e --email options for command line handling of email
 # 2013.0615.01
 #	Removed old changelog, switched to date versioning
 #	Fixing prompt in new email parameter (has name not email)
@@ -23,7 +26,6 @@ then
 	echo "You must be root or use 'sudo' to run birdseye."
 	exit 1
 fi
-
 
 ###########################################################
 # functions
@@ -208,10 +210,12 @@ function usage {
 	echo
 	echo "-t --tag     Specify a tag to be included in the filename. 'rhel73' 'vers5hw'"
 	echo "-n --name    Specify the name of the user producing this report. 'Lloyd Dobler'"
+	echo "-e --email   Specify the email address of the user producing this report."
 	echo "-g --group   Specify the group this report is associated with. 'Triage'"
 	echo "-i --issue   Specify an issue being investigated. 'Network Fault'"
 	echo "-h --hwnotes Specify a note about this hardware config. '1/2 cpus diabled'"
 	echo
+	echo "   --date    Include year and month in filename"
 	echo "   --year    Include year in filename"
 	echo "   --month   Include month & day in filename"
 	echo "   --time    Include 24-hour format time in filename"
@@ -245,6 +249,11 @@ do
 		--time )
 			FILENAME_TIME="yes";;
 
+		# Same as --month and --year : include date
+		--date )
+			FILENAME_YEAR="yes"
+			FILENAME_MONTH="yes";;
+
 		# Include YYYY format date in output filename
 		--year )
 			FILENAME_YEAR="yes";;
@@ -274,6 +283,10 @@ do
 			shift
 			DEF_NAME=$1;;
 
+		-e | --email )
+			shift
+			DEF_EMAIL=$1;;
+
 		-g | --group )
 			shift
 			DEF_GROUP=$1;;
@@ -293,10 +306,6 @@ do
 		-c | --css )
 			shift
 			CSS_FILE=$1;;
-
-#		-f | --filename-host )
-#			shift
-#			FILENAME_HOST_FORMAT=$1;;
 
 		* )
 		usage
