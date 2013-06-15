@@ -3,12 +3,12 @@
 # birdseye.sh
 #
 # 2013 Maxwell Spangler, maxwell@maxwellspangler.com
-# http://www.maxwellspangler.com/linux/birdseye
 #
-# Birdseye records a comprehensive inventory of a Linux system's
-# environment and presents that in a single, organized html file for
-# easy communication to developers and support staff.
+# Birdseye creates a simple, well-presented HTML based report of a Linux
+# systems hardware, software and configuration details.
+# See http://www.maxwellspangler.com/linux/birdseye for more information.
 
+# Version number set here: date produced plus a daily sequence version
 VERSION="2013.0615.02"
 
 # 2013.0615.02
@@ -216,6 +216,8 @@ function usage {
 	echo "-h --hwnotes Specify a note about this hardware config. '1/2 cpus diabled'"
 	echo
 	echo "   --date    Include year and month in filename"
+	echo "   --dt      Include year and month and 24-hour time in filename"
+	echo
 	echo "   --year    Include year in filename"
 	echo "   --month   Include month & day in filename"
 	echo "   --time    Include 24-hour format time in filename"
@@ -253,6 +255,13 @@ do
 		--date )
 			FILENAME_YEAR="yes"
 			FILENAME_MONTH="yes";;
+
+		# Same as --month and --year : include date
+		--dt )
+			FILENAME_TIME="yes"
+			FILENAME_YEAR="yes"
+			FILENAME_MONTH="yes";;
+
 
 		# Include YYYY format date in output filename
 		--year )
