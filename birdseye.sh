@@ -9,35 +9,12 @@
 # environment and presents that in a single, organized html file for
 # easy communication to developers and support staff.
 
-VERSION="1.7.5"
+VERSION="1.7.6"
 
-# 1.7.5-2013.06.11 Adding email to report
-# 1.7.4-2013.06-07 Typo: identification spelled wrong
-# 1.7.3-2013.06-06 Comments about detecting the root user
-# 1.7.2-2013-05-29 Adding /etc/issue
-# 1.7.1-2013-05-28 Added more BIRDSEYE config varible handling
-#                  Added --year --month --time --notag filename options
-#                  Added --force option to clobber output
-#                  Renamed some variables; HOSTID now FILENAME_DATA
-#                  Do not limit tag to 8 characters -- wide open now
-# 1.7 - 2013-05-24 Porting to sles 11 sp3
-#					handling no LVM physical volumes in use
-#					handling lack of dmesg --notime
-# 1.6 - 2013-04-29 Adding a few more commands like lscpu
-#				   Added Peripherals and X-windows
-# 1.5 - 2013-04-12 check for root user: error message if not root/sudo
-# 1.4 - 2013-04-11 added command line parameters
-#                  implemented public option - no networking published
-# 1.3 - 2013-04-10 output filename option added
-# 1.2 - 2013-04-05 refinements for big iron
-# 1.1 - 2013-04-04 major cleanup in progress
-# 				   added more functions: 
-#				   : raw_open,raw_close
-# 				   : textarea_open,textarea_close
-# 				   : toc_section
-#				   enabled external files via browser
-#				   removed several files not used
-# 1.0 - 2013-02-26 added lscpu
+# 2013.0615.01
+#	Removed old changelog, switched to date versioning
+#	Fixing prompt in new email parameter (has name not email)
+#	Removed commented out echo -n + read method for read -p
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -361,8 +338,6 @@ then
 else
 
 	####################
-	#echo -en "Provide a short tag to include with this [$DEF_TAG] ?"
-	#read MY_TAG
 	read -p "Provide a short tag to include with this [$DEF_TAG] ?" MY_TAG
 
 	MY_TAG=${MY_TAG:-"null"}
@@ -382,8 +357,6 @@ else
 	fi
 
 	####################
-	#echo -en "What's your name [$DEF_NAME] ?"
-	#read MY_NAME
 	read -p "What's your name [$DEF_NAME] ?" MY_NAME
 	MY_NAME=${MY_NAME:-"null"}
 	if [ "$MY_NAME" != "null" ]
@@ -396,9 +369,7 @@ else
 	fi
 
 	####################
-	#echo -en "What's your name [$DEF_EMAIL] ?"
-	#read MY_EMAIL
-	read -p "What's your name [$DEF_EMAIL] ?" MY_EMAIL
+	read -p "What's your email address [$DEF_EMAIL] ?" MY_EMAIL
 	MY_EMAIL=${MY_EMAIL:-"null"}
 	if [ "$MY_EMAIL" != "null" ]
 	then
@@ -410,8 +381,6 @@ else
 	fi
 
 	####################
-	#echo -en "What group are you in (linuxqa,io,aps?) [$DEF_GROUP] ?"
-	#read MY_GROUP
 	read -p "What group are you in (linuxqa,io,aps?) [$DEF_GROUP] ?" MY_GROUP
 
 	# remove spaces
@@ -427,8 +396,6 @@ else
 
 	####################
 	echo -e "A simple description for the issue being reported [$DEF_ISSUE] ?"
-	#echo -n ":"
-	#read MY_ISSUE
 	read -p ":" MY_ISSUE
 	MY_ISSUE="${MY_ISSUE:-"null"}"
 
