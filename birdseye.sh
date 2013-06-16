@@ -83,8 +83,7 @@ function subtitle {
 	echo -e "<h4><a name=\"$1\">$2</a></h4>" >> $HTML
 }
 
-# Output a simple unordered list tag <ul>
-# with optional class info
+# Output a simple unordered list tag <ul> with optional class info
 function unordered_list_open {
 	echo -e "<ul $1>" >> $HTML
 }
@@ -95,33 +94,28 @@ function unordered_list_close {
 	echo -e "</ul>" >> $HTML
 }
 
-# Output a simple unordered list tag <ul>
-# with optional class info
+# Output a simple unordered list tag <ul> with optional class info
 function raw_open {
 	echo -e "<pre class=\"PROGRAMLISTING\">" >> $HTML
 }
 
-# Output a simple unordered list tag <ul>
-# with optional class info
+# Output a simple unordered list tag <ul> with optional class info
 function raw_close {
 	echo -e "</pre>" >> $HTML
 }
 
-# Output a simple unordered list tag <ul>
-# with optional class info
+# Output a simple unordered list tag <ul> with optional class info
 function textarea_open {
 	echo -e "<textarea readonly wrap=hard cols=\"$1\" rows=\"$2\">" >> $HTML
 }
 
-# Output a simple unordered list tag <ul>
-# with optional class info
+# Output a simple unordered list tag <ul> with optional class info
 # "</p> afterwards adds a little extra space before the next line
 function textarea_close {
 	echo -e "</textarea></p>" >> $HTML
 }
 
-# Output a simple unordered list tag <ul>
-# with optional class info
+# Output a simple unordered list tag <ul> with optional class info
 function helpful_tip {
 	echo -e "<div class=\"TIP\">" >> $HTML
 	echo -e "<blockquote class=\"TIP\">" >> $HTML
@@ -130,29 +124,36 @@ function helpful_tip {
 	echo -e "</div>" >> $HTML
 }
 
-###########################################################
-# default variable handling, prompt user for tags and titles
-###########################################################
+########################################################################
+# Default Variable Handling 
+########################################################################
 
-# BIRDSEYE variable are read from config file and used in initialization only
-# export variables now so a subshell can set them in $HOME/.birdseye.cfg
+# BIRDSEYE_ variables listed here are set to default values
+# If a config file is found, any or all of these values may be
+# overwritten.  Later code references these values regardless
+# of whether their values come from these settings or an
+# external configuration file.
 export BIRDSEYE_TAG=""
 export BIRDSEYE_NAME=""
+export BIRDSEYE_EMAIL=""
 export BIRDSEYE_GROUP=""
 export BIRDSEYE_ISSUE=""
 export BIRDSEYE_CFG_NOTES=""
+
 export BIRDSEYE_FILENAME_DATE="no"
 export BIRDSEYE_FILENAME_MONTH="no"
 export BIRDSEYE_FILENAME_TIME="no"
 export BIRDSEYE_FILENAME_HOST="no"
 export BIRDSEYE_FILENAME_TAG="yes"
+
 export BIRDSEYE_OUTPUT_FORCE="no"
 export BIRDSEYE_PUBLIC_REPORT="no"
-export BIRDSEYE_PROMPT_USER="no"
+export BIRDSEYE_PROMPT_USER="yes"
 export BIRDSEYE_CSS_FILE="no"
 export BIRDSEYE_PUBLIC_REPORT="no"
 
-# check for config file and execute to read in BIRDSEYE variables
+# If a config file exists in the user's home directory, execute
+# it to set BIRDSEYE_ variables and perform any user supplied processing
 if [ -f $HOME/.birdseye.cfg ]
 then
 	echo "Using in $HOME/.birdseye.cfg:"
@@ -160,45 +161,47 @@ then
 
 	echo "Tag   $BIRDSEYE_TAG"
 	echo "Name  $BIRDSEYE_NAME"
+	echo "Email $BIRDSEYE_EMAIL"
 	echo "Group $BIRDSEYE_GROUP"
 	echo "Issue $BIRDSEYE_ISSUE"
 	echo "Notes $BIRDSEYE_CFG_NOTES"
 	echo
-
-	# if we have a config file then we may have one or more 
-	# (but not necessarily all) of these variables.
-	# set the standard default variables to them, null if not set.
-	DEF_TAG=${BIRDSEYE_TAG:-"null"}
-	DEF_NAME=${BIRDSEYE_NAME:-"null"}
-	DEF_GROUP=${BIRDSEYE_GROUP:-"null"}
-	DEF_ISSUE=${BIRDSEYE_ISSUE:-"null"}
-	DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"null"}
-else
-	# If no config file, then set default values to static values here.
-	DEF_TAG="birdseye"
-	DEF_NAME="Unknown"
-	DEF_GROUP="Unknown"
-	DEF_ISSUE="not-specified"
-	DEF_CFG_NOTES="none"
 fi
 
-###########################################################
-# let's get started
-###########################################################
-PUBLIC_REPORT="no"
-PROMPT_USER="yes"
-CSS_FILE="null"
+# DEF_ variable are used later in processing the report
+# Values are set to one of three sources:
+# 1. The 'export BIRDSEYE_' lines above (empty values)
+# 2. BIRDSEYE variable definitions in a user's .birdseye.cfg file
+# 3. Default values set here
+# In most cases, there is no config file, so these defaults are used.
+
+DEF_TAG=${BIRDSEYE_TAG:-"birdseye"}
+DEF_NAME=${BIRDSEYE_NAME:-"Unknown User"}
+DEF_EMAIL=${BIRDSEYE_EMAIL:-"Unknown Email Address"}
+DEF_GROUP=${BIRDSEYE_GROUP:-"Unknown Group"}
+DEF_ISSUE=${BIRDSEYE_ISSUE:-"No issue specified."}
+DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"No configuration notes."}
+
+DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
+
+PUBLIC_REPORT=$BIRDSEYE_PUBLIC_REPORT
+PROMPT_USER=$BIRDSEYE_PROMPT_USER
 
 # default options for output filename.
 # Use options from config file if possible (see above)
 FILENAME_YEAR=$BIRDSEYE_FILENAME_YEAR
 FILENAME_MONTH=$BIRDSEYE_FILENAME_MONTH
-UILENAME_TIME=$BIRDSEYE_FILENAME_TIME
+FILENAME_TIME=$BIRDSEYE_FILENAME_TIME
 FILENAME_HOST=$BIRDSEYE_FILENAME_HOST
 FILENAME_TAG=$BIRDSEYE_FILENAME_TAG
 
 OUTPUT_FORCE=$BIRDSEYE_OUTPUT_FORCE
 
+########################################################################
+# Command Line : Syntax
+########################################################################
+
+# Display syntax
 function usage {
 	echo "Bird's Eye $VERSION"
 	echo
@@ -225,14 +228,30 @@ function usage {
 	echo "   --notag   Do not include report tag in filename (Default: include)"
 	echo "   --force   Overwrite an existing output directory if it exists."
 	echo
+
+# future option?
 #	echo "-c --css     Use an external CSS style file's contents '/home/user/style.css'"
+
+# future option?
 #	echo "-o --output  Specify the output filename."
 
 }
 
+########################################################################
+# Command Line : Processing
+########################################################################
+
 while [ "$1" != "" ]
 do
+
+	# Process the next command line argument
 	case $1 in 
+
+		# Examine $1 for a command line parameter
+		# If the parameter is identified set a value to be used later
+		# If the parameter requires an option, 'shift' so $1 is the option
+		# Process the option
+		# After this case block, shift again so the next parameter is $1
 
 		# enable debugging output
 		-d | --debug )
@@ -251,17 +270,16 @@ do
 		--time )
 			FILENAME_TIME="yes";;
 
-		# Same as --month and --year : include date
+		# Same as --month and --year : include date - convenience
 		--date )
 			FILENAME_YEAR="yes"
 			FILENAME_MONTH="yes";;
 
-		# Same as --month and --year : include date
+		# Same as --month and --year : include date - convenience
 		--dt )
 			FILENAME_TIME="yes"
 			FILENAME_YEAR="yes"
 			FILENAME_MONTH="yes";;
-
 
 		# Include YYYY format date in output filename
 		--year )
@@ -275,7 +293,7 @@ do
 		--host )
 			FILENAME_HOST="yes";;
 
-		# Include hostname in output filename
+		# Don't include the tag in the output file
 		--notag )
 			FILENAME_TAG="no";;
 
@@ -283,39 +301,47 @@ do
 		--force )
 			OUTPUT_FORCE="yes";;
 
-		# specify the filename tag
+		# command line parameter: specify the output tag
 		-t | --tag )
 			shift
 			DEF_TAG=$1;;
 
+		# command line parameter: specify user's name in quotes
 		-n | --name )
 			shift
 			DEF_NAME=$1;;
 
+		# command line parameter: specify the user's email address
 		-e | --email )
 			shift
 			DEF_EMAIL=$1;;
 
+		# command line parameter: specify the user's group or team
 		-g | --group )
 			shift
 			DEF_GROUP=$1;;
 
+		# command line parameter: specify the issue being investigated
 		-i | --issue )
 			shift
 			DEF_ISSUE=$1;;
 
+		# command line parameter: specify notes on the hw configuration
 		-h | --hwnotes )
 			shift
 			DEF_CFG_NOTES=$1;;
 
+		# command line parameter: future option, specify output filename
 		-o | --output )
 			shift
 			DEF_OUTPUT=$1;;
 
+		# command line parameter: specify external CSS style file
 		-c | --css )
 			shift
-			CSS_FILE=$1;;
+			DEF_CSS_FILE=$1;;
 
+		# Something we don't understand? show syntax and exit
 		* )
 		usage
 		exit 1;;
@@ -323,13 +349,18 @@ do
 	shift
 done
 
+########################################################################
+# Debug only: Report DEF_ Variables
+########################################################################
+
+# If the DEBUG option was set, let's report some basic values here.
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Values after parameter processing:"
 	echo "DEBUG PUBLIC_REPORT $PUBLIC_REPORT"
 	echo "DEBUG PROMPT_USER $PROMPT_USER"
 	echo "DEBUG DEF_OUTPUT $DEF_OUTPUT"
-	echo "DEBUG CSS_FILE $CSS_FILE"
+	echo "DEBUG DEF_CSS_FILE $DEF_CSS_FILE"
 	echo
 	echo "DEBUG DEF_TAG $DEF_TAG"
 	echo "DEBUG DEF_NAME $DEF_NAME"
@@ -341,7 +372,7 @@ then
 fi
 
 ###########################################################
-# Prompt user for tag / name / group /issue / hw_notes
+# Prompt user for tag / name / email / group /issue / hw_notes
 ###########################################################
 
 if [[ $PROMPT_USER == "no" ]]
@@ -358,27 +389,34 @@ else
 	####################
 	read -p "Provide a short tag to include with this [$DEF_TAG] ?" MY_TAG
 
+	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_TAG=${MY_TAG:-"null"}
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
 	if [[ "$MY_TAG" != "null" ]] && [[ X"$MY_TAG" != X ]]
 	then
-		# quote required - spaces will be included!
-		# slow
-		#MY_TAG=`echo "$MY_TAG" | tr -d ' '`
-		# fast
+
+		# Make this tag command line friendly by removing spaces
 		MY_TAG=${MY_TAG//[[:space:]]/}
 
-		# cut to first 8 characters
-		#MY_TAG=${MY_TAG:0:8}
 	else	
-		# quote required - spaces will be included!
-		MY_TAG="$DEF_TAG"
+		# Make this tag command line friendly by removing spaces
+		MY_TAG=${DEF_TAG//[[:space:]]/}
 	fi
 
 	####################
 	read -p "What's your name [$DEF_NAME] ?" MY_NAME
+
+	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_NAME=${MY_NAME:-"null"}
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
 	if [ "$MY_NAME" != "null" ]
 	then
+		# redundant - this block is a template for future processing 
+
 		# quote required - spaces will be included!
 		MY_NAME="$MY_NAME"
 	else	
@@ -388,9 +426,16 @@ else
 
 	####################
 	read -p "What's your email address [$DEF_EMAIL] ?" MY_EMAIL
+
+	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_EMAIL=${MY_EMAIL:-"null"}
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
 	if [ "$MY_EMAIL" != "null" ]
 	then
+		# redundant - this block is a template for future processing 
+
 		# quote required - spaces will be included!
 		MY_EMAIL="$MY_EMAIL"
 	else	
@@ -401,25 +446,33 @@ else
 	####################
 	read -p "What group are you in (linuxqa,io,aps?) [$DEF_GROUP] ?" MY_GROUP
 
-	# remove spaces
-	MY_GROUP=${MY_GROUP//[[:space:]]/}
-
+	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_GROUP=${MY_GROUP:-"null"}
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
 	if [ "$MY_GROUP" != "null" ]
 	then
-		MY_GROUP=$MY_GROUP
+		# redundant - this block is a template for future processing 
+
+		MY_GROUP="$MY_GROUP"
 	else	
-		MY_GROUP=$DEF_GROUP
+		MY_GROUP="$DEF_GROUP"
 	fi
 
 	####################
 	echo -e "A simple description for the issue being reported [$DEF_ISSUE] ?"
 	read -p ":" MY_ISSUE
+
+	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_ISSUE="${MY_ISSUE:-"null"}"
 
-	# quote required - spaces will be included!
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
 	if [ "$MY_ISSUE" != "null" ]
 	then
+		# redundant - this block is a template for future processing 
+
 		# quote required - spaces will be included!
 		MY_ISSUE="$MY_ISSUE"
 	else	
@@ -428,13 +481,14 @@ else
 	fi
 
 	####################
-	echo -e "Notes about the system configuration: [$DEF_CFG_NOTES]"
-	#echo -n ":"
-	#read MY_CFG_NOTES
+	echo -e "Notes about the system configuration? [$DEF_CFG_NOTES]"
 	read -p ":" MY_CFG_NOTES
+
+	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_CFG_NOTES="${MY_CFG_NOTES:-"null"}"
 
-	# quote required - spaces will be included!
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
 	if [ "$MY_CFG_NOTES" != "null" ]
 	then
 		# quote required - spaces will be included!
@@ -445,6 +499,10 @@ else
 	fi
 
 fi
+
+###########################################################
+# Debug: Let's report our processed values
+###########################################################
 
 if [[ $DEBUG == "yes" ]]
 then
@@ -459,223 +517,222 @@ then
 fi
 
 ###########################################################
-# got the input, go do it
+# Construct and output filename from various option settings
 ###########################################################
 
 # slow, sometimes hostname only not FQDN
-MY_HOST=`hostname`
+#MY_HOST=`hostname`
 
 # fast, FQDN?
-#MY_HOST=$HOSTNAME
+MY_HOST=$HOSTNAME
 
-# default for all conditions.
+# Default prefix for all output filenames
 FILENAME_DATA="birdseye"
 
-# Include hostname in output filename?
+# Append hostname to filename ?
 if [[ $FILENAME_HOST == "yes" ]]
 then
-	FILENAME_DATA=$FILENAME_DATA.$MY_HOST.
+	FILENAME_DATA=$FILENAME_DATA.$MY_HOST
 fi
 
-# Include date in output filename?
-if [[ $FILENAME_YEAR == "yes" ]]
-then
-	FILENAME_DATA=$FILENAME_DATA.`date +%Y`
-fi
-
-# Include date in output filename?
-if [[ $FILENAME_MONTH == "yes" ]]
-then
-	FILENAME_DATA=$FILENAME_DATA.`date +%m%d`
-fi
-
-# Include 24hr time in output filename?
-if [[ $FILENAME_TIME == "yes" ]]
-then
-	FILENAME_DATA=$FILENAME_DATA.`date +%H%M`
-fi
-
-# Include user's tag in filename?
+# Append the user's tag to the filename?
 if [[ $FILENAME_TAG == "yes" ]]
 then
 	FILENAME_DATA="$FILENAME_DATA.$MY_TAG"
 fi
 
-# Master directory for producing output files.
-export CAPDIR="$FILENAME_DATA"
-
-if [[ -d $CAPDIR ]]
+# Append year ("YYYY" format) to filename?
+if [[ $FILENAME_YEAR == "yes" ]]
 then
+	FILENAME_DATA=$FILENAME_DATA.`date +%Y`
+fi
+
+# Append month-day ("MMDD" format) to filename?
+if [[ $FILENAME_MONTH == "yes" ]]
+then
+	FILENAME_DATA=$FILENAME_DATA.`date +%m%d`
+fi
+
+# Append 24-hour time ("HHMM" format) to filename?
+if [[ $FILENAME_TIME == "yes" ]]
+then
+	FILENAME_DATA=$FILENAME_DATA.`date +%H%M`
+fi
+
+# Set the working variable for the output directory to our constructed 
+# output filename template
+export OUTPUT_DIR="$FILENAME_DATA"
+
+# Does the output directory exist? 
+if [[ -d $OUTPUT_DIR ]]
+then
+	# If we haven't been told to force it, don't overwrite what might
+	# be important existing data that can't be recreated
 	if [[ $OUTPUT_FORCE == "no" ]]
 	then
-		echo "Directory $CAPDIR exists. Please remove or use --force"
+		echo "Directory $OUTPUT_DIR exists. Please remove or use --force"
 		exit
 	else
-		echo "Directory $CAPDIR exists, using --force to replace it."
-	fi
-fi
+		echo "Directory $OUTPUT_DIR exists, using --force to replace it."
+		# I'm paranoid about using 'rm -f' with a variable (especially as 
+		# root) So we'll keep the existing directory and remove only the
+		# old files that might conflict with THIS report.
+		# Other files in the existing directory are kept 
 
-if [[ ! -d $CAPDIR ]]
-then
-	mkdir $CAPDIR
+		rm -f $OUTPUT_DIR/*.txt birdseye.$FILENAME_DATA.tar birdseye.$FILENAME_DATA.tar.gz
+	fi
+else # Our output directory does NOT exist
+
+	# Let's try to make a new output directory
+	mkdir $OUTPUT_DIR
+
+	# Did we succeed?
 	if [ $? != 0 ]
 	then
-		echo "Can't make $CAPDIR"
+		echo "Can't make $OUTPUT_DIR"
 		exit
 	fi
-else
-	# careful! don't screw this up a
-	rm -f $CAPDIR/*.txt birdseye.$FILENAME_DATA.tar birdseye.$FILENAME_DATA.tar.gz
 fi
 
-# summary file of small bits of info
-# old way, let's assume the tag has the hostname in it?
-# this should be an option
-#HTML=$CAPDIR/birdseye.$FILENAME_DATA."$MY_TAG.".html
-HTML="$CAPDIR/$FILENAME_DATA.html"
+# HTML is the name of our often used HTML format output file
+HTML="$OUTPUT_DIR/$FILENAME_DATA.html"
 
-# detailed log files
-BASE_FILE_DMI=dmidecode.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_CPU=cpuinfo.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_MSGS=messages.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_DMESG=dmesg.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_DMESG_NOTIME=dmesg-notime.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_INTER=interrupts.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_PCI=lspci.$FILENAME_DATA.$MY_TAG.txt
-BASE_FILE_INITRD=initrd.$FILENAME_DATA.$MY_TAG.txt
+# These additional ASCII files contain raw output and many users
+# wish to have them seperate for processing with 'grep' and other
+# programs.
+FILENAME_DMI=dmidecode.$FILENAME_DATA.txt
+FILENAME_CPU=cpuinfo.$FILENAME_DATA.txt
+FILENAME_MSGS=messages.$FILENAME_DATA.txt
+FILENAME_DMESG=dmesg.$FILENAME_DATA.txt
+FILENAME_DMESG_NOTIME=dmesg-notime.$FILENAME_DATA.txt
+FILENAME_INTER=interrupts.$FILENAME_DATA.txt
+FILENAME_PCI=lspci.$FILENAME_DATA.txt
+FILENAME_INITRD=initrd.$FILENAME_DATA.txt
 
-FILE_DMI=$CAPDIR/$BASE_FILE_DMI
-FILE_CPU=$CAPDIR/$BASE_FILE_CPU
-FILE_MSGS=$CAPDIR/$BASE_FILE_MSGS
-FILE_DMESG=$CAPDIR/$BASE_FILE_DMESG
-FILE_DMESG_NOTIME=$CAPDIR/$BASE_FILE_DMESG
-FILE_INTER=$CAPDIR/$BASE_FILE_INTER
-FILE_PCI=$CAPDIR/$BASE_FILE_PCI
-FILE_INITRD=$CAPDIR/$BASE_FILE_INITRD
+FILE_DMI=$OUTPUT_DIR/$FILENAME_DMI
+FILE_CPU=$OUTPUT_DIR/$FILENAME_CPU
+FILE_MSGS=$OUTPUT_DIR/$FILENAME_MSGS
+FILE_DMESG=$OUTPUT_DIR/$FILENAME_DMESG
+FILE_DMESG_NOTIME=$OUTPUT_DIR/$FILENAME_DMESG
+FILE_INTER=$OUTPUT_DIR/$FILENAME_INTER
+FILE_PCI=$OUTPUT_DIR/$FILENAME_PCI
+FILE_INITRD=$OUTPUT_DIR/$FILENAME_INITRD
 
-# Empty the contents of each file to avoid old output
+###########################################################
+# Set Traps: If the user cancels with control-c we'll use this to cleanup
+###########################################################
+
+trap "{ rm -r $OUTPUT_DIR $OUTPUT_DIR.tar $OUTPUT_DIR.tar.gz; exit 255 }" SIGINT SIGQUIT SIGTERM
+
+###########################################################
+# Empty the contents of each file with a simple echo statement
+###########################################################
+
+# Originally this was used to place a header on each file
+# Emptying files now allows ALL future work to be a simple
+# append output to each file
 for EACH_FILE in \
 	$HTML $FILE_DMI $FILE_CPU $FILE_MSGS $FILE_DMESG $FILE_DMESG_NOTIME \
 	$FILE_INTER $FILE_PCI $FILE_INITRD
 do
-	#echo $EACH_FILE
 	echo -n > $EACH_FILE
 done
 
 ###########################################################
-# trap any later work and cleanup if we control-c
+# Processing: What distribution are we using?
+#
+# This will be important as we handle distribution-specific quirks
 ###########################################################
 
-trap "{ rm -r $CAPDIR $CAPDIR.tar $CAPDIR.tar.gz; exit 255 }" SIGINT SIGQUIT SIGTERM
-
-###########################################################
-# distributon and version handling
-###########################################################
-
+# Distribution: fedora, redhat, oracle, centos, suse, ubuntu
 MY_DIST="null"
+
+# Release version "5", "6", "11SP3"
 MY_RELEASE="null"
 
-if [ -f /etc/redhat-release ]
-then
-	if [ `cat /etc/redhat-release | grep "release 5." | wc -l` -gt 0 ]
-	then
-		MY_DIST="redhat"
-		MY_RELEASE=5
-	elif [ `cat /etc/redhat-release | grep "release 6." | wc -l` -gt 0 ]
-	then
-		MY_DIST="redhat"
-		MY_RELEASE=6
-	fi
+# Release Family: "redhat" = (redhat, oracle, centos)
+MY_DIST_FAMILY="null"
 
-fi
+# Fedora contains fedora-release and redhat-release
+# Oracle main contain oracle-release and redhat-release as well
+#
+# So, look for fedora first, set it and skip the others if found
+# If not fedora, check for oracle, then redhat and others
 
 if [ -f /etc/fedora-release ]
 then
+	MY_DIST="fedora"
+
 	if [ `cat /etc/fedora-release | grep "release 16" | wc -l` -gt 0 ]
 	then
-		MY_DIST="fedora"
 		MY_RELEASE=16
 	elif [ `cat /etc/fedora-release | grep "release 17" | wc -l` -gt 0 ]
 	then
-		MY_DIST="fedora"
 		MY_RELEASE=17
 	elif [ `cat /etc/fedora-release | grep "release 18" | wc -l` -gt 0 ]
 	then
-		MY_DIST="fedora"
 		MY_RELEASE=18
 	elif [ `cat /etc/fedora-release | grep "release 19" | wc -l` -gt 0 ]
 	then
-		MY_DIST="fedora"
 		MY_RELEASE=19
 	fi
-fi
 
-if [ -f /etc/oracle-release ]
+elif [ -f /etc/oracle-release ]
 then
+	MY_DIST="oracle"
+	MY_DIST_FAMILY="redhat"
+
 	if [ `cat /etc/oracle-release | grep "release 5." | wc -l` -gt 0 ]
 	then
-		MY_DIST="oracle"
 		MY_RELEASE=5
 	elif [ `cat /etc/oracle-release | grep "release 6." | wc -l` -gt 0 ]
 	then
-		MY_DIST="oracle"
 		MY_RELEASE=6
 	fi
-fi
 
-if [ -f /etc/centos-release ]
+elif [ -f /etc/centos-release ]
 then
+	MY_DIST="centos"
+	MY_DIST_FAMILY="redhat"
+
 	if [ `cat /etc/centos-release | grep "release 5." | wc -l` -gt 0 ]
 	then
-		MY_DIST="centos"
 		MY_RELEASE=5
 	elif [ `cat /etc/centos-release | grep "release 6." | wc -l` -gt 0 ]
 	then
-		MY_DIST="centos"
 		MY_RELEASE=6
 	fi
 
-fi
-
-if [ -f /etc/SuSE-release ]
+elif [ -f /etc/redhat-release ]
 then
+	MY_DIST="redhat"
+	MY_DIST_FAMILY="redhat"
+
+	if [ `cat /etc/redhat-release | grep "release 5." | wc -l` -gt 0 ]
+	then
+		MY_RELEASE=5
+	elif [ `cat /etc/redhat-release | grep "release 6." | wc -l` -gt 0 ]
+	then
+		MY_RELEASE=6
+	fi
+
+elif [ -f /etc/SuSE-release ]
+then
+	MY_DIST="suse"
+	MY_DIST_FAMILY="suse"
+
 	if [ `cat /etc/SuSE-release | grep "Server 11" | wc -l` -gt 0 ]
 	then
-		MY_DIST="SuSE"
 		MY_RELEASE="11"
 	elif [ `cat /etc/SuSE-release | grep "Server 10" | wc -l` -gt 0 ]
 	then
-		MY_DIST="SuSE"
 		MY_RELEASE="10"
 	fi
 	
-	#SUSE Linux Enterprise Server 11 (x86_64)
-	#VERSION = 11
-	#PATCHLEVEL = 2
 fi
 
 ###########################################################
-# Are we running in a VM? 
-###########################################################
-
-# works for a paravirtualized kernel but not for a fv linux kernel in a xen environment.
-if [ `uname -a | grep xen | wc -l` -gt 0 ]
-then
-	XEN_VM=yes
-else
-	XEN_VM=no
-fi
-
-# Figure out if we are in a KVM virtual machine?
-#if [ `uname -a | grep xen | wc -l` -gt 0 ]
-#then
-#	KVM_VM=yes
-#else
-#	KVM_VM=no
-#fi
-
-###########################################################
-# Produce the report
+# LET'S GO: Produce the Report
 ###########################################################
 
 line "<html>"
@@ -686,9 +743,10 @@ line "<head><title>Birdseye Report for $MY_HOST</title>"
 # CSS STYLE SHEET for presentation
 #----------------------------------------------------------
 
-#if [[ $CSS_FILE != "null" ]] && [ -f "$CSS_FILE" ]
+# future option, not tested yet
+#if [[ $DEF_CSS_FILE != "null" ]] && [ -f "$DEF_CSS_FILE" ]
 #then
-#	cat "$CSS_FILE" >> $HTML
+#	cat "$DEF_CSS_FILE" >> $HTML
 #else
 	
 cat >> $HTML << CSS-STYLE-SCRIPT
@@ -697,13 +755,17 @@ cat >> $HTML << CSS-STYLE-SCRIPT
 body {
 	/* chosen font */
 	font-family: lucida, myriad pro, myriad, verdana, sans-serif;
+
 	/* text color */
 	color: #000;
+
 	/* page color */
 	background-color: #fff;
+
 	/* white spage on left and right of page */
 	margin-left: 25px;
 	margin-right: 25px;
+
 	/* font size, adjust to smaller at 93% for alternate look */
 	font-size: 100%;
 }
@@ -996,7 +1058,7 @@ else
 	paragraph "Configuration Notes $MY_CFG_NOTES" 
 fi
 
-paragraph "Capture File $CAPDIR"
+paragraph "Capture File $OUTPUT_DIR"
 
 line "<hr>"
 
@@ -1910,23 +1972,23 @@ textarea_close
 
 ## - done - ####################################################
 
-string "</body></html>" >> $HTML
+line "</body></html>" >> $HTML
 
 # if we see an existing file, remove it so we can replace it.
-if [ -f $CAPDIR.tar ]
+if [ -f $OUTPUT_DIR.tar ]
 then
-	rm $CAPDIR.tar
+	rm $OUTPUT_DIR.tar
 fi
 # if we see an existing file, remove it so we can replace it.
-if [ -f $CAPDIR.tar.gz ]
+if [ -f $OUTPUT_DIR.tar.gz ]
 then
-	rm $CAPDIR.tar.gz
+	rm $OUTPUT_DIR.tar.gz
 fi
 
 echo -e "\nTaring up results."
-tar cf $CAPDIR.tar $CAPDIR
+tar cf $OUTPUT_DIR.tar $OUTPUT_DIR
 
 echo "Compressing tar file."
-gzip -9 $CAPDIR.tar
+gzip -9 $OUTPUT_DIR.tar
 
-echo -e "Birdseye capture complete: $CAPDIR.tar.gz\n"
+echo -e "Birdseye capture complete: $OUTPUT_DIR.tar.gz\n"
