@@ -839,9 +839,15 @@ h4 {
 }
 
 /* Used to show raw commands in title without the title's bold */
+.h3nobold {
+	font-weight: underline;
+	font-family: "Lucida Console", "Lucidatypewriter", "Fixed", "Andale Mono", "Courier New", "Courier"
+}
+
+/* Used to show raw commands in title without the title's bold */
 .h4nobold {
-  font-size: 0.95em;
-  font-weight: normal;
+	font-weight: normal;
+	font-family: "Lucida Console", "Lucidatypewriter", "Fixed", "Andale Mono", "Courier New", "Courier"
 }
 
 /* Hovering over the link to the Birdseye Landing page */
@@ -1182,6 +1188,8 @@ line "</div>"
 
 line "<hr>"
 
+echo "Table of Contents constructed"
+
 ###########################################################
 # Linux Summary
 ###########################################################
@@ -1415,7 +1423,7 @@ raw_open
 lspci >> $HTML
 raw_close
 
-title "item_lspcivv"		"PCI Devices Detail (lspci -vv)"
+title "item_lspcivv"		"PCI Devices Detail" "lspci -vv"
 textarea_open 80 24
 lspci -vv >> $HTML
 lspci -vv >> $FILE_PCI
@@ -1430,12 +1438,12 @@ echo "USB Subsystem"
 
 section "section_usb" "USB Subsystem"
 
-title "item_lsusb"			"USB Devices (lsusb)"
+title "item_lsusb"			"USB Devices" "lsusb"
 raw_open
 lsusb >> $HTML
 raw_close
 
-title "item_lsusbpy"		"USB Devices Speed & Power (lsusb.py)"
+title "item_lsusbpy"		"USB Devices Speed & Power" "lsusb.py"
 raw_open
 if [ -f /usr/bin/lsusb.py ]
 then
@@ -1445,12 +1453,12 @@ else
 fi
 raw_close
 
-title "item_lsusbv"			"USB Devices Detail (lsusb -v)"
+title "item_lsusbv"			"USB Devices Detail" "lsusb -v"
 raw_open
 lsusb -v >> $HTML
 raw_close
 
-title "item_lsusbt"			"USB Devices Tree (lsusb -t)"
+title "item_lsusbt"			"USB Devices Tree" "lsusb -t"
 # redirect stderr to stdout as some information is sent do stderr too, not sure why.
 raw_open
 lsusb -t >> $HTML 2>&1
@@ -1463,7 +1471,7 @@ echo "Dmidecode"
 
 section "section_dmidecode" "System Board Information"
 
-title "item_dmidecode" "System Board information (dmidecode)"
+title "item_dmidecode" "System Board information" "dmidecode"
 
 textarea_open 80 24
 dmidecode >> $HTML
@@ -1480,7 +1488,7 @@ echo "Networking"
 
 section "section_networking" "Networking"
 
-title "item_sutlnics"		"Network cards (sutl nics)"
+title "item_sutlnics"		"Network cards" "sutl nics"
 if [ -f /usr/local/bin/sutl ]
 then
 	raw_open
@@ -1490,7 +1498,7 @@ else
 	line "# not installed: sutl nics"
 fi
 
-title "item_nicinfo"		"Network port information (nic-info)"
+title "item_nicinfo"		"Network port information" "nic-info"
 if [ -f /usr/local/bin/nic-info ]
 then
 	raw_open
@@ -1505,7 +1513,7 @@ else
 	line "'nic-info' utility not installed, can't execute 'nic-info'" 
 fi
 
-title "item_nicports"		"Network port detail information (ifconfig, ethtool, ethtool -i)"
+title "item_nicports"		"Network port detail information" "ifconfig, ethtool, ethtool -i"
 # process each ethernet device, skip vpn, bridges, localhost
 raw_open
 
@@ -1539,8 +1547,8 @@ else
 		done
 
 	else
-	#elif ( [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "18" ]] ) ||
-	#	 ( [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "19" ]] )
+	#elif" " [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "18" ]] ) ||
+	#	" " [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "19" ]] )
 		for EACHNIC in $(ifconfig -a | fgrep " HWaddr " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
 		do
 			if [ -f /usr/local/bin/sutl ]
@@ -1565,7 +1573,7 @@ else
 fi
 raw_close
 
-title "item_netstat"		"Network routing table (netstat)"
+title "item_netstat"		"Network routing table" "netstat"
 raw_open
 if [ $PUBLIC_REPORT = "yes" ]
 then
@@ -1575,7 +1583,7 @@ else
 fi
 raw_close
 
-title "item_iproute"		"Network routing table (ip route)"
+title "item_iproute"		"Network routing table" "ip route"
 raw_open
 if [ $PUBLIC_REPORT = "yes" ]
 then
@@ -1585,7 +1593,7 @@ else
 fi
 raw_close
 
-title "item_firewall"		"Firewall rules (iptables -L)"
+title "item_firewall"		"Firewall rules" "iptables -L"
 
 raw_open
 if [ $PUBLIC_REPORT = "yes" ]
@@ -1603,7 +1611,7 @@ echo "Storage"
 
 section "section_storage" "Storage"
 
-title "item_sutlhbas"	"Host Bus Adapter information (sutl hbas)"
+title "item_sutlhbas"	"Host Bus Adapter information" "sutl hbas"
 if [ -f /usr/local/bin/sutl ]
 then
 	raw_open
@@ -1613,7 +1621,7 @@ else
 	echo "'sutl' utility not installed, can't execute 'sutl cards'" >> $HTML
 fi
 
-title "item_lsblk"		"Block Storage Devices (lsblk)"
+title "item_lsblk"		"Block Storage Devices" "lsblk"
 if [[ -f /usr/bin/lsblk ]]
 then
 	raw_open
@@ -1621,7 +1629,7 @@ then
 	raw_close
 fi
 
-title "item_lsscsi"		"SCSI Information (lsscsi)"
+title "item_lsscsi"		"SCSI Information" "lsscsi"
 if [[ -f /usr/local/bin/lsscsi ]] || [[ -f /usr/bin/lsscsi ]]
 then
 	raw_open
@@ -1629,18 +1637,18 @@ then
 	raw_close
 fi
 
-title "item_mount"		"Mounted filesystems (mount)"
+title "item_mount"		"Mounted filesystems" "mount"
 line "Current mount, may not reflect status when issue occured."
 raw_open
 mount >> $HTML
 raw_close
 
-title "item_procscsi" "SCSI Information via proc (cat /proc/scsi/scsi)"
+title "item_procscsi" "SCSI Information via proc" "cat /proc/scsi/scsi"
 raw_open
 cat /proc/scsi/scsi >> $HTML
 raw_close
 
-# Enable by default (most RHEL and Fedora use LVM)
+# Enable by default" "most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
 
 if [ -f /usr/bin/pvscan ] || [ -f /sbin/pvscan ]
@@ -1654,16 +1662,16 @@ then
 	fi
 fi
 	
-title "item_pvscan" "LVM2: Physical Volumes (pvscan)"
+title "item_pvscan" "LVM2: Physical Volumes" "pvscan"
 raw_open
 # Regardless of whether physical volumes were found above, let pvscan
 # report the status to the user.  Then use the SHOW_LVM variable set above
 # to determine whether volume groups and logical volumes are processed.
-# (Skip those commands if no physical volumes are present)
+#" "Skip those commands if no physical volumes are present)
 pvscan >> $HTML
 raw_close
 
-title "item_vgscan" "LVM2: Volume Groups (vgscan)"
+title "item_vgscan" "LVM2: Volume Groups" "vgscan"
 raw_open
 if [ $SHOW_LVM == "yes" ]
 then
@@ -1673,7 +1681,7 @@ else
 fi
 raw_close
 
-title "item_lvscan" "LVM2: Logical Volumes (lvscan)"
+title "item_lvscan" "LVM2: Logical Volumes" "lvscan"
 raw_open
 if [ $SHOW_LVM == "yes" ]
 then
@@ -1683,7 +1691,7 @@ else
 fi
 raw_close
 
-title "item_fstab" "Filesystem mount table (fstab)"
+title "item_fstab" "Filesystem mount table" "fstab"
 raw_open
 cat /etc/fstab >> $HTML
 raw_close
@@ -1695,7 +1703,7 @@ echo "Perpherals"
 
 section "section_periphs" "Peripherals"
 
-title "item_cdinfo" "DVD/CD Drive Info (cd-info)"
+title "item_cdinfo" "DVD/CD Drive Info" "cd-info"
 raw_open
 cd-info >> $HTML 2>&1
 raw_close
@@ -1717,7 +1725,7 @@ else
 	DMESG_NOTIME="no"
 fi
 
-title "item_dmesg_notime"		"Linux boot messages without timestamps (dmesg --notime)"
+title "item_dmesg_notime"		"Linux boot messages without timestamps" "dmesg --notime"
 raw_open
 if [ $DMESG_NOTIME == "yes" ]
 then
@@ -1728,7 +1736,7 @@ else
 fi
 raw_close
 
-title "item_dmesg"		"Linux boot messages with timestamps (dmesg)"
+title "item_dmesg"		"Linux boot messages with timestamps" "dmesg"
 raw_open
 dmesg >> $HTML
 dmesg >> $FILE_DMESG
@@ -1738,7 +1746,7 @@ helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DM
 
 section "section_messages" "Console/System Messages"
 
-title "item_messages"	"Linux system log (cat /var/log/messages | cat /var/log/syslog)"
+title "item_messages"	"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
 
 # need to edit for debian, newer fedora, etc
 if [ -f /var/log/messages ]
@@ -1760,12 +1768,12 @@ echo "Kernel modules"
 
 section "section_modules" "Kernel Modules"
 
-title "item_lsmod"		"Kernel Modules (lsmod)"
+title "item_lsmod"		"Kernel Modules" "lsmod"
 raw_open
 lsmod >> $HTML
 raw_close
 
-title "item_modinfo"	"Kernel Module Info (modinfo)"
+title "item_modinfo"	"Kernel Module Info" "modinfo"
 textarea_open 80 24
 for EACHMOD in $(lsmod | grep -v Module | awk -F " " '{print $1}')
 do
@@ -1781,7 +1789,7 @@ echo "Udev subsystem"
 
 section "section_udev" "udev configuration"
 
-title "item_udevconf"	"udev configuration (cat /etc/udev.conf)"
+title "item_udevconf"	"udev configuration" "cat /etc/udev.conf"
 raw_open
 if [ -f /etc/udev.conf ]
 then
@@ -1792,7 +1800,7 @@ then
 fi
 raw_close
 
-title "item_udevrules"	"udev rules (cat /etc/udev/rules.d/*)"
+title "item_udevrules"	"udev rules" "cat /etc/udev/rules.d/*"
 raw_open
 for EACHFILE in /etc/udev/rules.d/*
 do
@@ -1813,33 +1821,33 @@ section "section_virt" "Virtualization"
 if [ -f /usr/bin/virsh ]
 then
 
-	title "item_virshvers"	"Virtualization version (virsh version)"
+	title "item_virshvers"	"Virtualization version" "virsh version"
 	# output stderr, problems seen that need to be captured -maxwell
 	raw_open
 	virsh version >> $HTML 2>&1
 	raw_close
 
-	title "item_virshnodeinfo"	"Virtualization nodes (virsh nodeinfo)"
+	title "item_virshnodeinfo"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
 	virsh nodeinfo >> $HTML
 	raw_close
 
-	title "item_virshnodecpu"	"Virtualization nodes (virsh nodeinfo)"
+	title "item_virshnodecpu"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
 	virsh nodecpustats >> $HTML
 	raw_close
 
-	title "item_virshnodemem"	"Virtualization nodes (virsh nodeinfo)"
+	title "item_virshnodemem"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
 	virsh nodememstats >> $HTML
 	raw_close
 
-	title "item_virshnodedevlist"	"Virtualization nodes devices (virsh nodedev-list)"
+	title "item_virshnodedevlist"	"Virtualization nodes devices" "virsh nodedev-list"
 	raw_open
 	virsh nodedev-list>> $HTML
 	raw_close
 
-	title "item_virshnodedevxml"	"Virtualization nodes devices xml (virsh nodedev-dumpxml)"
+	title "item_virshnodedevxml"	"Virtualization nodes devices xml" "virsh nodedev-dumpxml"
 	textarea_open 80 24
 	for EACHDEV	in `virsh nodedev-list`
 	do	
@@ -1847,12 +1855,12 @@ then
 	done
 	textarea_close
 
-	title "item_kvminfo" "KVM Version (modinfo kvm)"
+	title "item_kvminfo" "KVM Version" "modinfo kvm"
 	raw_open
 	modinfo kvm>> $HTML
 	raw_close
 
-	title "item_kvmhwinfo" "KVM Hardware Version (modinfo kvm_intel | modinfo kvm_amd)"
+	title "item_kvmhwinfo" "KVM Hardware Version" "modinfo kvm_intel | modinfo kvm_amd"
 	raw_open
 	if [ `lsmod | grep kvm_intel | wc -l` -gt 0 ]
 	then
@@ -1874,7 +1882,7 @@ echo "Sysctl"
 
 section "section_sysctl" "System Control Parameters"
 
-title "item_sysctl"	"System Control Parameters (sysctl)"
+title "item_sysctl"	"System Control Parameters" "sysctl"
 
 textarea_open 120 24
 sysctl -a >> $HTML 2>&1
@@ -1889,25 +1897,25 @@ section "section_xwindows" "X-Windows"
 
 # Are we running X-Windows? How to check?
 
-title "item_dpyinfo"	"X Display Info (xdpyinfo)"
+title "item_dpyinfo"	"X Display Info" "xdpyinfo"
 
 raw_open
 xrandr >> $HTML 2>&1
 raw_close
 
-title "item_dpyinfo"	"X Display Info (xdpyinfo)"
+title "item_dpyinfo"	"X Display Info" "xdpyinfo"
 
 textarea_open 120 24
 xdpyinfo >> $HTML 2>&1
 textarea_close
 
-title "item_xvinfo"	"Xvideo info (xvinfo)"
+title "item_xvinfo"	"Xvideo info" "xvinfo"
 
 textarea_open 120 24
 xvinfo >> $HTML 2>&1
 textarea_close
 
-title "item_glxinfo"	"GLX Info (glxinfo)"
+title "item_glxinfo"	"GLX Info" "glxinfo"
 
 textarea_open 120 24
 glxinfo >> $HTML 2>&1
