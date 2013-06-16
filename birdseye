@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0615.02"
+VERSION="2013.0616.02"
 
 # 2013.0615.02
 #	Added -date option for --month and --year
@@ -58,12 +58,13 @@ function toc_section {
 # Output a section header *for detail reporting (non-toc!)* (<h2>)
 # with a named anchor ($1) and a text string ($2)
 function section {
-	echo -e "<h2><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Top</a></h2>" >> $HTML
+	echo -e "<h2><a name=\"$1\">$2</a></h2>" >> $HTML
+#	echo -e "<h2><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Return to Top</a></h2>" >> $HTML
 }
 
-# Output a title to a single piece of data being reported
-# with an anchor ($1) and a text string ($2)
-function title {
+# Output a title that can be used to group one or more related items
+# together in a group
+function group_title {
 
 	RAW_CMD=${3:-"null"}
 
@@ -71,14 +72,13 @@ function title {
 	# without bold 
 	if [[ $RAW_CMD != "null" ]]
 	then
-		echo -e "<h3><a name=\"$1\">$2 <span class=h3_nobold>($3)</span></a> <a href="#top" class="boxtop">Top</a></h3>" >> $HTML
+		echo -e "<h3><a name=\"$1\">$2 <span class=h3_nobold>($3)</span></a> <a href="#top" class="boxtop">Return to Top</a></h3>" >> $HTML
 	else
-		echo -e "<h3><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Top</a></h3>" >> $HTML
+		echo -e "<h3><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Return to Top</a></h3>" >> $HTML
 	fi
 }
 
-# Output a item_title to a single piece of data being reported
-# with an anchor ($1) and a text string ($2)
+# Output a title for a single item of data being reported
 function item_title {
 
 	RAW_CMD=${3:-"null"}
@@ -87,9 +87,9 @@ function item_title {
 	# without bold 
 	if [[ $RAW_CMD != "null" ]]
 	then
-		echo -e "<h4><a name=\"$1\">$2 <span class=h4_nobold>($3)</span></a></h4>" >> $HTML
+		echo -e "<h4><a name=\"$1\">$2 <span class=h4_nobold>($3)</span></a><a href="#top" class="boxtop">Return to Top</a></h4>" >> $HTML
 	else
-		echo -e "<h4><a name=\"$1\">$2</a></h4>" >> $HTML
+		echo -e "<h4><a name=\"$1\">$2</a><a href="#top" class="boxtop">Return to Top</a></h4>" >> $HTML
 	fi
 }
 
@@ -244,6 +244,7 @@ function usage {
 	echo "-i --issue   Specify an issue being investigated. 'Network Fault'"
 	echo "-h --hwnotes Specify a note about this hardware config. '1/2 cpus diabled'"
 	echo
+	echo "-c --css     Use an external CSS style file's contents '/home/user/style.css'"
 	echo "   --date    Include year and month in filename"
 	echo "   --dt      Include year and month and 24-hour time in filename"
 	echo
@@ -254,9 +255,6 @@ function usage {
 	echo "   --notag   Do not include report tag in filename (Default: include)"
 	echo "   --force   Overwrite an existing output directory if it exists."
 	echo
-
-# future option?
-#	echo "-c --css     Use an external CSS style file's contents '/home/user/style.css'"
 
 # future option?
 #	echo "-o --output  Specify the output filename."
@@ -770,25 +768,28 @@ line "<head><title>Birdseye Report for $MY_HOST</title>"
 #----------------------------------------------------------
 
 # future option, not tested yet
-#if [[ $DEF_CSS_FILE != "null" ]] && [ -f "$DEF_CSS_FILE" ]
-#then
-#	cat "$DEF_CSS_FILE" >> $HTML
-#else
+if [[ $DEF_CSS_FILE != "null" ]] && [ -f "$DEF_CSS_FILE" ]
+then
+	cat "$DEF_CSS_FILE" >> $HTML
+else
 	
 cat >> $HTML << CSS-STYLE-SCRIPT
 <style type="text/css">
 
+/*********************
+ * Body - Overall page defaults
+ */
 body {
-	/* chosen font */
+	/* default font */
 	font-family: lucida, myriad pro, myriad, verdana, sans-serif;
 
-	/* text color */
+	/* default text color */
 	color: #000;
 
-	/* page color */
+	/* default page color */
 	background-color: #fff;
 
-	/* white spage on left and right of page */
+	/* provides slight margin space on left and right of whole page */
 	margin-left: 25px;
 	margin-right: 25px;
 
@@ -796,12 +797,18 @@ body {
 	font-size: 100%;
 }
 
-/* Heading Definitions */
-
-/* Common settings to all heading styles */
-h1, h2, h3, h4, h5, h6 {
-	margin: 0 0 5px 0;
+/*********************
+ * Paragraphs
+ */
+p {
+  line-height: 1.0em;
+  font-size: 1.0em;
+  margin: 2px 0 8px 0px;
 }
+
+/*********************
+ * Headings
+ */
 
 /*
 	This is an example of how heading styles are used and how they
@@ -811,19 +818,28 @@ h1, h2, h3, h4, h5, h6 {
 	n/a           h1 "Birdseye Report"    Report Title
 	toc_section{} h2 "Hardware Summary"   Titles a section of TOC items
 	section{}     h2 "Hardware Summary"   Titles a section of information
-	title{}       h3 "Product Name"       Title for an item of data
-	item_title{}    h4 "Product Model"      Supplementary item of data
+	title{}       h3 "Product Name"       Titles a group of related items
+	item_title{}    h4 "Product Model"    Title for an item of data
 
 */
 
-/* Major heading : Used on top of report for title */
+h1, h2, h3, h4, h5, h6 {
+	margin: 0 0 3px 0;
+}
+
+/*********************
+ * Headings: h1: Top of Report Title page
+ */
+
 h1 {
   font-size: 1.5em;
   font-weight: bold;
   color: #3c6eb4;
 }
 
-/* Section heading: Used to separate sections */
+/*********************
+ * Headings: h2: Calls attention to sections of data
+ */
 h2 {
   font-size: 1.3em;
   font-weight: bold;
@@ -873,11 +889,10 @@ h4 a:hover {
   text-decoration: none;
 }
 
-/* Lists */
-ol, ul, li {
-  margin-top: 0.2em;
-  margin-bottom: 0.1em; 
-}
+
+/*********************
+ * Lists
+ */
 
 /* Used to show raw commands in list items using fixed width fonts */
 .list_nobold {
@@ -886,44 +901,62 @@ ol, ul, li {
 	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
 }
 
-/* Overall Link Styles */
+/*********************
+ * Links
+ */
+
 a:link      { color:#3c6eb4; text-decoration: none; }
 a:visited   { color:#004E66; text-decoration: underline; }
 a:active    { color:#3c6eb4; text-decoration: underline; }
 a:hover     { color:#000000; text-decoration: underline; }
 
-/* Text Styles */
-p, ol, ul, li {
+/* Lists */
+ol, ul, li {
+  margin: 2px 0 8px 0px;
   line-height: 1.0em;
   font-size: 1.0em;
   margin: 2px 0 8px 0px;
 }
 
+/*********************
+ * Lists
+ */
+
 /* This makes a little box with the word "Top" in it that takes the user
    back to the top of the page */
 .boxtop {
-  background-color: rgb(214,227,255);
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 8px;
-  border-color: #CFCFCF;
-  padding: 5px;
-	font-size: 0.75em;
-  -moz-box-shadow: 3px 3px 5px #DFDFDF;
-  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
-  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
-  -o-box-shadow: 3px 3px 5px #DFDFDF;
-  box-shadow: 3px 3px 5px #DFDFDF;
-  -moz-border-radius: 8px;
-  -webkit-border-radius: 8px;
-  -khtml-border-radius: 8px;
-  margin: 0 0 0 1ex;
+	color: #A7ABBE;
 /*
-  color: black;
-  overflow: auto;
-  background-color: #F7F7F7;
-  width: 572px;
+	padding: 2px;
+	background-color: rgb(214,227,255);
+	border-width: 1px;
+	border-style: solid;
+	border-radius: 8px;
+	border-color: #CFCFCF;
+	font-size: 0.75em;
+	-moz-box-shadow: 3px 3px 5px #DFDFDF;
+	-webkit-box-shadow: 3px 3px 5px #DFDFDF;
+	-khtml-box-shadow: 3px 3px 5px #DFDFDF;
+	-o-box-shadow: 3px 3px 5px #DFDFDF;
+	box-shadow: 3px 3px 5px #DFDFDF;
+	-moz-border-radius: 8px;
+	-webkit-border-radius: 8px;
+	-khtml-border-radius: 8px;
+	margin: 0 0 0 1ex;
 */
+}
+
+/*
+.boxtop a:link      { color:red; text-decoration: none; }
+.boxtop a:visited   { color:blue; text-decoration: underline; }
+.boxtop a:active    { color:purple; text-decoration: underline; }
+*/
+
+/* Hovering over the link to the Birdseye Landing page */
+.boxtop a:hover {
+  color: #EC5800;
+	background-color: red;
+  text-decoration: none;
 }
 
 /*
@@ -941,7 +974,6 @@ p, ol, ul, li {
   border-color: #CFCFCF;
   background-color: rgb(238,232,213);
   padding: 12px;
-/* changed to 0px 2013-01-27 looks better lined up on the left with everything else.  */
   margin: 0px 25px 20px 25px;
   overflow: auto;
 
@@ -955,6 +987,10 @@ p, ol, ul, li {
   -khtml-border-radius: 8px;
 }
 
+/* Used to call attention to helpful tips such as additional information
+ * 	being available in external files, or what a command's output is
+ * 	useful for
+*/
 blockquote.tip {
 
   background-color: #F5F298;
@@ -964,10 +1000,6 @@ blockquote.tip {
   border-style: solid;
   border-color: #DBDBCC;
 
-/*
-  padding: 2ex;
-  margin: 2ex 0 2ex 2ex;
-*/
   padding: 12px;
   margin: 0px 25px 20px 25px;
 	width: 55%;
@@ -986,12 +1018,10 @@ blockquote.tip {
 
 }
 
-
 </style>
 CSS-STYLE-SCRIPT
 
-#fi
-# ABOVE: if/then/else handling ends for CSS external file & inline style
+fi # if/then/else handling ends for CSS external file & inline style
 
 line "</head>"
 
