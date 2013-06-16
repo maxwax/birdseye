@@ -74,13 +74,33 @@ function section {
 # Output a title to a single piece of data being reported
 # with an anchor ($1) and a text string ($2)
 function title {
-	echo -e "<h3><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Top</a></h3>" >> $HTML
+
+	RAW_CMD=${3:-"null"}
+
+	# If a third parameter has been passed, put it in parenthesis
+	# without bold 
+	if [[ $RAW_CMD != "null" ]]
+	then
+		echo -e "<h3><a name=\"$1\">$2 <span class=h3nobold>($3)</span></a> <a href="#top" class="boxtop">Top</a></h3>" >> $HTML
+	else
+		echo -e "<h3><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Top</a></h3>" >> $HTML
+	fi
 }
 
 # Output a subtitle to a single piece of data being reported
 # with an anchor ($1) and a text string ($2)
 function subtitle {
-	echo -e "<h4><a name=\"$1\">$2</a></h4>" >> $HTML
+
+	RAW_CMD=${3:-"null"}
+
+	# If a third parameter has been passed, put it in parenthesis
+	# without bold 
+	if [[ $RAW_CMD != "null" ]]
+	then
+		echo -e "<h4><a name=\"$1\">$2 <span class=h4nobold>($3)</span></a></h4>" >> $HTML
+	else
+		echo -e "<h4><a name=\"$1\">$2</a></h4>" >> $HTML
+	fi
 }
 
 # Output a simple unordered list tag <ul> with optional class info
@@ -117,8 +137,8 @@ function textarea_close {
 
 # Output a simple unordered list tag <ul> with optional class info
 function helpful_tip {
-	echo -e "<div class=\"TIP\">" >> $HTML
-	echo -e "<blockquote class=\"TIP\">" >> $HTML
+	echo -e "<div class=\"tip\">" >> $HTML
+	echo -e "<blockquote class=\"tip\">" >> $HTML
 	echo -e "$1" >> $HTML
 	echo -e "</blockquote>" >> $HTML
 	echo -e "</div>" >> $HTML
@@ -770,166 +790,67 @@ body {
 	font-size: 100%;
 }
 
-/* division class used to center header lines in simple, traditional pages */
-.titleheader {
-	text-align: center;
-	background-color: rgb(212,226,255);
-	padding: 10px 10px 10px 10px;
-
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 8px;
-  border-color: #CFCFCF;
-  padding: 5px;
-  -moz-box-shadow: 3px 3px 5px #DFDFDF;
-  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
-  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
-  -o-box-shadow: 3px 3px 5px #DFDFDF;
-  box-shadow: 3px 3px 5px #DFDFDF;
-  -moz-border-radius: 8px;
-  -webkit-border-radius: 8px;
-  -khtml-border-radius: 8px;
-}
-
-/* basic table */
-.simple_table {
-	border-collapse: collapse;
-	padding-top: 5px;
-	padding-right: 5px;
-	padding-bottom: 5px;
-	padding-left: 5px;
-}
-
-/* basic table caption */
-.simple_table caption {
-	font-weight:bold;
-}
-
-/* borders for all cells */
-.simple_table th,td {
-	border: 1px solid;
-}
-
-/* basic table header cells */
-.simple_table th {
-	background-color: rgb(176,202,255);
-}
-
-/* basic table data cells */
-.simple_table td {
-	background-color: rgb(214,227,255);
-	padding-top: 5px;
-	padding-right: 5px;
-	padding-bottom: 5px;
-	padding-left: 5px;
-}
-
-/* division class used to center header lines in simple, traditional pages */
-.official_links {
-	text-align: center;
-}
-
-/* basic table */
-.links_table {
-/*
-	border-collapse: collapse;
-	padding-top: 5px;
-	padding-right: 5px;
-	padding-bottom: 5px;
-	padding-left: 5px;
-*/
-	margin-left: auto;
-	margin-right: auto;
-}
-
-/* basic table caption */
-.links_table caption {
-	font-weight:bold;
-}
-
-/* borders for all cells */
-.links_table th,td {
-	border: 1px solid;
-}
-
-/* basic table header cells */
-.links_table th {
-	background-color: rgb(176,202,255);
-}
-
-/* basic table data cells */
-.links_table td {
-	background-color: rgb(214,227,255);
-	padding-top: 5px;
-	padding-right: 8px;
-	padding-bottom: 3px;
-	padding-left: 8px;
-
-  border-width: 1px;
-  border-style: solid;
-  border-radius: 8px;
-  border-color: #CFCFCF;
-  padding: 5px;
-/*
-	font-size: 0.75em;
-*/
-  -moz-box-shadow: 3px 3px 5px #DFDFDF;
-  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
-  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
-  -o-box-shadow: 3px 3px 5px #DFDFDF;
-  box-shadow: 3px 3px 5px #DFDFDF;
-  -moz-border-radius: 8px;
-  -webkit-border-radius: 8px;
-  -khtml-border-radius: 8px;
-/*
-  margin: 0 0 0 1ex;
-*/
-}
 /* Heading Definitions */
 
+/* Common settings to all heading styles */
 h1, h2, h3, h4, h5, h6 {
 	margin: 0 0 5px 0;
 }
 
+/*
+	This is an example of how heading styles are used and how they
+	are called using bash functions within birdseye
+
+	function      h?  Example             Description
+	n/a           h1 "Birdseye Report"    Report Title
+	toc_section{} h2 "Hardware Summary"   Titles a section of TOC items
+	section{}     h2 "Hardware Summary"   Titles a section of information
+	title{}       h3 "Product Name"       Title for an item of data
+	subtitle{}    h4 "Product Model"      Supplementary item of data
+
+*/
+
+/* Major heading : Used on top of report for title */
 h1 {
   font-size: 1.8em;
   font-weight: bold;
-  color: #3c6eb4; /* fedora logo color */
+  color: #3c6eb4;
 }
 
+/* Section heading: Used to separate sections */
 h2 {
   font-size: 1.5em;
   font-weight: bold;
-  color: #3c6eb4; /* fedora logo color */
+  color: #3c6eb4;
   text-decoration: underline;
 }
 
+/* Used as a title for each item of information being reported */
 h3 {
   font-size: 1.2em;
   font-weight: bold;
-  color: #3c6eb4; /* fedora logo color */
+  color: #3c6eb4; 
 }
 
+/* Used as a title for each sub-item of information being reported */
 h4 {
+  font-size: 0.95em;
+  font-weight: bold;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h4nobold {
   font-size: 0.95em;
   font-weight: normal;
 }
 
-h5 {
-  font-size: 0.9em;
-  font-weight: normal;
-}
-
-h6 {
-  font-size: 0.85em;
-  font-weight: normal;
-}
-
+/* Hovering over the link to the Birdseye Landing page */
 h1 a:hover {
   color: #EC5800;
   text-decoration: none;
 }
 
+/* Hovering over a heading that links to something */
 h2 a:hover,
 h3 a:hover,
 h4 a:hover {
@@ -937,40 +858,27 @@ h4 a:hover {
   text-decoration: none;
 }
 
+/* Lists */
 ol, ul, li {
-/*
-  font-size: 1.0em;
-  line-height: 1.2em;
-*/
   margin-top: 0.2em;
   margin-bottom: 0.1em; 
 }
 
-pre {
-  font-family: monospace;
-  font-size: 1.0em;
-}
-
-
-/* Link Styles */
-
-a:link      { color:#3c6eb4; text-decoration: none; } /* fedora logo blue */
-a:visited   { color:#004E66; text-decoration: underline; } /* darker blue */
-a:active    { color:#3c6eb4; text-decoration: underline; } /* fedora logo blue */
+/* Overall Link Styles */
+a:link      { color:#3c6eb4; text-decoration: none; }
+a:visited   { color:#004E66; text-decoration: underline; }
+a:active    { color:#3c6eb4; text-decoration: underline; }
 a:hover     { color:#000000; text-decoration: underline; }
 
 /* Text Styles */
-
 p, ol, ul, li {
   line-height: 1.0em;
-/*
-  background-color: rgb(114,227,255);
-*/
   font-size: 1.0em;
   margin: 2px 0 8px 0px;
 }
 
-/* box tops */
+/* This makes a little box with the word "Top" in it that takes the user
+   back to the top of the page */
 .boxtop {
   background-color: rgb(214,227,255);
   border-width: 1px;
@@ -996,34 +904,61 @@ p, ol, ul, li {
 */
 }
 
+/*
+	Raw output data from commands,
+	Presented as a box with soft, rounded corners, 3D shadowing, 
+	A different background color,
+	Uses a fixed width font to preserve raw output column formatting.
+*/
+
 .programlisting {
+
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  background-color: rgb(238,232,213);
+  padding: 12px;
+/* changed to 0px 2013-01-27 looks better lined up on the left with everything else.  */
+  margin: 0px 25px 20px 25px;
+  overflow: auto;
+
+  box-shadow: 3px 3px 5px #DFDFDF;
   -moz-box-shadow: 3px 3px 5px #DFDFDF;
   -webkit-box-shadow: 3px 3px 5px #DFDFDF;
   -khtml-box-shadow: 3px 3px 5px #DFDFDF;
   -o-box-shadow: 3px 3px 5px #DFDFDF;
-  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+}
+
+blockquote.tip {
+
+  background-color: #F5F298;
+  color: black;
+
   border-width: 1px;
   border-style: solid;
-  padding: 12px;
-/* changed to 0px 2013-01-27 looks better lined up on the left with everything else.  */
-  margin: 0px 0px 10px 0px;
+  border-color: #DBDBCC;
+
+  padding: 2ex;
+  margin: 2ex 0 2ex 2ex;
+
   overflow: auto;
   -moz-border-radius: 8px;
   -webkit-border-radius: 8px;
   -khtml-border-radius: 8px;
   border-radius: 8px;
-  border-color: #CFCFCF;
-  background-color: rgb(238,232,213);
+
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+
 }
 
-.image_info {
-/* debugging
-	background-color: rgb(180,200,200);
-*/
-	height: 30px;
-	weight: 30px;
-	margin: 0 0 0 0;
-}
 
 </style>
 CSS-STYLE-SCRIPT
@@ -1253,27 +1188,27 @@ line "<hr>"
 
 section "section_linux_summary" "Linux Summary"
 
-subtitle "item_hostname"	"System name (hostname)"
+subtitle "item_hostname"	"System name" "hostname"
 raw_open
 hostname >> $HTML
 raw_close
 
-subtitle "item_date"		"System date/time (date)"
+subtitle "item_date"		"System date/time" "date"
 raw_open
 date >> $HTML
 raw_close
 
-subtitle "item_uname"		"System identification (uname -a)"
+subtitle "item_uname"		"System identification" "uname -a"
 raw_open
 uname -a >> $HTML
 raw_close
 
-subtitle "item_issue"		"Distribution, Version (/etc/issue)"
+subtitle "item_issue"		"Distribution, Version" "/etc/issue"
 raw_open
 cat /etc/issue >> $HTML
 raw_close
 
-subtitle "item_lsb"			"Distribution, Release (lsb_release)"
+subtitle "item_lsb"			"Distribution, Release" "lsb_release"
 raw_open
 lsb_release -d >> $HTML
 raw_close
@@ -1284,50 +1219,55 @@ raw_close
 
 section "section_hw_summary" "Hardware Summary"
 
-subtitle "item_product"		"Product Name (dmidecode -s system-product-name)"
+#subtitle "item_product"		"Product Name (dmidecode -s system-product-name)"
+subtitle "item_product"		"Product Name" "dmidecode -s system-product-name"
 raw_open
 dmidecode -s system-product-name >> $HTML
 raw_close
 
-title "item_processor_line"	"Processor Summary"
+subtitle "item_processor_line"	"Processor Summary" "dmidecode -s processor-version"
 raw_open
 dmidecode -s processor-version | head -1 >> $HTML
 raw_close
 
-title "item_memsum"			"Memory (/proc/meminfo)" 
+subtitle "item_memsum"			"Memory" "/proc/meminfo" 
 raw_open
 cat /proc/meminfo | grep MemTotal >> $HTML
 raw_close
 
-title "item_bios_vendor"	"BIOS Vendor (dmidecode -s bios-vendor)"
+subtitle "item_bios_vendor"	"BIOS Vendor" "dmidecode -s bios-vendor"
 raw_open
 dmidecode -s bios-vendor >> $HTML
 raw_close
 
-title "item_bios_vers"		"BIOS Version (dmidecode -s bios-version)"
+subtitle "item_bios_vers"		"BIOS Version" "dmidecode -s bios-version"
 raw_open
 dmidecode -s bios-version  >> $HTML
 raw_close
 
-title "item_bios_date"		"BIOS Release Date (dmidecode -s bios-release-date)"
+subtitle "item_bios_date"		"BIOS Release Date" "dmidecode -s bios-release-date"
 raw_open
 dmidecode -s bios-release-date  >> $HTML
 raw_close
 
-title "item_cmdline"		"Boot parameters (cat /proc/cmdline)"
+subtitle "item_cmdline"		"Boot parameters" "cat /proc/cmdline"
 raw_open
 cat /proc/cmdline >> $HTML
 raw_close
 
-title "item_lsinitrd" 		"initrd information (lsinitrd)"
-#lsinitrd >> $FILE_INITRD 2>&1
+subtitle "item_lsinitrd" 		"initrd information" "lsinitrd"
 
-MY_KERNEL=`uname -a | cut --delimiter=" " -f 3`
-MY_INITRD="/boot/initrd-$MY_KERNEL"
+#MY_KERNEL=`uname -a | cut --delimiter=" " -f 3`
+#MY_INITRD="/boot/initrd-$MY_KERNEL"
+
+textarea_open 120 24
+lsinitrd >> $HTML 2>&1
+textarea_close
 
 if [ -f $MY_INITRD ]
 then
-	lsinitrd /boot/initrd-$MY_KERNEL >> $FILE_INITRD 2>&1
+	#lsinitrd /boot/initrd-$MY_KERNEL >> $FILE_INITRD 2>&1
+	lsinitrd >> $FILE_INITRD 2>&1
 fi
 
 helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INITRD target=_file_initrd>separate lsinitrd file.</a>"
@@ -1339,26 +1279,29 @@ echo "Processor/CPU information"
 
 section "section_processor" "Processor Information"
 
-title "item_proc_family"	"Processor Family (dmidecode -s processor-family)"
+title "item_proc_family"	"Processor Family" "dmidecode -s processor-family"
 # first line only please
 raw_open
 dmidecode -s processor-family | head -1 >> $HTML
 raw_close
 
-title "item_proc_vers"		"Processor Version (dmidecode -s processor-version)"
+subtitle "item_proc_vers"		"Processor Version" "dmidecode -s processor-version"
 # first line only please
 raw_open
 dmidecode -s processor-version | head -1 >> $HTML
 raw_close
 
-title "item_processor_lscpu" "Processor Summary (lscpu, lscpu -e)"
+subtitle "item_processor_lscpu" "Processor Summary" "lscpu"
 raw_open
 lscpu >> $HTML
-echo >> $HTML # blank line, seperator
+raw_close
+
+subtitle "item_processor_lscpue" "Processor Summary" "lscpu -e"
+raw_open
 lscpu -e >> $HTML
 raw_close
 
-title "item_processor_over"	"First Processor (cat proc/cpuinfo)"
+subtitle "item_processor_over"	"First Processor" "cat proc/cpuinfo"
 raw_open
 ENDLINE=`grep -n processor /proc/cpuinfo  | grep ": 1$" | cut -f 1 --delimiter=":"`
 
@@ -1375,7 +1318,7 @@ cat /proc/cpuinfo >> $FILE_CPU
 
 helpful_tip "<strong>Tip:</strong> Detailed information is available in the <a href=file:$BASE_FILE_CPU target=_file_cpu>separate cpu info file.</a>"
 
-title "item_numashow"		"NUMA Topology (numactl --show)"
+title "item_numashow"		"NUMA Topology" "numactl --show"
 
 raw_open
 if [ -f /sbin/numactl ] || [ -f /usr/bin/numactl ]
@@ -1388,7 +1331,7 @@ raw_close
 
 helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies for the current process.  It can be useful to see how physical CPUs and memory are organized."
 
-title "item_numahw"			"NUMA Hardware topology (numactl --hardware)"
+title "item_numahw"			"NUMA Hardware topology" "numactl --hardware"
 raw_open
 if [ -f /sbin/numactl ] || [ -f /usr/bin/numactl ]
 then
@@ -1400,12 +1343,12 @@ raw_close
 
 helpful_tip "<p><strong>Tip:</strong> 'numactl --topology' lists each node in the NUMA domain and produces table showing the cost of memory access from one node to another node."
 
-title "item_meminfo"		"Memory Info (cat /proc/meminfo)"
+title "item_meminfo"		"Memory Info" "cat /proc/meminfo"
 raw_open
 cat /proc/meminfo >> $HTML
 raw_close
 
-title "item_freemem"		"Free Memory(free --giga)"
+title "item_freemem"		"Free Memory" "free --giga"
 raw_open
 if [ `free -V | grep procps-ng | wc -l` -gt 0 ]
 then
@@ -1415,7 +1358,7 @@ else
 fi
 raw_close
 
-title "item_mtrr"			"MTRR (cat /proc/mtrr)"
+title "item_mtrr"			"MTRR" "cat /proc/mtrr"
 raw_open
 cat /proc/mtrr >> $HTML
 raw_close
@@ -1425,7 +1368,7 @@ raw_close
 ###########################################################
 echo "Interrupts"
 
-section "section_inter" "Interrupts (cat /proc/interrupts)"
+section "section_inter" "Interrupts" "cat /proc/interrupts"
 textarea_open 120 24
 cat /proc/interrupts >> $HTML
 textarea_close
@@ -1441,33 +1384,33 @@ echo "PCI Expansion cards"
 
 section "section_pci" "Expansion Cards"
  
-title "item_cards"			"Expansion cards (sutl cards)"
+title "item_cards"			"Expansion cards" "sutl cards"
 
+raw_open
 if [ -f /usr/local/bin/sutl ]
 then
-	raw_open
 	sutl cards >> $HTML
-	raw_close
 else
 	line "'sutl' utility not installed, can't execute 'sutl cards'" 
 fi
+raw_close
 
-title "item_iomem"			"Peripheral IO memory (cat /proc/iomem)"
+title "item_iomem"			"Peripheral IO memory" "cat /proc/iomem"
 raw_open
 cat /proc/iomem >> $HTML
 raw_close
 
-title "item_ioports"		"Peripheral IO ports (cat /proc/ioports)"
+title "item_ioports"		"Peripheral IO ports" "cat /proc/ioports"
 raw_open
 cat /proc/ioports >> $HTML
 raw_close
 
-title "item_devices" 		"Devices (cat /proc/devices)"
+title "item_devices" 		"Devices" "cat /proc/devices"
 raw_open
 cat /proc/devices >> $HTML
 raw_close
 
-title "item_lspci"			"PCI devices (lspci)"
+title "item_lspci"			"PCI devices" "lspci"
 raw_open
 lspci >> $HTML
 raw_close
