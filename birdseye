@@ -9,8 +9,15 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0618.01"
+VERSION="2013.0619.01"
 
+# 2013.0619.01
+# + Suse handling: lsinitrd requires specifying an initrd file
+# + Renamed variables MY_DIST=DIST_NAME,MY_RELEASE=DIST_RELEASE
+# + Added pvs, vgs and lvs.  Better handling for pvscan checking
+# + Handling when we run outside X: "No display available.." reported
+# + Handling to try to use another X server (0.0) for info.
+#   Code is good, but security seems to preven clients from attaching
 # 2013.0618.01
 #	RHEL 5.9 - no lscpu by default, no numactl by default
 # Added check_for_program function to check for the presence of programs
@@ -212,7 +219,9 @@ export BIRDSEYE_FILENAME_TAG="yes"
 export BIRDSEYE_OUTPUT_FORCE="no"
 export BIRDSEYE_PUBLIC_REPORT="no"
 export BIRDSEYE_PROMPT_USER="yes"
-export BIRDSEYE_CSS_FILE="no"
+export BIRDSEYE_CSS_FILE="null"
+# Nice idea, but we can't attach to another X display.. yet?
+export BIRDSEYE_XDISPLAY="null"
 export BIRDSEYE_PUBLIC_REPORT="no"
 
 # If a config file exists in the user's home directory, execute
@@ -246,6 +255,8 @@ DEF_ISSUE=${BIRDSEYE_ISSUE:-"No issue specified."}
 DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"No configuration notes."}
 
 DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
+# Nice idea, but we can't attach to another X display.. yet?
+DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
 
 PUBLIC_REPORT=$BIRDSEYE_PUBLIC_REPORT
 PROMPT_USER=$BIRDSEYE_PROMPT_USER
@@ -270,27 +281,30 @@ function usage {
 	echo
 	echo "usage: birdseye <options>"
 	echo
-	echo "-p --public  Produce a secure report with no IP networking or firewall info."
-	echo "-q --quick   Don't prompt the user for tag and title information."
-	echo "-d --debug   Enable debugging output."
+	echo "-p --public   Produce a secure report with no IP networking or firewall info."
+	echo "-q --quick    Don't prompt the user for tag and title information."
+	echo "-d --debug    Enable debugging output."
 	echo
-	echo "-t --tag     Specify a tag to be included in the filename. 'rhel73' 'vers5hw'"
-	echo "-n --name    Specify the name of the user producing this report. 'Lloyd Dobler'"
-	echo "-e --email   Specify the email address of the user producing this report."
-	echo "-g --group   Specify the group this report is associated with. 'Triage'"
-	echo "-i --issue   Specify an issue being investigated. 'Network Fault'"
-	echo "-h --hwnotes Specify a note about this hardware config. '1/2 cpus diabled'"
+	echo "-t --tag      Specify a tag to be included in the filename. 'rhel73' 'vers5hw'"
+	echo "-n --name     Specify the name of the user producing this report. 'Lloyd Dobler'"
+	echo "-e --email    Specify the email address of the user producing this report."
+	echo "-g --group    Specify the group this report is associated with. 'Triage'"
+	echo "-i --issue    Specify an issue being investigated. 'Network Fault'"
+	echo "-h --hwnotes  Specify a note about this hardware config. '1/2 cpus diabled'"
 	echo
-	echo "-c --css     Use an external CSS style file's contents '/home/user/style.css'"
-	echo "   --date    Include year and month in filename"
-	echo "   --dt      Include year and month and 24-hour time in filename"
+#	echo "-x --xdisplay Specify an X windows display server to use"
 	echo
-	echo "   --year    Include year in filename"
-	echo "   --month   Include month & day in filename"
-	echo "   --time    Include 24-hour format time in filename"
-	echo "   --host    Include system's hostname in filename"
-	echo "   --notag   Do not include report tag in filename (Default: include)"
-	echo "   --force   Overwrite an existing output directory if it exists."
+	echo "-c --css      Use an external CSS style file's contents '/home/user/style.css'"
+	echo
+	echo "   --date     Include year and month in filename"
+	echo "   --dt       Include year and month and 24-hour time in filename"
+	echo
+	echo "   --year     Include year in filename"
+	echo "   --month    Include month & day in filename"
+	echo "   --time     Include 24-hour format time in filename"
+	echo "   --host     Include system's hostname in filename"
+	echo "   --notag    Do not include report tag in filename (Default: include)"
+	echo "   --force    Overwrite an existing output directory if it exists."
 	echo
 
 # future option?
@@ -401,6 +415,12 @@ do
 		-c | --css )
 			shift
 			DEF_CSS_FILE=$1;;
+
+		# command line parameter: specify specific X display to use
+# Nice idea, but we can't attach to another X display.. yet?
+#		-x | --xdisplay )
+#			shift
+#			DEF_XDISPLAY=$1;;
 
 		# Something we don't understand? show syntax and exit
 		* )
@@ -721,13 +741,16 @@ done
 ###########################################################
 
 # Distribution: fedora, redhat, oracle, centos, suse, ubuntu
-MY_DIST="null"
+DIST_NAME="null"
 
-# Release version "5", "6", "11SP3"
-MY_RELEASE="null"
+# Release version "5", "6", "11"
+DIST_RELEASE="null"
+
+# FUTURE: Release minor version -- We don't use this yet 2013.06.19
+DIST_RELEASE_MINOR="null"
 
 # Release Family: "redhat" = (redhat, oracle, centos)
-MY_DIST_FAMILY="null"
+DIST_FAMILY="null"
 
 # Fedora contains fedora-release and redhat-release
 # Oracle main contain oracle-release and redhat-release as well
@@ -737,72 +760,81 @@ MY_DIST_FAMILY="null"
 
 if [ -f /etc/fedora-release ]
 then
-	MY_DIST="fedora"
+	DIST_NAME="fedora"
 
 	if [ `cat /etc/fedora-release | grep "release 16" | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=16
+		DIST_RELEASE=16
 	elif [ `cat /etc/fedora-release | grep "release 17" | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=17
+		DIST_RELEASE=17
 	elif [ `cat /etc/fedora-release | grep "release 18" | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=18
+		DIST_RELEASE=18
 	elif [ `cat /etc/fedora-release | grep "release 19" | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=19
+		DIST_RELEASE=19
 	fi
 
 elif [ -f /etc/oracle-release ]
 then
-	MY_DIST="oracle"
-	MY_DIST_FAMILY="redhat"
+	DIST_NAME="oracle"
+	DIST_FAMILY="redhat"
 
 	if [ `cat /etc/oracle-release | grep "release 5." | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=5
+		DIST_RELEASE=5
 	elif [ `cat /etc/oracle-release | grep "release 6." | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=6
+		DIST_RELEASE=6
 	fi
 
 elif [ -f /etc/centos-release ]
 then
-	MY_DIST="centos"
-	MY_DIST_FAMILY="redhat"
+	DIST_NAME="centos"
+	DIST_FAMILY="redhat"
 
 	if [ `cat /etc/centos-release | grep "release 5." | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=5
+		DIST_RELEASE=5
 	elif [ `cat /etc/centos-release | grep "release 6." | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=6
+		DIST_RELEASE=6
+	elif [ `cat /etc/centos-release | grep "release 7." | wc -l` -gt 0 ]
+	then
+		DIST_RELEASE=7
 	fi
 
 elif [ -f /etc/redhat-release ]
 then
-	MY_DIST="redhat"
-	MY_DIST_FAMILY="redhat"
+	DIST_NAME="redhat"
+	DIST_FAMILY="redhat"
 
 	if [ `cat /etc/redhat-release | grep "release 5." | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=5
+		DIST_RELEASE=5
 	elif [ `cat /etc/redhat-release | grep "release 6." | wc -l` -gt 0 ]
 	then
-		MY_RELEASE=6
+		DIST_RELEASE=6
+	elif [ `cat /etc/redhat-release | grep "release 7." | wc -l` -gt 0 ]
+	then
+		DIST_RELEASE=7
 	fi
 
 elif [ -f /etc/SuSE-release ]
 then
-	MY_DIST="suse"
-	MY_DIST_FAMILY="suse"
+	DIST_NAME="suse"
+	DIST_FAMILY="suse"
 
 	if [ `cat /etc/SuSE-release | grep "Server 11" | wc -l` -gt 0 ]
 	then
-		MY_RELEASE="11"
+		DIST_RELEASE="11"
+	elif [ `cat /etc/SuSE-release | grep "Server 12" | wc -l` -gt 0 ]
+	then
+		DIST_RELEASE="12"
 	elif [ `cat /etc/SuSE-release | grep "Server 10" | wc -l` -gt 0 ]
 	then
-		MY_RELEASE="10"
+		DIST_RELEASE="10"
 	fi
 	
 fi
@@ -1216,15 +1248,18 @@ unordered_list_close
 toc_section "toc_storage"  	"Storage" "#section_storage"
 
 unordered_list_open
-list "item_sutlhbas"	"Host Bus Adapter information" "sutl hbas"
-list "item_lsblk"		"Block Storage Devices" "lsblk"
-list "item_lsscsi"		"SCSI Information" "lsscsi"
-list "item_mount"		"Mounted filesystems" "mount"
-list "item_procscsi"	"SCSI Information via proc" "cat /proc/scsi/scsi"
-list "item_pvscan"		"LVM2: Physical Volumes" "pvscan"
-list "item_vgscan"		"LVM2: Volume Groups" "vgscan"
-list "item_lvscan"		"LVM2: Logical Volumes" "lvscan"
-list "item_fstab"		"Filesystem mount table" "fstab"
+list "item_sutlhbas" "Host Bus Adapter information" "sutl hbas"
+list "item_lsblk"    "Block Storage Devices" "lsblk"
+list "item_lsscsi"   "SCSI Information" "lsscsi"
+list "item_mount"    "Mounted filesystems" "mount"
+list "item_procscsi" "SCSI Information via proc" "cat /proc/scsi/scsi"
+list "item_pvscan"   "LVM2: Physical Volumes" "pvscan"
+list "item_pvs"      "LVM2: Physical Volumes" "pvs"
+list "item_vgscan"   "LVM2: Volume Groups" "vgscan"
+list "item_vgs"      "LVM2: Volume Groups" "vgs"
+list "item_lvscan"   "LVM2: Logical Volumes" "lvscan"
+list "item_lvs"		   "LVM2: Logical Volumes" "lvs"
+list "item_fstab"    "Filesystem mount table" "fstab"
 unordered_list_close
 
 toc_section "toc_periphs"  	"Peripherals" "#section_periphs"
@@ -1282,7 +1317,7 @@ unordered_list_close
 toc_section "toc_xwindows"			"X-Windows" "#section_xwindows"
 
 unordered_list_open
-list "item_xrandr"				"X RandR Info" "xrandr"
+list "item_xrandr"				"X RandR: Resize, Rotate and Reflect Extension Ifno" "xrandr"
 list "item_dpyinfo"				"X Display Info" "xdpyinfo"
 list "item_glxinfo"				"GLX Info" "glxinfo/glxinfo64"
 unordered_list_close
@@ -1368,8 +1403,11 @@ raw_close
 
 item_title "item_lsinitrd" 		"initrd information" "lsinitrd"
 
-#MY_KERNEL=`uname -a | cut --delimiter=" " -f 3`
-#MY_INITRD="/boot/initrd-$MY_KERNEL"
+if [[ $DIST_NAME == "suse" ]]
+then
+	MY_KERNEL=`uname -a | cut --delimiter=" " -f 3`
+	MY_INITRD="/boot/initrd-$MY_KERNEL"
+fi
 
 FILE_EXISTS="no"
 check_for_program lsinitrd
@@ -1377,11 +1415,21 @@ if [[ $FILE_EXISTS == "yes" ]]
 then
 	# Present the lsinitrd information in an HTML textarea box
 	textarea_open 120 24
-	lsinitrd >> $HTML 2>&1
+	if [[ $DIST_NAME == "suse" ]]
+	then
+		lsinitrd -l $MY_INITRD >> $HTML 2>&1
+	else
+		lsinitrd >> $HTML 2>&1
+	fi
 	textarea_close
 
 	# Send the raw output to an ASCII file
-	lsinitrd >> $FILE_INITRD 2>&1
+	if [[ $DIST_NAME == "suse" ]]
+	then
+		lsinitrd -l $MY_INITRD >> $FILE_INITRD 2>&1
+	else
+		lsinitrd >> $FILE_INITRD 2>&1
+	fi
 
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INITRD target=_file_initrd>separate lsinitrd file.</a>"
 else
@@ -1533,28 +1581,28 @@ raw_close
 
 item_title "item_iomem"			"Peripheral IO memory" "cat /proc/iomem"
 raw_open
-cat /proc/iomem >> $HTML
+cat /proc/iomem >> $HTML 2>&1
 raw_close
 
 item_title "item_ioports"		"Peripheral IO ports" "cat /proc/ioports"
 raw_open
-cat /proc/ioports >> $HTML
+cat /proc/ioports >> $HTML 2>&1
 raw_close
 
 item_title "item_devices" 		"Devices" "cat /proc/devices"
 raw_open
-cat /proc/devices >> $HTML
+cat /proc/devices >> $HTML 2>&1
 raw_close
 
 item_title "item_lspci"			"PCI devices" "lspci"
 raw_open
-lspci >> $HTML
+lspci >> $HTML 2>&1
 raw_close
 
 item_title "item_lspcivv"		"PCI Devices Detail" "lspci -vv"
 textarea_open 80 24
-lspci -vv >> $HTML
-lspci -vv >> $FILE_PCI
+lspci -vv >> $HTML 2>&1
+lspci -vv >> $FILE_PCI 2>&1
 textarea_close
 
 helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_PCI target=_file_pci>separate lspci file.</a>"
@@ -1658,8 +1706,8 @@ then
 	echo "This is a public report and no IP networking information is included." >> $HTML
 else
 
-	if	( [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "18" ]] ) ||
-		( [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "19" ]] )
+	if	( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "18" ]] ) ||
+		( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "19" ]] )
 	then
 		for EACHNIC in $(ifconfig -a | fgrep " mtu " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
 		do
@@ -1685,8 +1733,8 @@ else
 		done
 
 	else
-	#elif" " [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "18" ]] ) ||
-	#	" " [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "19" ]] )
+	#elif" " [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "18" ]] ) ||
+	#	" " [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "19" ]] )
 		for EACHNIC in $(ifconfig -a | fgrep " HWaddr " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
 		do
 			FILE_EXISTS="no"
@@ -1794,7 +1842,7 @@ raw_open
 cat /proc/scsi/scsi >> $HTML
 raw_close
 
-# Enable by default" "most RHEL and Fedora use LVM)
+# Enable by default" (most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
 
 FILE_EXISTS="no"
@@ -1802,28 +1850,48 @@ check_for_program pvscan
 if [[ $FILE_EXISTS == "yes" ]]
 then
 
-	PV_RESULTS=`pvscan | grep "  No matching physical volumes found" | wc -l`
+	PV_RESULTS=`pvscan 2>&1 | grep "  No matching physical volumes found" | wc -l`
 
 	if [ $PV_RESULTS -ge 1 ]
 	then
 		SHOW_LVM="no"
 	fi
 fi
-	
+
 item_title "item_pvscan" "LVM2: Physical Volumes" "pvscan"
 raw_open
 # Regardless of whether physical volumes were found above, let pvscan
 # report the status to the user.  Then use the SHOW_LVM variable set above
 # to determine whether volume groups and logical volumes are processed.
 #" "Skip those commands if no physical volumes are present)
-pvscan >> $HTML
+pvscan >> $HTML 2>&1
+raw_close
+
+item_title "item_pvs" "LVM2: Volume Groups" "pvs"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+	pvs >> $HTML 2>&1
+else
+	line "No physical volumes present per pvscan"
+fi
 raw_close
 
 item_title "item_vgscan" "LVM2: Volume Groups" "vgscan"
 raw_open
 if [ $SHOW_LVM == "yes" ]
 then
-	vgscan >> $HTML
+	vgscan >> $HTML 2>&1
+else
+	line "No physical volumes present per pvscan"
+fi
+raw_close
+
+item_title "item_vgs" "LVM2: Volume Groups" "vgs"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+	vgs >> $HTML 2>&1
 else
 	line "No physical volumes present per pvscan"
 fi
@@ -1833,7 +1901,17 @@ item_title "item_lvscan" "LVM2: Logical Volumes" "lvscan"
 raw_open
 if [ $SHOW_LVM == "yes" ]
 then
-	lvscan >> $HTML
+	lvscan >> $HTML 2>&1
+else
+	line "No physical volumes present per pvscan"
+fi
+raw_close
+
+item_title "item_lvs" "LVM2: Logical Volumes" "lvs"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+	lvs >> $HTML 2>&1
 else
 	line "No physical volumes present per pvscan"
 fi
@@ -1984,7 +2062,7 @@ then
 
 	item_title "item_virshnodecpu"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
-	if [[ $MY_FAMILY == "redhat" ]] && [[ $MY_RELEASE == "5" ]]
+	if [[ $MY_FAMILY == "redhat" ]] && [[ $DIST_RELEASE == "5" ]]
 	then
 		echo "virsh nodecpustats is not available with this distribution and release" >> $HTML
 	else
@@ -1994,7 +2072,7 @@ then
 
 	item_title "item_virshnodemem"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
-	if [[ $MY_FAMILY == "redhat" ]] && [[ $MY_RELEASE == "5" ]]
+	if [[ $MY_FAMILY == "redhat" ]] && [[ $DIST_RELEASE == "5" ]]
 	then
 		echo "virsh nodememstats is not available with this distribution and release" >> $HTML
 	else
@@ -2055,30 +2133,93 @@ echo "X-Windows"
 
 section "section_xwindows" "X-Windows"
 
-# Are we running X-Windows? How to check?
+# Nice idea, but we can't attach to another X display.. yet?
 
-item_title "item_dpyinfo"	"X Display Info" "xdpyinfo"
+# Default to skip - assume we're on a non graphical system
+MY_XDISPLAY=""
+
+# If the user has specified an X display to report on, use that.
+if [[ $DEF_XDISPLAY != "null" ]]
+then
+	MY_XDISPLAY="-display $DEF_XDISPLAY"
+else 
+
+	# User hasn't specified a particular X display to use.
+
+	# Is this script running within one?
+	if [[ $DISPLAY != "" ]]
+	then
+
+		# Empty out MY_XDISPLAY so clients just use the env $DISPLAY setting
+		MY_XDISPLAY=""
+	else
+
+		# We are running on an ssh session or something without X
+
+		# See if a single X display server is running as id :0
+		# and we'll use that for reporting.
+
+#		Oops, looks like we -- root -- can't use another display for info
+
+#		if [[ `ps a | grep "X :0" | grep -v grep | wc -l` -eq 1 ]]
+#		then
+#			MY_XDISPLAY="-display :0.0"
+#		else
+			MY_XDISPLAY="skip"
+#		fi
+
+	fi
+fi
+
+if [[ $DEBUG = "yes" ]]
+then
+	echo "DISPLAY $DISPLAY"
+	echo "DEF_XDISPLAY $DEF_XDISPLAY"
+	echo "MY_XDISPLAY $MY_XDISPLAY"
+fi
+
+item_title "item_xrandr"	"RandR - X Resize, Rotate and Reflect Extension" "xrandr"
 
 raw_open
-xrandr >> $HTML 2>&1
+if [[ $MY_XDISPLAY != "skip" ]]
+then
+	xrandr $MY_XDISPLAY >> $HTML 2>&1
+else
+	echo "No X Display is available for reporting." >> $HTML
+fi
 raw_close
 
 item_title "item_dpyinfo"	"X Display Info" "xdpyinfo"
 
 textarea_open 120 24
-xdpyinfo >> $HTML 2>&1
+if [[ $MY_XDISPLAY != "skip" ]]
+then
+	xdpyinfo $MY_DISPLAY >> $HTML 2>&1
+else
+	echo "No X Display is available for reporting." >> $HTML
+fi
 textarea_close
 
 item_title "item_xvinfo"	"Xvideo info" "xvinfo"
 
 textarea_open 120 24
-xvinfo >> $HTML 2>&1
+if [[ $MY_XDISPLAY != "skip" ]]
+then
+	xvinfo $MY_XDISPLAY >> $HTML 2>&1
+else
+	echo "No X Display is available for reporting." >> $HTML
+fi
 textarea_close
 
 item_title "item_glxinfo"	"GLX Info" "glxinfo"
 
 textarea_open 120 24
-glxinfo >> $HTML 2>&1
+if [[ $MY_XDISPLAY != "skip" ]]
+then
+	glxinfo $MY_XDISPLAY >> $HTML 2>&1
+else
+	echo "No X Display is available for reporting." >> $HTML
+fi
 textarea_close
 
 ## - done - ####################################################
