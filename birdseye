@@ -9,8 +9,10 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0619.01"
+VERSION="2013.0620.01"
 
+# 2013.0619.01
+# + Adding --fqdn and --oob for report header hyperlinks
 # 2013.0619.02
 # + Starting "quirks" notes to document dist-version handling
 # + cd-info not found by default on SLES 11 SP3
@@ -227,6 +229,9 @@ export BIRDSEYE_CSS_FILE="null"
 export BIRDSEYE_XDISPLAY="null"
 export BIRDSEYE_PUBLIC_REPORT="no"
 
+export BIRDSEYE_FQDN="null"
+export BIRDSEYE_OOB="null"
+
 # If a config file exists in the user's home directory, execute
 # it to set BIRDSEYE_ variables and perform any user supplied processing
 if [ -f $HOME/.birdseye.cfg ]
@@ -260,6 +265,9 @@ DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"No configuration notes."}
 DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
 # Nice idea, but we can't attach to another X display.. yet?
 DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
+
+DEF_FQDN=${BIRDSEYE_FQDN:-"null"}
+DEF_OOB=${BIRDSEYE_OOB:-"null"}
 
 PUBLIC_REPORT=$BIRDSEYE_PUBLIC_REPORT
 PROMPT_USER=$BIRDSEYE_PROMPT_USER
@@ -295,6 +303,8 @@ function usage {
 	echo "-i --issue    Specify an issue being investigated. 'Network Fault'"
 	echo "-h --hwnotes  Specify a note about this hardware config. '1/2 cpus diabled'"
 	echo
+	echo "-o --oob      Specify a FQDN for this system's out-of-band management NIC"
+	echo "-f --fqdn     SPecify a FQDN for this system's primary NIC"
 #	echo "-x --xdisplay Specify an X windows display server to use"
 	echo
 	echo "-c --css      Use an external CSS style file's contents '/home/user/style.css'"
@@ -414,6 +424,16 @@ do
 			shift
 			DEF_OUTPUT=$1;;
 
+		# command line parameter: specify a FQDN primary NIC address
+		-f | --fqdn )
+			shift
+			DEF_CSS_FILE=$1;;
+
+		# command line parameter: specify a FQDN oob (iLO) address
+		-o | --oob )
+			shift
+			DEF_OOB_FQDN=$1;;
+
 		# command line parameter: specify external CSS style file
 		-c | --css )
 			shift
@@ -453,6 +473,8 @@ then
 	echo "DEF_ISSUE $DEF_ISSUE"
 	echo "DEF_CFG_NOTES $DEF_CFG_NOTES"
 	echo
+	echo "DEF_FQDN $DEF_FQDN"
+	echo "DEF_OOB $DEF_OOB"
 fi
 
 ###########################################################
@@ -582,6 +604,42 @@ else
 		MY_CFG_NOTES="$DEF_CFG_NOTES"
 	fi
 
+	####################
+	echo -e "What is the FQDN for this systems primary NIC? [$DEF_CFG_NOTES]"
+	read -p ":" MY_FQDN
+
+	# Keep a valid, non-null user supplied value or set it to "null"
+	MY_FQDN="${MY_FQDN:-"null"}"
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
+	if [ "$MY_FQDN" != "null" ]
+	then
+		# quote required - spaces will be included!
+		MY_FQDN="$MY_FQDN"
+	else	
+		# quote required - spaces will be included!
+		MY_FQDN="$DEF_FQDN"
+	fi
+
+	####################
+	echo -e "What is the FQDN for this systems out-of-band mgmt NIC? [$DEF_OOB]"
+	read -p ":" MY_OOB
+
+	# Keep a valid, non-null user supplied value or set it to "null"
+	MY_OOB="${MY_OOB:-"null"}"
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
+	if [ "$MY_OOB" != "null" ]
+	then
+		# quote required - spaces will be included!
+		MY_OOB="$MY_OOB"
+	else	
+		# quote required - spaces will be included!
+		MY_OOB="$DEF_OOB"
+	fi
+
 fi
 
 ###########################################################
@@ -598,6 +656,9 @@ then
 	echo "MY_ISSUE $MY_ISSUE"
 	echo "MY_CFG_NOTES $MY_CFG_NOTES"
 	echo
+	echo "MY_FQDN $MY_FQDN"
+	echo "MY_OOB $MY_OOB"
+	echo
 fi
 
 ###########################################################
@@ -609,6 +670,8 @@ fi
 
 # fast, FQDN?
 MY_HOST=$HOSTNAME
+
+MY_OOB=""
 
 # Default prefix for all output filenames
 FILENAME_DATA="birdseye"
@@ -1138,6 +1201,17 @@ else
 fi
 
 paragraph "Capture File $OUTPUT_DIR"
+
+# Do we have both a user supplied FQDN for this system's primary NIC?
+# and an OOB nic?
+if [[ $MY_FQDN != "null" ]] && [[ $MY_OOB != "null" ]]
+then
+	paragraph "$HOSTNAME is accessibile at $MY_FQDN with an Out of Bands NIC at <a href=$MY_OOB>$MY_OOB</a>"
+# Do we have only a user supplied FQDN for this system's primary NIC?
+elif [[ $MY_FQDN != "null" ]]
+then
+	paragraph "$HOSTNAME is accessibile at $MY_FQDN"
+fi
 
 line "<hr>"
 
