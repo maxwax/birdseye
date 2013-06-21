@@ -11,6 +11,9 @@
 # Version number set here: date produced plus a daily sequence version
 VERSION="2013.0619.01"
 
+# 2013.0619.02
+# + Starting "quirks" notes to document dist-version handling
+# + cd-info not found by default on SLES 11 SP3
 # 2013.0619.01
 # + Suse handling: lsinitrd requires specifying an initrd file
 # + Renamed variables MY_DIST=DIST_NAME,MY_RELEASE=DIST_RELEASE
@@ -1271,8 +1274,8 @@ unordered_list_close
 toc_section "toc_dmesg"		"Boot messages" "#section_dmesg"
 
 unordered_list_open
-list "item_dmesg"			"Linux boot messages" "dmesg"
-list "item_dmesg_notime"	"Linux boot messages" "dmesg"
+list "item_dmesg_notime"			"Linux boot messages (without timestamps)" "dmesg"
+list "item_dmesg_time"	"Linux boot messages (with timestamps)" "dmesg"
 unordered_list_close
 
 toc_section "toc_messages"	"Console/System Messages" "#section_messages"
@@ -1931,9 +1934,16 @@ section "section_periphs" "Peripherals"
 
 item_title "item_cdinfo" "DVD/CD Drive Info" "cd-info"
 raw_open
-cd-info >> $HTML 2>&1
+# quirk: SLES 11 SP3 - no cd-info by default
+FILE_EXISTS="no"
+check_for_program cd-info
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	cd-info >> $HTML 2>&1
+else
+	echo "cd-info is not available on this system" >> $HTML
+fi
 raw_close
-
 
 ###########################################################
 # log files
@@ -1958,15 +1968,17 @@ then
 	dmesg --notime >> $HTML
 	dmesg --notime >> $FILE_DMESG_NOTIME
 else
-	line "dmesg on this system does not support the --notime option."
+	# quirk: SLES 11 SP3 - no atime option, use cut to remove the time
+	dmesg | cut -c15-254 >> $HTML
+	dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
 fi
 raw_close
 
-item_title "item_dmesg"		"Linux boot messages with timestamps" "dmesg"
-raw_open
+item_title "item_dmesg_time"		"Linux boot messages with timestamps" "dmesg"
+textarea_open 120 24
 dmesg >> $HTML
 dmesg >> $FILE_DMESG
-raw_close
+textarea_close
 
 helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMESG target=_file_dmesg>separate dmesg info file.</a>"
 
