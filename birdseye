@@ -9,8 +9,13 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0616.02"
+VERSION="2013.0618.01"
 
+# 2013.0618.01
+#	RHEL 5.9 - no lscpu by default, no numactl by default
+# Added check_for_program function to check for the presence of programs
+# -- provides a cross-distribution friendly way of for installed programs
+# Special handling for lsusb.py since whereis cuts suffixes off
 # 2013.0615.02
 #	Added -date option for --month and --year
 #	Added -e --email options for command line handling of email
@@ -150,6 +155,38 @@ function helpful_tip {
 	echo -e "</div>" >> $HTML
 }
 
+function check_for_program {
+	# Use whereis to see if the file exists
+	CMD_WHEREIS=`whereis $1`
+
+	# Remove the name of the program and a colon from the whereis output
+	CMD_WHEREIS=${CMD_WHEREIS#"$1:"}
+
+	# The string should be empty if the file is missing
+	# The string should have locations for the file if it exists
+	if [[ X$CMD_WHEREIS == X ]]
+	then
+		FILE_EXISTS="no"
+	else
+		FILE_EXISTS="yes"
+	fi
+}
+
+# Documentation: check_for_program function (above)
+# 1. Set FILE_EXISTS to no
+# 2. Call check_for_program with the name of the file you question
+# 3. Check value of FILE_EXISTS.  Yes, present, no, missing.
+
+#FILE_EXISTS="no"
+#check_for_program lsinitrd
+#if [[ $FILE_EXISTS == "yes" ]]
+#then
+#	echo "lsinitrd exists."
+#else
+#	echo "lsinitrd is missing."
+#fi
+
+
 ########################################################################
 # Default Variable Handling 
 ########################################################################
@@ -166,8 +203,8 @@ export BIRDSEYE_GROUP=""
 export BIRDSEYE_ISSUE=""
 export BIRDSEYE_CFG_NOTES=""
 
-export BIRDSEYE_FILENAME_DATE="no"
-export BIRDSEYE_FILENAME_MONTH="no"
+export BIRDSEYE_FILENAME_YEAR="yes"
+export BIRDSEYE_FILENAME_MONTH="yes"
 export BIRDSEYE_FILENAME_TIME="no"
 export BIRDSEYE_FILENAME_HOST="no"
 export BIRDSEYE_FILENAME_TAG="yes"
@@ -381,17 +418,17 @@ done
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Values after parameter processing:"
-	echo "DEBUG PUBLIC_REPORT $PUBLIC_REPORT"
-	echo "DEBUG PROMPT_USER $PROMPT_USER"
-	echo "DEBUG DEF_OUTPUT $DEF_OUTPUT"
-	echo "DEBUG DEF_CSS_FILE $DEF_CSS_FILE"
+	echo "PUBLIC_REPORT $PUBLIC_REPORT"
+	echo "PROMPT_USER $PROMPT_USER"
+	echo "DEF_OUTPUT $DEF_OUTPUT"
+	echo "DEF_CSS_FILE $DEF_CSS_FILE"
 	echo
-	echo "DEBUG DEF_TAG $DEF_TAG"
-	echo "DEBUG DEF_NAME $DEF_NAME"
-	echo "DEBUG DEF_EMAIL $DEF_EMAIL"
-	echo "DEBUG DEF_GROUP $DEF_GROUP"
-	echo "DEBUG DEF_ISSUE $DEF_ISSUE"
-	echo "DEBUG DEF_CFG_NOTES $DEF_CFG_NOTES"
+	echo "DEF_TAG $DEF_TAG"
+	echo "DEF_NAME $DEF_NAME"
+	echo "DEF_EMAIL $DEF_EMAIL"
+	echo "DEF_GROUP $DEF_GROUP"
+	echo "DEF_ISSUE $DEF_ISSUE"
+	echo "DEF_CFG_NOTES $DEF_CFG_NOTES"
 	echo
 fi
 
@@ -531,12 +568,12 @@ fi
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Values after interactive prompting:"
-	echo "DEBUG MY_TAG $MY_TAG"
-	echo "DEBUG MY_NAME $MY_NAME"
-	echo "DEBUG MY_EMAIL $MY_EMAIL"
-	echo "DEBUG MY_GROUP $MY_GROUP"
-	echo "DEBUG MY_ISSUE $MY_ISSUE"
-	echo "DEBUG MY_CFG_NOTES $MY_CFG_NOTES"
+	echo "MY_TAG $MY_TAG"
+	echo "MY_NAME $MY_NAME"
+	echo "MY_EMAIL $MY_EMAIL"
+	echo "MY_GROUP $MY_GROUP"
+	echo "MY_ISSUE $MY_ISSUE"
+	echo "MY_CFG_NOTES $MY_CFG_NOTES"
 	echo
 fi
 
@@ -553,16 +590,14 @@ MY_HOST=$HOSTNAME
 # Default prefix for all output filenames
 FILENAME_DATA="birdseye"
 
-# Append hostname to filename ?
-if [[ $FILENAME_HOST == "yes" ]]
+if [[ $DEBUG == "yes" ]]
 then
-	FILENAME_DATA=$FILENAME_DATA.$MY_HOST
-fi
-
-# Append the user's tag to the filename?
-if [[ $FILENAME_TAG == "yes" ]]
-then
-	FILENAME_DATA="$FILENAME_DATA.$MY_TAG"
+	echo "Output filename processing:"
+	echo "FILENAME_HOST  $FILENAME_HOST"
+	echo "FILENAME_TAG   $FILENAME_TAG"
+	echo "FILENAME_YEAR  $FILENAME_YEAR"
+	echo "FILENAME_MONTH $FILENAME_MONTH"
+	echo "FILENAME_TIME  $FILENAME_TIME"
 fi
 
 # Append year ("YYYY" format) to filename?
@@ -581,6 +616,18 @@ fi
 if [[ $FILENAME_TIME == "yes" ]]
 then
 	FILENAME_DATA=$FILENAME_DATA.`date +%H%M`
+fi
+
+# Append hostname to filename ?
+if [[ $FILENAME_HOST == "yes" ]]
+then
+	FILENAME_DATA=$FILENAME_DATA.$MY_HOST
+fi
+
+# Append the user's tag to the filename?
+if [[ $FILENAME_TAG == "yes" ]]
+then
+	FILENAME_DATA="$FILENAME_DATA.$MY_TAG"
 fi
 
 # Set the working variable for the output directory to our constructed 
@@ -620,6 +667,11 @@ fi
 
 # HTML is the name of our often used HTML format output file
 HTML="$OUTPUT_DIR/$FILENAME_DATA.html"
+
+if [[ $DEBUG == "yes" ]]
+then
+	echo "OUTPUT_DIR $OUTPUT_DIR"
+fi
 
 # These additional ASCII files contain raw output and many users
 # wish to have them seperate for processing with 'grep' and other
@@ -1319,17 +1371,22 @@ item_title "item_lsinitrd" 		"initrd information" "lsinitrd"
 #MY_KERNEL=`uname -a | cut --delimiter=" " -f 3`
 #MY_INITRD="/boot/initrd-$MY_KERNEL"
 
-textarea_open 120 24
-lsinitrd >> $HTML 2>&1
-textarea_close
-
-if [ -f $MY_INITRD ]
+FILE_EXISTS="no"
+check_for_program lsinitrd
+if [[ $FILE_EXISTS == "yes" ]]
 then
-	#lsinitrd /boot/initrd-$MY_KERNEL >> $FILE_INITRD 2>&1
-	lsinitrd >> $FILE_INITRD 2>&1
-fi
+	# Present the lsinitrd information in an HTML textarea box
+	textarea_open 120 24
+	lsinitrd >> $HTML 2>&1
+	textarea_close
 
-helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INITRD target=_file_initrd>separate lsinitrd file.</a>"
+	# Send the raw output to an ASCII file
+	lsinitrd >> $FILE_INITRD 2>&1
+
+	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INITRD target=_file_initrd>separate lsinitrd file.</a>"
+else
+	echo "lsinitrd is not present on this system." >> $HTML
+fi
 
 ###########################################################
 # processor information
@@ -1352,12 +1409,26 @@ raw_close
 
 item_title "item_processor_lscpu" "Processor Summary" "lscpu"
 raw_open
-lscpu >> $HTML
+FILE_EXISTS="no"
+check_for_program lscpu
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	lscpu >> $HTML
+else
+	echo "lscpu is not installed on this system." >> $HTML
+fi
 raw_close
 
 item_title "item_processor_lscpue" "Processor Summary" "lscpu -e"
 raw_open
-lscpu -e >> $HTML
+FILE_EXISTS="no"
+check_for_program lscpu
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	lscpu -e >> $HTML
+else
+	echo "lscpu is not installed on this system." >> $HTML
+fi
 raw_close
 
 item_title "item_processor_over"	"First Processor" "cat proc/cpuinfo"
@@ -1380,9 +1451,11 @@ helpful_tip "<strong>Tip:</strong> Detailed information is available in the <a h
 item_title "item_numashow"		"NUMA Topology" "numactl --show"
 
 raw_open
-if [ -f /sbin/numactl ] || [ -f /usr/bin/numactl ]
+FILE_EXISTS="no"
+check_for_program numactl
+if [[ $FILE_EXISTS == "yes" ]]
 then
-	numactl --show >> $HTML
+	numactl --show >> $HTML 2>&1
 else
 	paragraph "numactl is not installed."
 fi
@@ -1392,9 +1465,11 @@ helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies 
 
 item_title "item_numahw"			"NUMA Hardware topology" "numactl --hardware"
 raw_open
-if [ -f /sbin/numactl ] || [ -f /usr/bin/numactl ]
+FILE_EXISTS="no"
+check_for_program numactl
+if [[ $FILE_EXISTS == "yes" ]]
 then
-	numactl --hardware >> $HTML
+	numactl --hardware >> $HTML 2>&1
 else
 	paragraph "numactl is not installed."
 fi
@@ -1446,7 +1521,9 @@ section "section_pci" "Expansion Cards"
 item_title "item_cards"			"Expansion cards" "sutl cards"
 
 raw_open
-if [ -f /usr/local/bin/sutl ]
+FILE_EXISTS="no"
+check_for_program sutl
+if [[ $FILE_EXISTS == "yes" ]]
 then
 	sutl cards >> $HTML
 else
@@ -1496,7 +1573,11 @@ raw_close
 
 item_title "item_lsusbpy"		"USB Devices Speed & Power" "lsusb.py"
 raw_open
-if [ -f /usr/bin/lsusb.py ]
+#FILE_EXISTS="no"
+#check_for_program lsusb.py
+#if [[ $FILE_EXISTS == "yes" ]]
+# check_for_program doesn't work with programs that have extensions
+if [[ -f /usr/bin/lsusb.py ]]
 then
 	/usr/bin/lsusb.py >> $HTML
 else
@@ -1540,7 +1621,9 @@ echo "Networking"
 section "section_networking" "Networking"
 
 item_title "item_sutlnics"		"Network cards" "sutl nics"
-if [ -f /usr/local/bin/sutl ]
+FILE_EXISTS="no"
+check_for_program sutl
+if [[ $FILE_EXISTS == "yes" ]]
 then
 	raw_open
 	sutl nics >> $HTML
@@ -1550,7 +1633,9 @@ else
 fi
 
 item_title "item_nicinfo"		"Network port information" "nic-info"
-if [ -f /usr/local/bin/nic-info ]
+FILE_EXISTS="no"
+check_for_program nic-info
+if [[ $FILE_EXISTS == "yes" ]]
 then
 	raw_open
 	if [ $PUBLIC_REPORT = "yes" ]
@@ -1578,7 +1663,9 @@ else
 	then
 		for EACHNIC in $(ifconfig -a | fgrep " mtu " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
 		do
-			if [ -f /usr/local/bin/sutl ]
+			FILE_EXISTS="no"
+			check_for_program nic-info
+			if [[ $FILE_EXISTS == "yes" ]]
 			then
 				sutl nics | grep $EACHNIC >> $HTML
 			else
@@ -1602,7 +1689,9 @@ else
 	#	" " [[ $MY_DIST="fedora" ]] && [[ $MY_RELEASE = "19" ]] )
 		for EACHNIC in $(ifconfig -a | fgrep " HWaddr " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
 		do
-			if [ -f /usr/local/bin/sutl ]
+			FILE_EXISTS="no"
+			check_for_program nic-info
+			if [[ $FILE_EXISTS == "yes" ]]
 			then
 				sutl nics | grep $EACHNIC >> $HTML
 			else
@@ -1663,7 +1752,9 @@ echo "Storage"
 section "section_storage" "Storage"
 
 item_title "item_sutlhbas"	"Host Bus Adapter information" "sutl hbas"
-if [ -f /usr/local/bin/sutl ]
+FILE_EXISTS="no"
+check_for_program sutl
+if [[ $FILE_EXISTS == "yes" ]]
 then
 	raw_open
 	sutl hbas >> $HTML
@@ -1673,7 +1764,9 @@ else
 fi
 
 item_title "item_lsblk"		"Block Storage Devices" "lsblk"
-if [[ -f /usr/bin/lsblk ]]
+FILE_EXISTS="no"
+check_for_program lsblk
+if [[ $FILE_EXISTS == "yes" ]]
 then
 	raw_open
 	lsblk >> $HTML
@@ -1681,7 +1774,9 @@ then
 fi
 
 item_title "item_lsscsi"		"SCSI Information" "lsscsi"
-if [[ -f /usr/local/bin/lsscsi ]] || [[ -f /usr/bin/lsscsi ]]
+FILE_EXISTS="no"
+check_for_program lsscsi
+if [[ $FILE_EXISTS == "yes" ]]
 then
 	raw_open
 	lsscsi >> $HTML
@@ -1702,7 +1797,9 @@ raw_close
 # Enable by default" "most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
 
-if [ -f /usr/bin/pvscan ] || [ -f /sbin/pvscan ]
+FILE_EXISTS="no"
+check_for_program pvscan
+if [[ $FILE_EXISTS == "yes" ]]
 then
 
 	PV_RESULTS=`pvscan | grep "  No matching physical volumes found" | wc -l`
@@ -1869,7 +1966,9 @@ echo "Virtualization"
 
 section "section_virt" "Virtualization"
 
-if [ -f /usr/bin/virsh ]
+FILE_EXISTS="no"
+check_for_program virsh
+if [[ $FILE_EXISTS == "yes" ]]
 then
 
 	item_title "item_virshvers"	"Virtualization version" "virsh version"
@@ -1885,12 +1984,22 @@ then
 
 	item_title "item_virshnodecpu"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
-	virsh nodecpustats >> $HTML
+	if [[ $MY_FAMILY == "redhat" ]] && [[ $MY_RELEASE == "5" ]]
+	then
+		echo "virsh nodecpustats is not available with this distribution and release" >> $HTML
+	else
+		virsh nodecpustats >> $HTML 2>&1
+	fi
 	raw_close
 
 	item_title "item_virshnodemem"	"Virtualization nodes" "virsh nodeinfo"
 	raw_open
-	virsh nodememstats >> $HTML
+	if [[ $MY_FAMILY == "redhat" ]] && [[ $MY_RELEASE == "5" ]]
+	then
+		echo "virsh nodememstats is not available with this distribution and release" >> $HTML
+	else
+		virsh nodememstats >> $HTML 2>&1
+	fi
 	raw_close
 
 	item_title "item_virshnodedevlist"	"Virtualization nodes devices" "virsh nodedev-list"
