@@ -9,8 +9,12 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0620.01"
+VERSION="2013.0624.01"
 
+# 2013.0624.01
+# + Adding list of installed packages (rpm)
+# + quirk: lscpu doesn't have many options
+# + Starting using QUIRK_ variables with lscpu. No lscpu -e for ubuntu.
 # 2013.0619.01
 # + Adding --fqdn and --oob for report header hyperlinks
 # 2013.0619.02
@@ -801,6 +805,16 @@ do
 done
 
 ###########################################################
+# QUIRKS
+#
+# 1) Set defaults here
+# 2) Adjust them for the distribution running
+# 3) Use them later when trying to execute commands
+###########################################################
+
+QUIRK_LSCPU="null"
+
+###########################################################
 # Processing: What distribution are we using?
 #
 # This will be important as we handle distribution-specific quirks
@@ -818,6 +832,9 @@ DIST_RELEASE_MINOR="null"
 # Release Family: "redhat" = (redhat, oracle, centos)
 DIST_FAMILY="null"
 
+# Release Family: "redhat" = (redhat, oracle, centos)
+DIST_PACKAGES="null"
+
 # Fedora contains fedora-release and redhat-release
 # Oracle main contain oracle-release and redhat-release as well
 #
@@ -827,6 +844,7 @@ DIST_FAMILY="null"
 if [ -f /etc/fedora-release ]
 then
 	DIST_NAME="fedora"
+	DIST_PACKAGES="rpm"
 
 	if [ `cat /etc/fedora-release | grep "release 16" | wc -l` -gt 0 ]
 	then
@@ -846,6 +864,7 @@ elif [ -f /etc/oracle-release ]
 then
 	DIST_NAME="oracle"
 	DIST_FAMILY="redhat"
+	DIST_PACKAGES="rpm"
 
 	if [ `cat /etc/oracle-release | grep "release 5." | wc -l` -gt 0 ]
 	then
@@ -859,6 +878,7 @@ elif [ -f /etc/centos-release ]
 then
 	DIST_NAME="centos"
 	DIST_FAMILY="redhat"
+	DIST_PACKAGES="rpm"
 
 	if [ `cat /etc/centos-release | grep "release 5." | wc -l` -gt 0 ]
 	then
@@ -875,6 +895,7 @@ elif [ -f /etc/redhat-release ]
 then
 	DIST_NAME="redhat"
 	DIST_FAMILY="redhat"
+	DIST_PACKAGES="rpm"
 
 	if [ `cat /etc/redhat-release | grep "release 5." | wc -l` -gt 0 ]
 	then
@@ -891,6 +912,7 @@ elif [ -f /etc/SuSE-release ]
 then
 	DIST_NAME="suse"
 	DIST_FAMILY="suse"
+	DIST_PACKAGES="zypper"
 
 	if [ `cat /etc/SuSE-release | grep "Server 11" | wc -l` -gt 0 ]
 	then
@@ -902,7 +924,50 @@ then
 	then
 		DIST_RELEASE="10"
 	fi
-	
+
+elif [[ `lsb_release --id | grep "Ubuntu" | wc -l` -eq 1 ]]
+then
+
+	DIST_NAME="ubuntu"
+	DIST_FAMILY="debian"
+	DIST_PACKAGES="dpkg"
+
+	MY_VERSION=`lsb_release -r | awk '{ FS = "\t" ; print $2 } '`
+
+	if [[ $MY_VERSION == "13.04" ]]
+	then
+		DIST_RELEASE="13"
+		QUIRK_LSCPU="noext"
+	elif [[ $MY_VERSION == "13.04" ]]
+	then
+		DIST_RELEASE="12"
+		QUIRK_LSCPU="noext"
+	fi
+
+	# handle other versions here
+	# handle other versions here
+	# handle other versions here
+
+elif [ `lsb_release --id | grep "Linuxmint" | wc -l` -eq 1 ]
+then
+	DIST_NAME="linuxmint"
+	DIST_FAMILY="debian"
+	DIST_PACKAGES="dpkg"
+
+	MY_VERSION=`lsb_release -r | awk '{ FS = "\t" ; print $2 } '`
+
+	if [[ $MY_VERSION == "15" ]]
+	then
+		DIST_RELEASE="15"
+	elif [[ $MY_VERSION == "14" ]]
+	then
+		DIST_RELEASE="12"
+	fi
+
+	# handle other versions here
+	# handle other versions here
+	# handle other versions here
+
 fi
 
 ###########################################################
@@ -1230,6 +1295,7 @@ paragraph "<a href=\"#toc_storage\">Storage</a>"
 paragraph "<a href=\"#toc_periphs\">Peripherals</a>"
 paragraph "<a href=\"#toc_dmesg\">Boot messages</a>"
 paragraph "<a href=\"#toc_messages\">Console/System Messages</a>"
+paragraph "<a href=\"#toc_packages\">Installed Packages</a>"
 paragraph "<a href=\"#toc_modules\">Kernel Modules</a>"
 paragraph "<a href=\"#toc_udev\">udev configuration</a>"
 paragraph "<a href=\"#toc_virt\">Virtualization</a>"
@@ -1356,6 +1422,12 @@ toc_section "toc_messages"	"Console/System Messages" "#section_messages"
 
 unordered_list_open
 list "item_messages"			"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
+unordered_list_close
+
+toc_section "toc_packages"		"Installed Packages" "#section_packages"
+unordered_list_open
+list "item_rpms"				"RPM Packages" "rpm_packages"
+list "item_dpkg"				"Debian Packages" "dpkg_packages"
 unordered_list_close
 
 toc_section "toc_modules"		"Kernel Modules" "#section_modules"
@@ -1550,7 +1622,14 @@ FILE_EXISTS="no"
 check_for_program lscpu
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	lscpu -e >> $HTML
+	if [[ $QUIRK_LSCPU == "null" ]]
+	then
+		lscpu -e >> $HTML 2>&1
+	elif [[ $QUIRK_LSCPU == "noext" ]]
+	then
+		# quirk: Ubuntu 12042 doesn't have lscpu extended options
+		echo "QUIRK: 'lscpu -e' is not available with this distribution." >> $HTML
+	fi
 else
 	echo "lscpu is not installed on this system." >> $HTML
 fi
@@ -1558,7 +1637,7 @@ raw_close
 
 item_title "item_processor_over"	"First Processor" "cat proc/cpuinfo"
 raw_open
-ENDLINE=`grep -n processor /proc/cpuinfo  | grep ": 1$" | cut -f 1 --delimiter=":"`
+ENDLINE=`grep -n processor /proc/cpuinfo  | grep ": 0$" | cut -f 1 --delimiter=":"`
 
 FIRSTCPU=`expr $ENDLINE - 1`
 
@@ -1800,11 +1879,18 @@ else
 			line "# ifconfig $EACHNIC"
 			ifconfig $EACHNIC >> $HTML
 
-			line "# ethtool $EACHNIC"
-			ethtool $EACHNIC >> $HTML
+			check_for_program ethtool
+			FILE_EXISTS="no"
+			if [[ $FILE_EXISTS == "yes" ]]
+			then
+				line "# ethtool $EACHNIC"
+				ethtool $EACHNIC >> $HTML
 
-			line "# ethtool -i $EACHNIC"
-			ethtool -i $EACHNIC >> $HTML
+				line "# ethtool -i $EACHNIC"
+				ethtool -i $EACHNIC >> $HTML
+			else
+				echo "ethtool is not available" >> $HTML
+			fi
 
 			line "----"
 		done
@@ -1826,11 +1912,18 @@ else
 			line "# ifconfig $EACHNIC"
 			ifconfig $EACHNIC >> $HTML
 	
-			line "# ethtool $EACHNIC"
-			ethtool $EACHNIC >> $HTML
+			check_for_program ethtool
+			FILE_EXISTS="no"
+			if [[ $FILE_EXISTS == "yes" ]]
+			then
+				line "# ethtool $EACHNIC"
+				ethtool $EACHNIC >> $HTML
 
-			line "# ethtool -i $EACHNIC"
-			ethtool -i $EACHNIC >> $HTML
+				line "# ethtool -i $EACHNIC"
+				ethtool -i $EACHNIC >> $HTML
+			else
+				echo "ethtool is not available" >> $HTML
+			fi
 	
 			line "----"
 		done
@@ -2072,6 +2165,33 @@ then
 fi
 
 helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_MSGS target=_file_msgs>separate system log messages file.</a>"
+
+###########################################################
+# Installed Packages
+###########################################################
+echo "Installed Packages"
+
+section "section_packages" "Installed Packages"
+
+item_title "item_rpms"		"RPM Packages" "rpm_packages"
+if [[ $DIST_PACKAGES = "rpm" ]]
+then
+	textarea_open 80 24
+	rpm -qa >> $HTML
+	textarea_close
+else
+	echo "This does not appear to be an RPM based system." >> $HTML
+fi
+
+item_title "item_dpkg"	"Debian Packages" "dpkg_packages"
+if [[ $DIST_PACKAGES = "dpkg" ]]
+then
+	textarea_open 80 24
+	echo "Debian Packages" >> $HTML
+	textarea_close
+else
+	echo "This does not appear to be an RPM based system." >> $HTML
+fi
 
 ###########################################################
 # modules files
