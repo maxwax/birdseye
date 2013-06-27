@@ -9,41 +9,25 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0624.01"
+VERSION="2013.0626.01"
+
+# TODO: include re-written nic-info functionality internally
+
+# 2013.0626.01
+# + Now outputs /var/log/messages and /var/log/syslog seperately 
+# + Now handling rpm, dpkg and zypper package config, repos and installed pkgs
+# + All textarea_open alls now to 120 chars wide.
+# + Use raw_open instead of textarea_open if we don't have much info to show.
+# + Made all prompts two line for consistency
+# + Added Networking for general network info, old is Networking_Devices
+# + Handles single CPU systems now
+# + Got hyperlink to OOB working.  Prepends http: to what user supplies for now
 
 # 2013.0625.01
 # + All commands outputting to HTML now redirect stderr to there as well.
 # + Adding boot/EFI configuration
 # + Adding kernel configuration
 # + Added styling to textareas - looks like programlisting raw areas now
-# 2013.0624.01
-# + Adding list of installed packages (rpm)
-# + quirk: lscpu doesn't have many options
-# + Starting using QUIRK_ variables with lscpu. No lscpu -e for ubuntu.
-# 2013.0619.01
-# + Adding --fqdn and --oob for report header hyperlinks
-# 2013.0619.02
-# + Starting "quirks" notes to document dist-version handling
-# + cd-info not found by default on SLES 11 SP3
-# 2013.0619.01
-# + Suse handling: lsinitrd requires specifying an initrd file
-# + Renamed variables MY_DIST=DIST_NAME,MY_RELEASE=DIST_RELEASE
-# + Added pvs, vgs and lvs.  Better handling for pvscan checking
-# + Handling when we run outside X: "No display available.." reported
-# + Handling to try to use another X server (0.0) for info.
-#   Code is good, but security seems to preven clients from attaching
-# 2013.0618.01
-#	RHEL 5.9 - no lscpu by default, no numactl by default
-# Added check_for_program function to check for the presence of programs
-# -- provides a cross-distribution friendly way of for installed programs
-# Special handling for lsusb.py since whereis cuts suffixes off
-# 2013.0615.02
-#	Added -date option for --month and --year
-#	Added -e --email options for command line handling of email
-# 2013.0615.01
-#	Removed old changelog, switched to date versioning
-#	Fixing prompt in new email parameter (has name not email)
-#	Removed commented out echo -n + read method for read -p
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -301,6 +285,8 @@ function usage {
 	echo
 	echo "usage: birdseye <options>"
 	echo
+	echo "-h --help     Display this syntax information"
+	echo
 	echo "-p --public   Produce a secure report with no IP networking or firewall info."
 	echo "-q --quick    Don't prompt the user for tag and title information."
 	echo "-d --debug    Enable debugging output."
@@ -310,7 +296,7 @@ function usage {
 	echo "-e --email    Specify the email address of the user producing this report."
 	echo "-g --group    Specify the group this report is associated with. 'Triage'"
 	echo "-i --issue    Specify an issue being investigated. 'Network Fault'"
-	echo "-h --hwnotes  Specify a note about this hardware config. '1/2 cpus diabled'"
+	echo "   --hwnotes  Specify a note about this hardware config. '1/2 cpus diabled'"
 	echo
 	echo "-o --oob      Specify a FQDN for this system's out-of-band management NIC"
 	echo "-f --fqdn     SPecify a FQDN for this system's primary NIC"
@@ -424,7 +410,7 @@ do
 			DEF_ISSUE=$1;;
 
 		# command line parameter: specify notes on the hw configuration
-		-h | --hwnotes )
+		--hwnotes )
 			shift
 			DEF_CFG_NOTES=$1;;
 
@@ -436,12 +422,12 @@ do
 		# command line parameter: specify a FQDN primary NIC address
 		-f | --fqdn )
 			shift
-			DEF_CSS_FILE=$1;;
+			DEF_FQDN=$1;;
 
 		# command line parameter: specify a FQDN oob (iLO) address
 		-o | --oob )
 			shift
-			DEF_OOB_FQDN=$1;;
+			DEF_OOB=$1;;
 
 		# command line parameter: specify external CSS style file
 		-c | --css )
@@ -453,6 +439,10 @@ do
 #		-x | --xdisplay )
 #			shift
 #			DEF_XDISPLAY=$1;;
+
+		-h | --help )
+		usage
+		exit 1;;
 
 		# Something we don't understand? show syntax and exit
 		* )
@@ -498,11 +488,14 @@ then
 	MY_EMAIL=${DEF_EMAIL:-"null"}
 	MY_GROUP=${DEF_GROUP:-"null"}
 	MY_ISSUE=${DEF_ISSUE:-"null"}
+	MY_FQDN=${DEF_FQDN:-"null"}
+	MY_OOB=${DEF_OOB:-"null"}
 	MY_CFG_NOTES=${DEF_CFG_NOTES:-"null"}
 else
 
 	####################
-	read -p "Provide a short tag to include with this [$DEF_TAG] ?" MY_TAG
+	echo -e "Provide a short tag to include with this [$DEF_TAG] ?"
+	read -p ":" MY_TAG
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_TAG=${MY_TAG:-"null"}
@@ -521,7 +514,8 @@ else
 	fi
 
 	####################
-	read -p "What's your name [$DEF_NAME] ?" MY_NAME
+	echo -e "What's your name [$DEF_NAME] ?" 
+	read -p ":" MY_NAME
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_NAME=${MY_NAME:-"null"}
@@ -540,7 +534,8 @@ else
 	fi
 
 	####################
-	read -p "What's your email address [$DEF_EMAIL] ?" MY_EMAIL
+	echo -e "What's your email address [$DEF_EMAIL] ?" 
+	read -p ":" MY_EMAIL
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_EMAIL=${MY_EMAIL:-"null"}
@@ -559,7 +554,8 @@ else
 	fi
 
 	####################
-	read -p "What group are you in (linuxqa,io,aps?) [$DEF_GROUP] ?" MY_GROUP
+	echo -e "What group are you in (linuxqa,io,aps?) [$DEF_GROUP] ?"
+	read -p ":" MY_GROUP
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_GROUP=${MY_GROUP:-"null"}
@@ -614,7 +610,7 @@ else
 	fi
 
 	####################
-	echo -e "What is the FQDN for this systems primary NIC? [$DEF_CFG_NOTES]"
+	echo -e "What is the FQDN for this systems primary NIC? [$DEF_FQDN]"
 	read -p ":" MY_FQDN
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -652,6 +648,17 @@ else
 fi
 
 ###########################################################
+# Fix hostname on OOB
+###########################################################
+
+# If we don't have http on the front of the OOB FQDN, add it.
+# Without http:// clicking in this link takes users to a file
+if [[ ${MY_OOB:1:7} != "http://" ]]
+then
+	MY_OOB="http://$MY_OOB/"
+fi
+
+###########################################################
 # Debug: Let's report our processed values
 ###########################################################
 
@@ -674,13 +681,8 @@ fi
 # Construct and output filename from various option settings
 ###########################################################
 
-# slow, sometimes hostname only not FQDN
-#MY_HOST=`hostname`
-
 # fast, FQDN?
 MY_HOST=$HOSTNAME
-
-MY_OOB=""
 
 # Default prefix for all output filenames
 FILENAME_DATA="birdseye"
@@ -774,6 +776,7 @@ fi
 FILENAME_DMI=dmidecode.$FILENAME_DATA.txt
 FILENAME_CPU=cpuinfo.$FILENAME_DATA.txt
 FILENAME_MSGS=messages.$FILENAME_DATA.txt
+FILENAME_SYSLOG=syslog.$FILENAME_DATA.txt
 FILENAME_DMESG=dmesg.$FILENAME_DATA.txt
 FILENAME_DMESG_NOTIME=dmesg-notime.$FILENAME_DATA.txt
 FILENAME_INTER=interrupts.$FILENAME_DATA.txt
@@ -783,6 +786,7 @@ FILENAME_INITRD=initrd.$FILENAME_DATA.txt
 FILE_DMI=$OUTPUT_DIR/$FILENAME_DMI
 FILE_CPU=$OUTPUT_DIR/$FILENAME_CPU
 FILE_MSGS=$OUTPUT_DIR/$FILENAME_MSGS
+FILE_SYSLOG=$OUTPUT_DIR/$FILENAME_SYSLOG
 FILE_DMESG=$OUTPUT_DIR/$FILENAME_DMESG
 FILE_DMESG_NOTIME=$OUTPUT_DIR/$FILENAME_DMESG
 FILE_INTER=$OUTPUT_DIR/$FILENAME_INTER
@@ -840,6 +844,9 @@ DIST_FAMILY="null"
 # Release Family: "redhat" = (redhat, oracle, centos)
 DIST_PACKAGES="null"
 
+# Grub configuration file used by distribution+version
+DIST_GRUB_CONF="grub.conf"
+
 # Location for grub.cfg / menu.lst and other files
 # /boot/grub is a good default but Redhat uses /boot/grub2 and
 # EFI systems may place their files in /boot/efi/efi/Distribution/
@@ -856,6 +863,7 @@ if [ -f /etc/fedora-release ]
 then
 	DIST_NAME="fedora"
 	DIST_PACKAGES="rpm"
+	DIST_UEFI_DIR="/boot/efi/EFI/Fedora"
 
 	if [ `cat /etc/fedora-release | grep "release 16" | wc -l` -gt 0 ]
 	then
@@ -866,11 +874,13 @@ then
 	elif [ `cat /etc/fedora-release | grep "release 18" | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=18
-		DIST_BOOT_CFG="/boot/grub2/"
+		DIST_BOOT_CFG="/boot/grub2"
+		DIST_GRUB_CONF="grub.cfg"
 	elif [ `cat /etc/fedora-release | grep "release 19" | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=19
-		DIST_BOOT_CFG="/boot/grub2/"
+		DIST_BOOT_CFG="/boot/grub2"
+		DIST_GRUB_CONF="grub.cfg"
 	fi
 
 elif [ -f /etc/oracle-release ]
@@ -878,6 +888,7 @@ then
 	DIST_NAME="oracle"
 	DIST_FAMILY="redhat"
 	DIST_PACKAGES="rpm"
+	DIST_UEFI_DIR="/boot/efi/EFI/Oracle"
 
 	if [ `cat /etc/oracle-release | grep "release 5." | wc -l` -gt 0 ]
 	then
@@ -892,6 +903,7 @@ then
 	DIST_NAME="centos"
 	DIST_FAMILY="redhat"
 	DIST_PACKAGES="rpm"
+	DIST_UEFI_DIR="/boot/efi/EFI/Centos"
 
 	if [ `cat /etc/centos-release | grep "release 5." | wc -l` -gt 0 ]
 	then
@@ -902,7 +914,7 @@ then
 	elif [ `cat /etc/centos-release | grep "release 7." | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=7
-		DIST_BOOT_CFG="/boot/grub2/"
+		DIST_BOOT_CFG="/boot/grub2"
 	fi
 
 elif [ -f /etc/redhat-release ]
@@ -910,6 +922,7 @@ then
 	DIST_NAME="redhat"
 	DIST_FAMILY="redhat"
 	DIST_PACKAGES="rpm"
+	DIST_UEFI_DIR="/boot/efi/EFI/Redhat"
 
 	if [ `cat /etc/redhat-release | grep "release 5." | wc -l` -gt 0 ]
 	then
@@ -920,7 +933,7 @@ then
 	elif [ `cat /etc/redhat-release | grep "release 7." | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=7
-		DIST_BOOT_CFG="/boot/grub2/"
+		DIST_BOOT_CFG="/boot/grub2"
 	fi
 
 elif [ -f /etc/SuSE-release ]
@@ -928,6 +941,7 @@ then
 	DIST_NAME="suse"
 	DIST_FAMILY="suse"
 	DIST_PACKAGES="zypper"
+	DIST_UEFI_DIR="/boot/efi/efi/SuSE"
 
 	if [ `cat /etc/SuSE-release | grep "Server 11" | wc -l` -gt 0 ]
 	then
@@ -946,6 +960,7 @@ then
 	DIST_NAME="ubuntu"
 	DIST_FAMILY="debian"
 	DIST_PACKAGES="dpkg"
+	DIST_UEFI_DIR="/boot/efi/efi/Ubuntu"
 
 	MY_VERSION=`lsb_release -r | awk '{ FS = "\t" ; print $2 } '`
 
@@ -953,15 +968,21 @@ then
 	then
 		DIST_RELEASE="13"
 		QUIRK_LSCPU="noext"
-	elif [[ $MY_VERSION == "13.04" ]]
+		DIST_BOOT_CFG="/boot/grub"
+		DIST_GRUB_CONF="grub.cfg"
+	elif [[ $MY_VERSION == "12.04" ]]
 	then
 		DIST_RELEASE="12"
 		QUIRK_LSCPU="noext"
+		DIST_BOOT_CFG="/boot/grub"
+		DIST_GRUB_CONF="grub.cfg"
+	elif [[ $MY_VERSION == "10.04" ]]
+	then
+		DIST_RELEASE="10"
+		QUIRK_LSCPU="noext"
+		#DIST_BOOT_CFG="/boot/grub"
+		#DIST_GRUB_CONF="grub.cfg"
 	fi
-
-	# handle other versions here
-	# handle other versions here
-	# handle other versions here
 
 elif [ `lsb_release --id | grep "Linuxmint" | wc -l` -eq 1 ]
 then
@@ -1079,9 +1100,6 @@ h2 {
 
 /* Used as a title for each item of information being reported */
 h3 {
-/*
-  font-size: 1.2em;
-*/
   font-size: 1.05em;
   font-weight: bold;
   color: #3c6eb4; 
@@ -1127,7 +1145,7 @@ h4 a:hover {
 /* Used to show raw commands in list items using fixed width fonts */
 .list_nobold {
 	font-weight: normal;
-	font-size: 0.5em;
+	font-size: 0.75em;
 	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
 }
 
@@ -1307,7 +1325,9 @@ paragraph "Capture File $OUTPUT_DIR"
 # and an OOB nic?
 if [[ $MY_FQDN != "null" ]] && [[ $MY_OOB != "null" ]]
 then
-	paragraph "$HOSTNAME is accessibile at $MY_FQDN with an Out of Bands NIC at <a href=$MY_OOB>$MY_OOB</a>"
+
+	paragraph "$HOSTNAME is accessibile at $MY_FQDN with an out-of-band mgmt port at <a href=$MY_OOB target=_birdseye_oob>$MY_OOB</a>"
+
 # Do we have only a user supplied FQDN for this system's primary NIC?
 elif [[ $MY_FQDN != "null" ]]
 then
@@ -1327,11 +1347,12 @@ paragraph "<a href=\"#toc_pci\">Expansion Cards (PCI, PCI-X, PCIe, etc)</a>"
 paragraph "<a href=\"#toc_usb\">USB subsystem</a>"
 paragraph "<a href=\"#toc_dmidecode\">System Board Information</a>"
 paragraph "<a href=\"#toc_networking\">Networking</a>"
+paragraph "<a href=\"#toc_networking_devices\">Networking Devices</a>"
 paragraph "<a href=\"#toc_storage\">Storage</a>"
 paragraph "<a href=\"#toc_periphs\">Peripherals</a>"
 paragraph "<a href=\"#toc_dmesg\">Boot messages</a>"
 paragraph "<a href=\"#toc_messages\">Console/System Messages</a>"
-paragraph "<a href=\"#toc_packages\">Installed Packages</a>"
+paragraph "<a href=\"#toc_packages\">Software Packages</a>"
 paragraph "<a href=\"#toc_kernelcfg\">Kernel Configuration</a>"
 paragraph "<a href=\"#toc_bootcfg\">Boot Configuration</a>"
 paragraph "<a href=\"#toc_modules\">Kernel Modules</a>"
@@ -1374,14 +1395,16 @@ toc_section "toc_cpuinfo"			"Processor/CPU information" "#section_processor"
 unordered_list_open
 list "item_proc_family"				"Processor Family" "dmidecode -s processor-family"
 list "item_proc_vers"					"Processor Version" "dmidecode -s processor-version"
-list "item_processor_lscpu"		"Processor Summary" "lscpu, lscpu -e"
+list "item_proc_count"				"Processor Count" ""
+list "item_processor_lscpu"		"Processor Details" "lscpu"
+list "item_processor_lscpue"	"Processor List" "lscpu -e"
 list "item_processor_over"		"First Processor" "cat /proc/cpuinfo"
 #list "item_processor"				"Processor" "cat /proc/cpuinfo"
-list "item_numashow"					"NUMA Topology" "numactl --show"
-list "item_numahw"						"NUMA Hardware topology" "numactl --hardware"
 list "item_meminfo"						"Memory Info" "cat /proc/meminfo"
 list "item_freemem"						"Free Memory" "free"
 list "item_mtrr"							"MTRR" "cat /proc/mtrr"
+list "item_numashow"					"NUMA Topology" "numactl --show"
+list "item_numahw"						"NUMA Hardware topology" "numactl --hardware"
 unordered_list_close
 
 toc_section "toc_inter"				"Interrupts" "#section_inter"
@@ -1419,12 +1442,19 @@ unordered_list_close
 toc_section "toc_networking"	"Networking" "#section_networking"
 
 unordered_list_open
+list "item_resolv"						"DNS Resolution" "cat /etc/resolv.conf"
+list "item_hosts"							"Local Hosts" "cat /etc/hosts"
+list "item_iproute"						"Network routing table via ip route" "ip route"
+list "item_netstat"						"Network routing table via netstat" "netstat"
+list "item_firewall"					"Firewall rules" "iptables -L"
+unordered_list_close
+
+toc_section "toc_networking_devices"	"Networking Devices" "#section_networking_devices"
+
+unordered_list_open
 list "item_sutlnics"					"Network cards" "sutl nics"
 list "item_nicinfo"						"Network port information" "nic-info"
 list "item_nicports"					"Network port detail information" "ifconfig, ethtool, ethtool -i"
-list "item_netstat"						"Network routing table" "netstat"
-list "item_iproute"						"Network routing table" "ip route"
-list "item_firewall"					"Firewall rules" "iptables -L"
 unordered_list_close
 
 toc_section "toc_storage"  		"Storage" "#section_storage"
@@ -1463,10 +1493,26 @@ unordered_list_open
 list "item_messages"					"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
 unordered_list_close
 
-toc_section "toc_packages"		"Installed Packages" "#section_packages"
+toc_section "toc_packages"		"Software Packages" "#section_packages"
 unordered_list_open
-list "item_rpms"							"RPM Packages" "rpm_packages"
-list "item_dpkg"							"Debian Packages" "dpkg_packages"
+if [[ $DIST_PACKAGES == "rpm" ]]
+then
+	list "item_rpm_config"				"Repository Config (yum)" "cat /etc/yum.repos.d/*"
+	list "item_rpm_repos"					"Repositories (yum)" "cat /etc/yum.repos.d/*"
+	list "item_rpm_pkgs"					"Installed Packages (rpm)" "rpm -qa"
+
+elif [[ $DIST_PACKAGES == "dpkg" ]]
+then
+	list "item_apt_config"				"Repository Config (apt)" "cat /etc/apt/apt.conf"
+	list "item_apt_repos"					"Repositories (apt)" "cat /etc/apt/sources.list"
+	list "item_dpkg_pkgs"					"Installed Packages (dpkg)" "dpkg -l"
+
+elif [[ $DIST_PACKAGES == "zypper" ]]
+then
+	list "item_zypper_config"			"Repository Config (zypper)" "cat /etc/zypp/zypper.config"
+	list "item_zypper_repos"			"Repositories (zypper)" "cat /etc/zypp/repos.d/*"
+	list "item_zypper_pkgs"				"Installed Packages (zypper)" "zypper search.."
+fi
 unordered_list_close
 
 toc_section "toc_kernelcfg"		"Kernel Configuration" "#section_kernelcfg"
@@ -1481,7 +1527,10 @@ unordered_list_open
 list "item_grubconf"					"Grub Config File" "cat /boot/grub/grub.conf"
 list "item_grubmenulst"				"Grub Menu File" "cat /boot/grub/menu.lst"
 list "item_grubdevmap"				"Grub Device Map" "cat /boot/grub/device.map"
-list "item_elilo"							"ELILO Config (EFI only)" "cat /boot/efi/efi/XDISTX/elilo.conf"
+list "item_efibootmgr"				"EFI boot configuration" "efibootmgr"
+list "item_elilo"							"ELILO Config (EFI only)" "cat /boot/efi/efi/(dist)/elilo.conf"
+list "item_elilolist"					"ELILO List Config (EFI only)" "cat /boot/efi/efi/(dist)/elilo.list"
+list "item_redhatgrub"				"EFI: Redhat Grub" "cat /boot/efi/redhat/grub.conf"
 unordered_list_close
 
 toc_section "toc_modules"			"Kernel Modules" "#section_modules"
@@ -1658,7 +1707,12 @@ raw_open
 dmidecode -s processor-version | head -1 >> $HTML 2>&1
 raw_close
 
-item_title "item_processor_lscpu" "Processor Summary" "lscpu"
+item_title "item_proc_count"		"Processor Count" ""
+raw_open
+line "`cat /proc/cpuinfo | grep processor | wc -l` count of `grep 'model name' /proc/cpuinfo | head -1 | cut -c 14-80` logical CPUs"
+raw_close
+
+item_title "item_processor_lscpu" "Processor Details" "lscpu"
 raw_open
 FILE_EXISTS="no"
 check_for_program lscpu
@@ -1666,11 +1720,11 @@ if [[ $FILE_EXISTS == "yes" ]]
 then
 	lscpu >> $HTML 2>&1
 else
-	echo "lscpu is not installed on this system." >> $HTML 2>&1
+	line "lscpu is not installed on this system." 
 fi
 raw_close
 
-item_title "item_processor_lscpue" "Processor Summary" "lscpu -e"
+item_title "item_processor_lscpue" "Processor List " "lscpu -e"
 raw_open
 FILE_EXISTS="no"
 check_for_program lscpu
@@ -1682,24 +1736,34 @@ then
 	elif [[ $QUIRK_LSCPU == "noext" ]]
 	then
 		# quirk: Ubuntu 12042 doesn't have lscpu extended options
-		echo "QUIRK: 'lscpu -e' is not available with this distribution." >> $HTML 2>&1
+		line "QUIRK: 'lscpu -e' is not available with this distribution."
 	fi
 else
-	echo "lscpu is not installed on this system." >> $HTML 2>&1
+	line "lscpu is not installed on this system."
 fi
 raw_close
 
 item_title "item_processor_over"	"First Processor" "cat proc/cpuinfo"
 raw_open
-ENDLINE=`grep -n processor /proc/cpuinfo  | grep ": 0$" | cut -f 1 --delimiter=":"`
 
-FIRSTCPU=`expr $ENDLINE - 1`
+# Do we have more than one CPU?
+if [[ `grep processor /proc/cpuinfo | wc -l ` -gt 1 ]]
+then
 
-cat /proc/cpuinfo | head --lines $FIRSTCPU >> $HTML 2>&1
-raw_close
+	# more than one CPU
 
-raw_open
-line "`cat /proc/cpuinfo | grep processor | wc -l` count of `grep 'model name' /proc/cpuinfo | head -1 | cut -c 14-80` logical CPUs"
+	ENDLINE=`grep -n processor /proc/cpuinfo  | grep ": 1$" | cut -f 1 --delimiter=":"`
+
+	# calculate how many lines to just show the first's detail
+	FIRSTCPU=`expr $ENDLINE - 1`
+
+	# Show /proc/cpuinfo for first cpu only
+	cat /proc/cpuinfo | head --lines $FIRSTCPU >> $HTML 2>&1
+else
+	# only one CPU, just cat /proc/cpuinfo to show detail for the chip we're using.
+	cat /proc/cpuinfo >> $HTML 2>&1
+fi
+
 raw_close
 
 cat /proc/cpuinfo >> $FILE_CPU
@@ -1711,35 +1775,6 @@ item_title "item_buddyinfo"		"Buddy Memory" "cat /proc/buddyinfo"
 raw_open
 	cat /proc/buddyinfo >> $HTML 2>&1
 raw_close 
-
-item_title "item_numashow"		"NUMA Topology" "numactl --show"
-
-raw_open
-FILE_EXISTS="no"
-check_for_program numactl
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	numactl --show >> $HTML 2>&1
-else
-	paragraph "numactl is not installed."
-fi
-raw_close 
-
-helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies for the current process.  It can be useful to see how physical CPUs and memory are organized."
-
-item_title "item_numahw"			"NUMA Hardware topology" "numactl --hardware"
-raw_open
-FILE_EXISTS="no"
-check_for_program numactl
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	numactl --hardware >> $HTML 2>&1
-else
-	paragraph "numactl is not installed."
-fi
-raw_close
-
-helpful_tip "<p><strong>Tip:</strong> 'numactl --topology' lists each node in the NUMA domain and produces table showing the cost of memory access from one node to another node."
 
 item_title "item_meminfo"		"Memory Info" "cat /proc/meminfo"
 raw_open
@@ -1760,6 +1795,35 @@ item_title "item_mtrr"			"MTRR" "cat /proc/mtrr"
 raw_open
 cat /proc/mtrr >> $HTML 2>&1
 raw_close
+
+item_title "item_numashow"		"NUMA Topology" "numactl --show"
+
+raw_open
+FILE_EXISTS="no"
+check_for_program numactl
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	numactl --show >> $HTML 2>&1
+else
+	paragraph "numactl is not installed."
+fi
+raw_close 
+
+helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies for the current process.  It can be useful to see how physical CPUs and memory are organized."
+
+item_title "item_numahw"			"NUMA Memory Topology" "numactl --hardware"
+raw_open
+FILE_EXISTS="no"
+check_for_program numactl
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	numactl --hardware >> $HTML 2>&1
+else
+	paragraph "numactl is not installed."
+fi
+raw_close
+
+helpful_tip "<p><strong>Tip:</strong> 'numactl --hardware' lists each node in the NUMA domain and produces table showing the cost of memory access from one node to another node."
 
 ###########################################################
 # interrupts 
@@ -1816,7 +1880,7 @@ lspci >> $HTML 2>&1
 raw_close
 
 item_title "item_lspcivv"		"PCI Devices Detail" "lspci -vv"
-textarea_open 80 24
+textarea_open 120 24
 lspci -vv >> $HTML 2>&1 
 lspci -vv >> $FILE_PCI 2>&1
 textarea_close
@@ -1845,14 +1909,14 @@ if [[ -f /usr/bin/lsusb.py ]]
 then
 	/usr/bin/lsusb.py >> $HTML 2>&1
 else
-	echo "/usr/bin/lsusb.py is not installed." >> $HTML 2>&1
+	line "/usr/bin/lsusb.py is not installed."
 fi
 raw_close
 
 item_title "item_lsusbv"			"USB Devices Detail" "lsusb -v"
-raw_open
+textarea_open 120 24
 lsusb -v >> $HTML 2>&1
-raw_close
+textarea_close
 
 item_title "item_lsusbt"			"USB Devices Tree" "lsusb -t"
 # redirect stderr to stdout as some information is sent do stderr too, not sure why.
@@ -1869,7 +1933,7 @@ section "section_dmidecode" "System Board Information"
 
 item_title "item_dmidecode" "System Board information" "dmidecode"
 
-textarea_open 80 24
+textarea_open 120 24
 dmidecode >> $HTML 2>&1
 textarea_close 
 
@@ -1884,130 +1948,33 @@ echo "Networking"
 
 section "section_networking" "Networking"
 
-item_title "item_sutlnics"		"Network cards" "sutl nics"
-FILE_EXISTS="no"
-check_for_program sutl
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	raw_open
-	sutl nics >> $HTML 2>&1
-	raw_close
-else
-	line "# not installed: sutl nics"
-fi
-
-item_title "item_nicinfo"		"Network port information" "nic-info"
-FILE_EXISTS="no"
-check_for_program nic-info
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	raw_open
-	if [ $PUBLIC_REPORT = "yes" ]
-	then
-		echo "This is a public report and no IP networking information is included." >> $HTML 2>&1
-	else
-		nic-info >> $HTML 2>&1
-	fi
-	raw_close
-else
-	line "'nic-info' utility not installed, can't execute 'nic-info'" 
-fi
-
-item_title "item_nicports"		"Network port detail information" "ifconfig, ethtool, ethtool -i"
-# process each ethernet device, skip vpn, bridges, localhost
+item_title "item_resolv"		"DNS Resolution" "cat /etc/resolv.conf"
 raw_open
-
-if [ $PUBLIC_REPORT = "yes" ]
-then
-	echo "This is a public report and no IP networking information is included." >> $HTML 2>&1
-else
-
-	if	( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "18" ]] ) ||
-		( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "19" ]] )
-	then
-		for EACHNIC in $(ifconfig -a | fgrep " mtu " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
-		do
-			FILE_EXISTS="no"
-			check_for_program nic-info
-			if [[ $FILE_EXISTS == "yes" ]]
-			then
-				sutl nics | grep $EACHNIC >> $HTML 2>&1
-			else
-				line "NIC: $EACHNIC"
-			fi
-
-			line "# ifconfig $EACHNIC"
-			ifconfig $EACHNIC >> $HTML 2>&1
-
-			check_for_program ethtool
-			FILE_EXISTS="no"
-			if [[ $FILE_EXISTS == "yes" ]]
-			then
-				line "# ethtool $EACHNIC"
-				ethtool $EACHNIC >> $HTML 2>&1
-
-				line "# ethtool -i $EACHNIC"
-				ethtool -i $EACHNIC >> $HTML 2>&1
-			else
-				echo "ethtool is not available" >> $HTML 2>&1
-			fi
-
-			line "----"
-		done
-
-	else
-	#elif" " [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "18" ]] ) ||
-	#	" " [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "19" ]] )
-		for EACHNIC in $(ifconfig -a | fgrep " HWaddr " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
-		do
-			FILE_EXISTS="no"
-			check_for_program nic-info
-			if [[ $FILE_EXISTS == "yes" ]]
-			then
-				sutl nics | grep $EACHNIC >> $HTML 2>&1
-			else
-				line "NIC: $EACHNIC"
-			fi
-
-			line "# ifconfig $EACHNIC"
-			ifconfig $EACHNIC >> $HTML 2>&1
-	
-			check_for_program ethtool
-			FILE_EXISTS="no"
-			if [[ $FILE_EXISTS == "yes" ]]
-			then
-				line "# ethtool $EACHNIC"
-				ethtool $EACHNIC >> $HTML 2>&1
-
-				line "# ethtool -i $EACHNIC"
-				ethtool -i $EACHNIC >> $HTML 2>&1
-			else
-				echo "ethtool is not available" >> $HTML 2>&1
-			fi
-	
-			line "----"
-		done
-	fi
-fi
+cat /etc/resolv.conf >> $HTML 2>&1
 raw_close
 
-item_title "item_netstat"		"Network routing table" "netstat"
+item_title "item_hosts"		"Local Hosts" "cat /etc/hosts"
 raw_open
-if [ $PUBLIC_REPORT = "yes" ]
-then
-	echo "This is a public report and no routing information is included." >> $HTML 2>&1
-else
-	netstat -nr >> $HTML 2>&1
-fi
+cat /etc/hosts >> $HTML 2>&1
 raw_close
 
-item_title "item_iproute"		"Network routing table" "ip route"
+item_title "item_iproute"		"Network routing table via ip route" "ip route"
 raw_open
 if [ $PUBLIC_REPORT = "yes" ]
 then
-	echo "This is a public report and no routing information is included." >> $HTML 2>&1
+	line "This is a public report and no routing information is included."
 else
 	ip route  >> $HTML 2>&1
+fi
+raw_close
+
+item_title "item_netstat"		"Network routing table via netstat" "netstat"
+raw_open
+if [ $PUBLIC_REPORT = "yes" ]
+then
+	line "This is a public report and no routing information is included."
+else
+	netstat -nr >> $HTML 2>&1
 fi
 raw_close
 
@@ -2016,15 +1983,117 @@ item_title "item_firewall"		"Firewall rules" "iptables -L"
 raw_open
 if [ $PUBLIC_REPORT = "yes" ]
 then
-	echo "This is a public report and no firewall information is included." >> $HTML 2>&1
+	line "This is a public report and no firewall information is included."
 else
 	iptables -L >> $HTML 2>&1
 fi
 raw_close
 
 ###########################################################
-# storage
+# NETWORKING
 ###########################################################
+echo "Networking Devices"
+
+section "section_networking_devices" "Networking Devices"
+
+item_title "item_sutlnics"		"Network cards" "sutl nics"
+FILE_EXISTS="no"
+check_for_program sutl
+raw_open
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	sutl nics >> $HTML 2>&1
+else
+	line "# not installed: sutl nics"
+fi
+raw_close
+
+item_title "item_nicinfo"		"Network port information" "nic-info"
+FILE_EXISTS="no"
+check_for_program nic-info
+raw_open
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	if [ $PUBLIC_REPORT = "yes" ]
+	then
+		line "This is a public report and no IP networking information is included."
+	else
+		nic-info >> $HTML 2>&1
+	fi
+else
+	line "'nic-info' utility not installed, can't execute 'nic-info'" 
+fi
+raw_close
+
+item_title "item_nicports"		"Network port detail information" "ifconfig, ethtool, ethtool -i"
+# process each ethernet device, skip vpn, bridges, localhost
+
+if [ $PUBLIC_REPORT = "yes" ]
+then
+	raw_open
+	line "This is a public report and no IP networking information is included."
+	raw_close
+else
+
+	# QUIRK: handling of network device names in Fedora like em1, p10p1, etc
+	if	( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "18" ]] ) ||
+			( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "19" ]] )
+	then
+		# FEDORA 18-19
+		NIC_LIST=$(ifconfig -a | fgrep " mtu " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
+	else
+		# ALL OTHERS
+		NIC_LIST=$(ifconfig -a | fgrep " HWaddr " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
+	fi
+
+		# Report on each network device port discovered and placed in NIC_LIST
+		for EACHNIC in $NIC_LIST
+		do
+
+			# Do raw_open/raw_close for each NIC so each is presented individually
+			raw_open
+
+			FILE_EXISTS="no"
+			check_for_program sutl
+			line "<strong>"
+			if [[ $FILE_EXISTS == "yes" ]]
+			then
+				sutl nics | grep $EACHNIC >> $HTML 2>&1
+			else
+				line "Network device: $EACHNIC"
+			fi
+			line "</strong>"
+
+			line "" 
+			line "# ifconfig $EACHNIC"
+			ifconfig $EACHNIC >> $HTML 2>&1
+
+			FILE_EXISTS="no"
+			check_for_program ethtool
+			if [[ $FILE_EXISTS == "yes" ]]
+			then
+				line "# ethtool $EACHNIC"
+				ethtool $EACHNIC >> $HTML 2>&1
+
+				line "# ethtool -i $EACHNIC"
+				ethtool -i $EACHNIC >> $HTML 2>&1
+			else
+				line "ethtool is not available" >> $HTML 2>&1
+			fi
+
+			# Do raw_open/raw_close for each NIC so each is presented individually
+			raw_close
+
+		done # on to next nic port in NIC_LIST
+
+fi
+raw_close
+
+
+###########################################################
+# STORAGE
+###########################################################
+
 echo "Storage"
 
 section "section_storage" "Storage"
@@ -2038,7 +2107,7 @@ then
 	sutl hbas >> $HTML 2>&1
 	raw_close
 else
-	echo "'sutl' utility not installed, can't execute 'sutl cards'" >> $HTML 2>&1
+	line "'sutl' utility not installed, can't execute 'sutl cards'" 
 fi
 
 item_title "item_lsblk"		"Block Storage Devices" "lsblk"
@@ -2052,14 +2121,16 @@ then
 fi
 
 item_title "item_lsscsi"		"SCSI Information" "lsscsi"
+raw_open
 FILE_EXISTS="no"
 check_for_program lsscsi
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	raw_open
 	lsscsi >> $HTML 2>&1
-	raw_close
+else
+	line "lsscsi is not installed on this system."
 fi
+raw_close
 
 item_title "item_mount"		"Mounted filesystems" "mount"
 line "Current mount, may not reflect status when issue occured."
@@ -2168,7 +2239,7 @@ if [[ $FILE_EXISTS == "yes" ]]
 then
 	cd-info >> $HTML 2>&1
 else
-	echo "cd-info is not available on this system" >> $HTML 2>&1
+	line "cd-info is not available on this system"
 fi
 raw_close
 
@@ -2216,41 +2287,135 @@ item_title "item_messages"	"Linux system log" "cat /var/log/messages | cat /var/
 # need to edit for debian, newer fedora, etc
 if [ -f /var/log/messages ]
 then
+	textarea_open 120 24
+	cat /var/log/messages >> $HTML 2>&1
+	textarea_close
+
 	echo "/var/log/messages:" >> $FILE_MSGS
 	cat /var/log/messages >> $FILE_MSGS
-elif [ -f /var/log/messages ]
-then
-	echo "/var/log/syslog:" >> $FILE_MSGS
-	cat /var/log/syslog >> $FILE_MSGS
+
+	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_MSGS target=_file_msgs>separate messages file.</a>"
 fi
 
-helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_MSGS target=_file_msgs>separate system log messages file.</a>"
+if [ -f /var/log/syslog ]
+then
+
+	textarea_open 120 24
+	cat /var/log/syslog >> $HTML 2>&1
+	textarea_close
+
+	echo "/var/log/syslog:" >> $FILE_SYSLOG
+	cat /var/log/syslog >> $FILE_SYSLOG
+
+	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_SYSLOG target=_file_msgs>separate syslog file.</a>"
+fi
 
 ###########################################################
 # Installed Packages
 ###########################################################
-echo "Installed Packages"
+echo "Software Packages"
 
-section "section_packages" "Installed Packages"
+section "section_packages" "Software Packages"
 
-item_title "item_rpms"		"RPM Packages" "rpm_packages"
 if [[ $DIST_PACKAGES = "rpm" ]]
 then
-	textarea_open 80 24
+
+		###########################################################
+		# RPM/YUM Repositories
+
+	item_title "item_rpm_config"		"Software Repositories (rpm/yum)" "cat /etc/yum.conf"
+
+	# Report contents of yum.conf - the yum master configuration file
+	textarea_open 120 24
+	if [[ -f /etc/yum.conf ]]
+	then
+		cat /etc/yum.conf >> $HTML 2>&1
+	fi
+	textarea_close
+
+	# Report contents of individual repositories configured for use with yum
+	item_title "item_rpm_repos"		"Yum Repositories" "cat /etc/yum.repos.d/*.repo"
+	textarea_open 120 24
+	for EACHFILE in /etc/yum.repos.d/*.repo
+	do
+		line ""
+		line "Repository config file: $EACHFILE"
+		line "----------"
+		cat "$EACHFILE" >> $HTML 2>&1
+	done
+	textarea_close
+
+	item_title "item_rpm_pkgs"		"Installed RPM Packages" "rpm -qa"
+
+	textarea_open 120 24
 	rpm -qa >> $HTML 2>&1
 	textarea_close
-else
-	echo "This does not appear to be an RPM based system." >> $HTML 2>&1
-fi
 
-item_title "item_dpkg"	"Debian Packages" "dpkg_packages"
-if [[ $DIST_PACKAGES = "dpkg" ]]
+elif [[ $DIST_PACKAGES = "dpkg" ]]
 then
-	textarea_open 80 24
+
+		###########################################################
+		# DPKG/APT Repository
+
+	item_title "item_apt_config"		"Software Repositories (dpkg/apt)" "cat /etc/apt/apt.conf"
+
+	textarea_open 120 24
+	if [[ -f /etc/apt/apt.conf ]]
+	then
+		cat /etc/apt/apt.conf >> $HTML 2>&1
+	fi
+	textarea_close
+
+	# Debian/Ubuntu/etc: Report sources.l
+	item_title "item_apt_repos"		"dpkg Repositories" "cat /etc/apt/sources.list"
+	if [[ -f /etc/apt/sources.list ]]
+	then
+		textarea_open 120 24
+		EACHFILE="/etc/apt/sources.list"
+		line ""
+		line "Repository config file: $EACHFILE"
+		line "----------"
+		cat "$EACHFILE" >> $HTML 2>&1
+		textarea_close
+	fi
+
+	item_title "item_dpkg_pkgs"	"Debian Packages" "dpkg -l"
+	textarea_open 120 24
 	dpkg -l >> $HTML 2>&1
 	textarea_close
-else
-	echo "This does not appear to be a apt/dpkg based system." >> $HTML 2>&1
+
+elif [[ $DIST_PACKAGES = "zypper" ]]
+then
+
+		###########################################################
+		# SuSE Zypper Repository
+
+	item_title "item_zypper_config"		"Software Repositories (SuSE)" "cat /etc/zypp/zypper.conf"
+
+	textarea_open 120 24
+	if [[ -f /etc/zypp/zypper.conf ]]
+	then
+		cat /etc/zypp/zypper.conf >> $HTML 2>&1
+	fi
+	textarea_close
+
+	# Report contents of individual repositories configured for use with zypper
+	item_title "item_zypper_repos"		"Software Repositories (SuSE)" "cat /etc/zypp/
+repos.d/*"
+	textarea_open 120 24
+	for EACHFILE in /etc/zypp/repos.d/*.repo
+	do
+		line ""
+		line "Repository config file: $EACHFILE" 
+		line "----------" 
+		cat "$EACHFILE" >> $HTML 2>&1
+	done
+	textarea_close
+
+	item_title "item_zypper_pkgs"	"Zypper Packages" "zypper_packages"
+	textarea_open 120 24
+	zypper search | grep "i |" >> $HTML 2>&1
+	textarea_close
 fi
 
 ###########################################################
@@ -2274,7 +2439,7 @@ section "section_bootcfg" "Boot Configuration"
 
 EFI_BOOT="null"
 
-# defaults to /boot/grub or /boot/grub2
+# defaults to /boot/grub2
 MY_BOOT_DIR="$DIST_BOOT_CFG"
 
 # We should only have /sys/firwmare/efi on an EFI system
@@ -2284,83 +2449,174 @@ then
 
 	#	Find out what kernel we booted: remove 'BOOT_IMAGE=dev0000:\"
 	MY_CMDLINE=`cat /proc/cmdline`
-	echo "RAW $MY_CMDLINE"
-	echo
+	if [[ $DEBUG == "yes" ]]
+	then
+		echo "RAW $MY_CMDLINE"
+		echo
+	fi
 
 	if [[ $MY_CMDLINE = *:\\efi* ]]
 	then
-		echo "We're booting from an EFI subdirectory"
 
 		# Real system example
 		# BOOT_IMAGE=dev000:\efi\SuSE\vmlinuz-3.0.76-0.11-default root=/dev/disk/by-id/scsi-3600c0ff000db1c6597969f5101000000-part3  resume=/dev/disk/by-id/scsi-3600c0ff000db1c6597969f5101000000-part2 splash=silent crashkernel=256M-:128M showopts console=ttyS0,115200
 
-
 		# Remove prefix 'BOOT_IMAGE=dev0000:\"
 		MY_CMDLINE=${MY_CMDLINE#*:\\}
-		echo "FRONT $MY_CMDLINE"
-		echo
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "FRONT $MY_CMDLINE"
+			echo
+		fi
 
 		# Remove suffix "root=..."
 		MY_CMDLINE=${MY_CMDLINE%% *}
-		echo "REAR SPACE $MY_CMDLINE"
-		echo
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "REAR SPACE $MY_CMDLINE"
+			echo
+		fi
 
 		# Remove suffix "\vmlinuz.."
 		MY_CMDLINE=${MY_CMDLINE%\\*}
-		echo "REAR KERNEL $MY_CMDLINE"
-		echo
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "REAR KERNEL $MY_CMDLINE"
+			echo
+		fi
 
 		# Result: /boot/efi/efi/SuSE /boot/efi/efi/Fedora
 		MY_BOOT_DIR="/boot/efi/${MY_CMDLINE}"
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "MY_BOOT_DIR $MY_BOOT_DIR"
+		fi
 
+		# Change EFI DOS style backslashes to Linux style forward-slashes
 		MY_BOOT_DIR=${MY_BOOT_DIR//\\//}
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "MY_BOOT_DIR FORWARD SLASHES $MY_BOOT_DIR"
+		fi
+
 	fi
 
 else
 	EFI_BOOT="no"
 fi
 
-echo "MY_BOOT_DIR $MY_BOOT_DIR"
-
-item_title "item_grubconf"		"GRUB Config File" "cat /boot/grub2/grub.conf"
-raw_open
-if [[ -f $MY_BOOT_DIR/grub.conf ]]
+if [[ $DEBUG == "yes" ]]
 then
-	cat $MY_BOOT_DIR/grub.conf >> $HTML 2>&1
-else
-	echo "$MY_BOOT_DIR/grub.conf is not present on this system." >> $HTML 2>&1
+	echo "MY_BOOT_DIR FINAL $MY_BOOT_DIR"
+	echo "DIST_UEFI_DIR $DIST_UEFI_DIR"
 fi
-raw_close
 
-item_title "item_grubmenulst"		"GRUB Config File" "cat /boot/grub2/menu.lst"
-raw_open
+item_title "item_grubconf"		"GRUB Config File" "cat grub.cfg"
+if [[ -f $MY_BOOT_DIR/$DIST_GRUB_CONF ]]
+then
+	textarea_open 120 24
+	cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+	textarea_close
+else
+
+	if [[ $EFI_BOOT == "yes" ]] && [[ -f $DIST_UEFI_DIR/$DIST_GRUB_CONF ]]
+	then
+		textarea_open 120 24
+		cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "I can't find $DIST_GRUB_CONF in the expected places."
+		raw_close
+	fi
+
+fi
+
+item_title "item_grubmenulst"		"GRUB Config File" "cat menu.lst"
 if [[ -f $MY_BOOT_DIR/menu.lst ]]
 then
+	textarea_open 120 24
 	cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
+	textarea_close
 else
-	echo "$MY_BOOT_DIR/menu.lst is not present on this system." >> $HTML 2>&1
-fi
-raw_close
 
-item_title "item_grubdevmap"		"GRUB Config File" "cat /boot/grub2/menu.lst"
+	if [[ $EFI_BOOT == "yes" ]] && [[ -f $DIST_UEFI_DIR/menu.lst ]]
+	then
+		textarea_open 120 24
+		cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "I can't find menu.lst in the expected places."
+		raw_close
+	fi
+
+fi
+
+item_title "item_grubdevmap"		"GRUB Device Map" "cat device.map"
 raw_open
-if [[ -f $MY_BOOT_DIR/menu.lst ]]
+if [[ -f $MY_BOOT_DIR/device.map ]]
 then
-	cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
+	cat $MY_BOOT_DIR/device.map >> $HTML 2>&1
 else
-	echo "$MY_BOOT_DIR/menu.lst is not present on this system." >> $HTML 2>&1
+	line "$MY_BOOT_DIR/device.map is not present on this system."
 fi
 raw_close
 
-item_title "item_elilocfg"		"ELILO Config File" "cat /boot/elilo.conf"
-textarea_open 80 24
-if [[ -f $MY_BOOT_DIR/elilo.conf ]]
+item_title "item_efibootmgr"		"EFI Boot Configuration" "efibootmgr"
+if [[ $EFI_BOOT == "yes" ]]
 then
-	cat $MY_BOOT_DIR/elilo.conf >> $HTML 2>&1
+
+	FILE_EXISTS="no"
+	check_for_program efibootmgr
+	if [[ $FILE_EXISTS == "yes" ]]
+	then
+		textarea_open 120 24
+		efibootmgr >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "efibootmgr is not present on this system." 
+		raw_close
+	fi
+
 else
-	echo "$MY_BOOT_DIR/elilo.conf is not present on this system." >> $HTML 2>&1
+	raw_open
+	line "This is not an EFI system - Skipping EFI Boot Configuration reporting."
+	raw_close
 fi
-textarea_close
+
+item_title "item_elilocfg"		"ELILO Config File" "cat elilo.conf"
+if [[ $EFI_BOOT == "yes" ]]
+then
+	if [[ -f $MY_BOOT_DIR/elilo.conf ]]
+	then
+		textarea_open 120 24
+		cat $MY_BOOT_DIR/elilo.conf >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "$MY_BOOT_DIR/elilo.conf is not present on this system."
+		raw_close
+	fi
+
+	item_title "item_elilolist"		"ELILO List Config File" "cat elilo.list"
+	if [[ -f $MY_BOOT_DIR/elilo.list ]]
+	then
+		textarea_open 120 24
+		cat $MY_BOOT_DIR/elilo.list >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "$MY_BOOT_DIR/elilo.conf is not present on this system."
+		raw_close
+	fi
+
+else
+	raw_open
+	line "This is not an EFI system - Skipping ELILO reporting." 
+	raw_close
+fi
 
 ###########################################################
 # modules files
@@ -2375,10 +2631,10 @@ lsmod >> $HTML 2>&1
 raw_close
 
 item_title "item_modinfo"	"Kernel Module Info" "modinfo"
-textarea_open 80 24
+textarea_open 120 24
 for EACHMOD in $(lsmod | grep -v Module | awk -F " " '{print $1}')
 do
-	echo >> $HTML 2>&1
+	line ""
 	modinfo $EACHMOD >> $HTML 2>&1
 done
 textarea_close
@@ -2405,9 +2661,9 @@ item_title "item_udevrules"	"udev rules" "cat /etc/udev/rules.d/*"
 raw_open
 for EACHFILE in /etc/udev/rules.d/*
 do
-	echo "------------------------" >> $HTML 2>&1
-	echo "$EACHFILE" >> $HTML 2>&1
-	echo "------------------------" >> $HTML 2>&1
+	line "------------------------"
+	line "$EACHFILE"
+	line "------------------------"
 	cat $EACHFILE >> $HTML 2>&1
 done
 raw_close
@@ -2439,7 +2695,7 @@ then
 	raw_open
 	if [[ $MY_FAMILY == "redhat" ]] && [[ $DIST_RELEASE == "5" ]]
 	then
-		echo "virsh nodecpustats is not available with this distribution and release" >> $HTML 2>&1
+		line "virsh nodecpustats is not available with this distribution and release"
 	else
 		virsh nodecpustats >> $HTML 2>&1
 	fi
@@ -2449,7 +2705,7 @@ then
 	raw_open
 	if [[ $MY_FAMILY == "redhat" ]] && [[ $DIST_RELEASE == "5" ]]
 	then
-		echo "virsh nodememstats is not available with this distribution and release" >> $HTML 2>&1
+		line "virsh nodememstats is not available with this distribution and release"
 	else
 		virsh nodememstats >> $HTML 2>&1 
 	fi
@@ -2461,7 +2717,7 @@ then
 	raw_close
 
 	item_title "item_virshnodedevxml"	"Virtualization nodes devices xml" "virsh nodedev-dumpxml"
-	textarea_open 80 24
+	textarea_open 120 24
 	for EACHDEV	in `virsh nodedev-list`
 	do	
 		virsh nodedev-dumpxml $EACHDEV >> $HTML 2>&1
@@ -2485,7 +2741,7 @@ then
 	fi
 	raw_close
 else
-	echo "virsh is not installed in this environment." >> $HTML 2>&1
+	line "virsh is not installed in this environment."
 fi
 
 ###########################################################
@@ -2560,7 +2816,7 @@ if [[ $MY_XDISPLAY != "skip" ]]
 then
 	xrandr $MY_XDISPLAY >> $HTML 2>&1 
 else
-	echo "No X Display is available for reporting." >> $HTML 2>&1
+	line "No X Display is available for reporting."
 fi
 raw_close
 
@@ -2571,7 +2827,7 @@ if [[ $MY_XDISPLAY != "skip" ]]
 then
 	xdpyinfo $MY_DISPLAY >> $HTML 2>&1 
 else
-	echo "No X Display is available for reporting." >> $HTML 2>&1
+	line "No X Display is available for reporting."
 fi
 textarea_close
 
@@ -2582,7 +2838,7 @@ if [[ $MY_XDISPLAY != "skip" ]]
 then
 	xvinfo $MY_XDISPLAY >> $HTML 2>&1 
 else
-	echo "No X Display is available for reporting." >> $HTML 2>&1
+	line "No X Display is available for reporting."
 fi
 textarea_close
 
@@ -2593,7 +2849,7 @@ if [[ $MY_XDISPLAY != "skip" ]]
 then
 	glxinfo $MY_XDISPLAY >> $HTML 2>&1
 else
-	echo "No X Display is available for reporting." >> $HTML 2>&1
+	line "No X Display is available for reporting."
 fi
 textarea_close
 
