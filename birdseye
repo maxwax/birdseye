@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0627.02"
+VERSION="2013.0628.01"
 
 ###########################################################
 #
@@ -19,9 +19,12 @@ VERSION="2013.0627.02"
 
 # TODO: include re-written nic-info functionality internally
 # TODO: installed kernels on dpkg, zypper?
+# TODO----> Run check_for_file once at atop of program, set var, avoid looping
 
-# 2013.0627.02
-# Housekeeping: Removing commented out code to clean things up.
+# 2013.0628.01
+# Adding Xen Configuration section
+# QUIRK: Early versions of virsh don't have the --reason feature
+# Removing X-Windows feature to use another X server for info. Feature dropped
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -317,7 +320,6 @@ function usage {
 	echo
 	echo "-o --oob      Specify a FQDN for this system's out-of-band management NIC"
 	echo "-f --fqdn     Specify a FQDN for this system's primary NIC"
-#	echo "-x --xdisplay Specify an X windows display server to use"
 	echo
 	echo "-c --css      Use an external CSS style file's contents '/home/user/style.css'"
 	echo
@@ -456,11 +458,6 @@ do
 			shift
 			DEF_CSS_FILE=$1;;
 
-# Nice idea, but we can't attach to another X display.. yet?
-#		-x | --xdisplay )
-#			shift
-#			DEF_XDISPLAY=$1;;
-
 		-h | --help )
 		usage
 		exit 1;;
@@ -483,10 +480,6 @@ done
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Values after parameter processing:"
-	echo "PUBLIC_REPORT $PUBLIC_REPORT"
-	echo "PROMPT_USER $PROMPT_USER"
-	echo "DEF_OUTPUT $DEF_OUTPUT"
-	echo "DEF_CSS_FILE $DEF_CSS_FILE"
 	echo
 	echo "DEF_TAG $DEF_TAG"
 	echo "DEF_NAME $DEF_NAME"
@@ -494,9 +487,14 @@ then
 	echo "DEF_GROUP $DEF_GROUP"
 	echo "DEF_ISSUE $DEF_ISSUE"
 	echo "DEF_CFG_NOTES $DEF_CFG_NOTES"
-	echo
 	echo "DEF_FQDN $DEF_FQDN"
 	echo "DEF_OOB $DEF_OOB"
+	echo
+	echo "PUBLIC_REPORT $PUBLIC_REPORT"
+	echo "PROMPT_USER $PROMPT_USER"
+	echo "DEF_OUTPUT $DEF_OUTPUT"
+	echo "DEF_CSS_FILE $DEF_CSS_FILE"
+	echo
 fi
 
 ###########################################################
@@ -694,13 +692,13 @@ fi
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Values after interactive prompting:"
+	echo
 	echo "MY_TAG $MY_TAG"
 	echo "MY_NAME $MY_NAME"
 	echo "MY_EMAIL $MY_EMAIL"
 	echo "MY_GROUP $MY_GROUP"
 	echo "MY_ISSUE $MY_ISSUE"
 	echo "MY_CFG_NOTES $MY_CFG_NOTES"
-	echo
 	echo "MY_FQDN $MY_FQDN"
 	echo "MY_OOB $MY_OOB"
 	echo
@@ -721,6 +719,7 @@ FILENAME_DATA="birdseye"
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Output filename processing:"
+	echo
 	echo "FILENAME_HOST  $FILENAME_HOST"
 	echo "FILENAME_TAG   $FILENAME_TAG"
 	echo "FILENAME_YEAR  $FILENAME_YEAR"
@@ -769,9 +768,11 @@ then
 	# be important existing data that can't be recreated
 	if [[ $OUTPUT_FORCE == "no" ]]
 	then
+		echo
 		echo "Directory $OUTPUT_DIR exists. Please remove or use --force"
 		exit
 	else
+		echo
 		echo "Directory $OUTPUT_DIR exists, using --force to replace it."
 		# I'm paranoid about using 'rm -f' with a variable (especially as 
 		# root) So we'll keep the existing directory and remove only the
@@ -788,7 +789,7 @@ else # Our output directory does NOT exist
 	# Did we succeed?
 	if [ $? != 0 ]
 	then
-		echo "Can't make $OUTPUT_DIR"
+		echo "Error: I can't create directory $OUTPUT_DIR"
 		exit
 	fi
 fi
@@ -798,7 +799,7 @@ HTML="$OUTPUT_DIR/$FILENAME_DATA.html"
 
 if [[ $DEBUG == "yes" ]]
 then
-	echo "OUTPUT_DIR $OUTPUT_DIR"
+	echo "Construct Output: OUTPUT_DIR $OUTPUT_DIR"
 fi
 
 # These additional ASCII files contain raw output and many users
@@ -879,6 +880,10 @@ done
 ###########################################################
 
 QUIRK_LSCPU="null"
+QUIRK_VIRSH_DOMSTATE="null"
+QUIRK_VIRSH_DESC="null"
+QUIRK_DMESG_PRE_TIMESTAMP="null"
+QUIRK_DMESG_NOTIME_OPTION="null"
 
 ###########################################################
 #
@@ -953,6 +958,9 @@ then
 	then
 		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
+		QUIRK_VIRSH_DOMSTATE="no-reason"
+		QUIRK_VIRSH_DESC="no-desc"
+		QUIRK_DMESG_NO_TIMESTAMP="null"
 	elif [ `cat /etc/oracle-release | grep "release 6." | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=6
@@ -970,6 +978,9 @@ then
 	then
 		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
+		QUIRK_VIRSH_DOMSTATE="no-reason"
+		QUIRK_VIRSH_DESC="no-desc"
+		QUIRK_DMESG_NO_TIMESTAMP="null"
 	elif [ `cat /etc/centos-release | grep "release 6." | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=6
@@ -992,6 +1003,9 @@ then
 	then
 		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
+		QUIRK_VIRSH_DOMSTATE="no-reason"
+		QUIRK_VIRSH_DESC="no-desc"
+		QUIRK_DMESG_NO_TIMESTAMP="null"
 	elif [ `cat /etc/redhat-release | grep "release 6." | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE=6
@@ -1001,6 +1015,16 @@ then
 		DIST_RELEASE=7
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.conf"
+	fi
+
+
+	DIST_RELEASE_VERSION=`lsb_release -r`
+	DIST_RELEASE_VERSION=${DIST_RELEASE_VERSION#*:}
+	DIST_RELEASE_VERSION=`echo $DIST_RELEASE_VERSION | sed 's/ *$//'`
+
+	if [[ $DEBUG == "yes" ]]
+	then
+		echo "DIST_RELEASE_VERSION |${DIST_RELEASE_VERSION}|"
 	fi
 
 elif [ -f /etc/SuSE-release ]
@@ -1013,6 +1037,7 @@ then
 	if [ `cat /etc/SuSE-release | grep "Server 11" | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE="11"
+		QUIRK_DMESG_NOTIME_OPTION="no"
 	elif [ `cat /etc/SuSE-release | grep "Server 12" | wc -l` -gt 0 ]
 	then
 		DIST_RELEASE="12"
@@ -1077,12 +1102,57 @@ fi
 
 ###########################################################
 #
-# Debuggin: Report Distribution and Version Results
+# Virtualization Host Discovery
+#
+###########################################################
+
+# default to no
+XEN_HOST="no"
+
+# Check for xen management 'xm' command (RHEL 5.x, SLES)
+FILE_EXISTS="no"
+check_for_program xm
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	if [[ `xm uptime | grep Domain-0 | wc -l ` -eq 1 ]]
+	then
+		XEN_HOST="yes"
+	else
+		XEN_HOST="no"
+	fi
+else
+
+	# Check for xen management 'xe' command (Citrix XenServer)
+	FILE_EXISTS="no"
+	check_for_program xe
+	if [[ $FILE_EXISTS == "yes" ]]
+	then
+		if [[ `xe uptime | grep Domain-0 | wc -l ` -eq 1 ]]
+		then
+			XEN_HOST="yes"
+		else
+			XEN_HOST="no"
+		fi
+	fi
+fi
+
+if [[ $DEBUG == "yes" ]]
+then
+	echo
+	echo "XEN Identification: XEN_HOST $XEN_HOST"
+fi
+
+###########################################################
+#
+# Debugging: Report Distribution and Version Results
 #
 ###########################################################
 if [[ $DEBUG == "yes" ]]
 then
 
+	echo
+	echo "DIST_ Variables just before report production"
+	echo
 	echo "DIST_NAME $DIST_NAME"
 	echo "DIST_RELEASE $DIST_RELEASE"
 	echo "DIST_RELEASE_MINOR $DIST_RELEASE_MINOR"
@@ -1091,7 +1161,11 @@ then
 	echo "DIST_GRUB_CONF $DIST_GRUB_CONF"
 	echo "DIST_BOOT_CFG $DIST_BOOT_CFG"
 	echo
+	echo "QUIRK Variables just before report production"
+	echo
 	echo "QUIRK_LSCPU $QUIRK_LSCPU"
+	echo "QUIRK_VIRSH_DOMSTATE $QUIRK_VIRSH_DOMSTATE"
+	echo
 
 fi
 
@@ -1479,6 +1553,7 @@ paragraph "Virtualization"
 
 # Less widely used configuration/resources
 toc_master "#toc_virt" "Virtualization"
+toc_master "#toc_xen" "Xen Virtualization"
 toc_master "#toc_vms" "Virtual Machines"
 
 line "</div>"
@@ -1525,6 +1600,7 @@ unordered_list_open
 list "item_kernelsinstalled"	"Kernels Installed" "rpm -qa | grep kernel-"
 list "item_kerneltaint"				"Kernel Taint Value" "cat /proc/sys/kernel/tainted"
 list "item_sysctl"						"System Control Parameters" "sysctl"
+list "item_systemmap"					"System Map" "cat /boot/System.map.`uname -r`"
 unordered_list_close
 
 toc_section "toc_bootcfg"			"Boot Configuration" "#section_bootcfg"
@@ -1689,6 +1765,9 @@ list "item_sutlhbas"					"Host Bus Adapter information" "sutl hbas"
 list "item_lsblk"							"Block Storage Devices" "lsblk"
 list "item_lsscsi"						"SCSI Information" "lsscsi"
 list "item_procscsi"					"SCSI Information via proc" "cat /proc/scsi/scsi"
+list "item_qla2xxx"						"Fibre Channel Storage: QLogic (qla2xxx)" "cat /proc/scsi/qla2xxx"
+list "item_lpfc"							"Fibre Channel Storage: Emulex Lightpath (qla2xxx)" "cat /proc/scsi/lpfc"
+list "item_qla2xxx"						"Fibre Channel Storage: Brocade (bfa)" "cat /proc/scsi/bfa"
 
 unordered_list_close
 
@@ -1723,6 +1802,12 @@ list "item_virsh_vol_info"		"Virtualization Storage Volume Info" "virsh vol-info
 list "item_vm_details"				"Virtual Machine Details" "--"
 unordered_list_close
 
+toc_section "toc_xen"					"Xen Virtualization" "#section_xen"
+
+unordered_list_open
+list "item_xenconfig"					"Xen Configuration" "cat /etc/xen/xend-config.sxp"
+unordered_list_close
+
 line "</div>"
 
 line "<hr>"
@@ -1745,6 +1830,11 @@ raw_close
 item_title "item_date"		"System date/time" "date"
 raw_open
 date >> $HTML 2>&1
+raw_close
+
+item_title "item_hwclock"		"Hardware Clock System date/time" "hwclock"
+raw_open
+hwclock >> $HTML 2>&1
 raw_close
 
 item_title "item_uname"		"System identification" "uname -a"
@@ -1775,27 +1865,26 @@ raw_close
 
 section "section_dmesg" "Boot messages"
 
-# SLES 11 SP2/SP3 does not have a dmesg which supports --notime
-# If we don't have --notime this will report error 1, if we do error 0
-if [ `dmesg --notime > /dev/null 2>&1; echo $?` == 0 ]
-then
-	# We have "--notime" option, use it.
-	DMESG_NOTIME="yes"
-else
-	# We don't have "--notime" option, skip this, but leave the placeholder
-	DMESG_NOTIME="no"
-fi
-
 item_title "item_dmesg_notime"		"Linux boot messages without timestamps" "dmesg --notime"
 raw_open
-if [ $DMESG_NOTIME == "yes" ]
+if [[ $QUIRK_DMESG_PRE_TIMESTAMP == "yes" ]]
 then
-	dmesg --notime >> $HTML 2>&1
-	dmesg --notime >> $FILE_DMESG_NOTIME
+	line "The dmesg command in this version of Linux does not support timestamps."
 else
-	# quirk: SLES 11 SP3 - no atime option, use cut to remove the time
-	dmesg | cut -c15-254 >> $HTML 2>&1
-	dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
+
+	# This version of Linux does support timestamps, strip them with --notime
+	# or manually using cut
+
+	# If this quirk is not set to no, then use the --notime option
+	if [[ $QUIRK_DMESG_NOTIME_OPTION != "null" ]]
+	then
+		dmesg --notime >> $HTML 2>&1
+		dmesg --notime >> $FILE_QUIRK_DMESG_NOTIME_OPTION
+	else
+		# quirk: SLES 11 SP3 - no atime option, use cut to remove the time
+		dmesg | cut -c15-254 >> $HTML 2>&1
+		dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
+	fi
 fi
 raw_close
 
@@ -1862,13 +1951,39 @@ raw_open
 cat /proc/sys/kernel/tainted >> $HTML 2>&1
 raw_close
 
-section "section_sysctl" "System Control Parameters"
+item_title "item_sysrq"	"Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
+
+SYSRQ_ENABLE=`cat /proc/sys/kernel/sysrq`
+raw_open
+if [[ $SYSRQ_ENABLE == "0" ]]
+then
+	line "The Magic SysRq feature is not enabled."
+elif [[ $SYSRQ_ENABLE == "0" ]]
+then
+	line "The Magic SysRq feature is enabled."
+else
+	line "/proc/sys/kernel/sysrq reports $SYSRQ_ENABLE"
+fi
+raw_close
 
 item_title "item_sysctl"	"System Control Parameters" "sysctl"
 
 textarea_open 120 24
 sysctl -a >> $HTML 2>&1
 textarea_close
+
+item_title "item_systemmap"	"System Map" "cat /boot/System.map.`uname -r`"
+
+if [[ -f /boot/System.map-`uname -r` ]]
+then
+	textarea_open 120 24
+	cat /boot/System.map-`uname -r`-a >> $HTML 2>&1
+	textarea_close
+else
+	raw_open
+	line "I cannot find a System.map file for kernel " `uname -r` " in /boot."
+	raw_close
+fi
 
 #############=============-----------------................
 #
@@ -1896,7 +2011,7 @@ then
 	textarea_close
 else
 	raw_open
-	echo "There is no /boot/efi directory on this system."
+	line "There is no /boot/efi directory on this system."
 	raw_close
 fi
 
@@ -1912,14 +2027,23 @@ then
 
 	#	Find out what kernel we booted: remove 'BOOT_IMAGE=dev0000:\"
 	MY_CMDLINE=`cat /proc/cmdline`
+
 	if [[ $DEBUG == "yes" ]]
 	then
-		echo "RAW $MY_CMDLINE"
+		echo "EFI Processing: MY_CMDLINE $MY_CMDLINE"
 		echo
 	fi
 
+	# EFI systems in native EFI boot manager mode provides us
+	# with a sophisticated path to efi boot images via /proc/cmdline
 	if [[ $MY_CMDLINE = *:\\efi* ]]
 	then
+
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "EFI Processing: We see a native EFI /proc/cmdline"
+			echo
+		fi
 
 		# Real system example
 		# BOOT_IMAGE=dev000:\efi\SuSE\vmlinuz-3.0.76-0.11-default root=/dev/disk/by-id/scsi-3600c0ff000db1c6597969f5101000000-part3  resume=/dev/disk/by-id/scsi-3600c0ff000db1c6597969f5101000000-part2 splash=silent crashkernel=256M-:128M showopts console=ttyS0,115200
@@ -1928,7 +2052,7 @@ then
 		MY_CMDLINE=${MY_CMDLINE#*:\\}
 		if [[ $DEBUG == "yes" ]]
 		then
-			echo "FRONT $MY_CMDLINE"
+			echo "EFI Processing: Remove Leading Info $MY_CMDLINE"
 			echo
 		fi
 
@@ -1936,7 +2060,7 @@ then
 		MY_CMDLINE=${MY_CMDLINE%% *}
 		if [[ $DEBUG == "yes" ]]
 		then
-			echo "REAR SPACE $MY_CMDLINE"
+			echo "EFI Processing: Remove Trailing Info $MY_CMDLINE"
 			echo
 		fi
 
@@ -1944,7 +2068,7 @@ then
 		MY_CMDLINE=${MY_CMDLINE%\\*}
 		if [[ $DEBUG == "yes" ]]
 		then
-			echo "REAR KERNEL $MY_CMDLINE"
+			echo "EFI Processing: Remove Kernel Name $MY_CMDLINE"
 			echo
 		fi
 
@@ -1952,14 +2076,14 @@ then
 		MY_BOOT_DIR="/boot/efi/${MY_CMDLINE}"
 		if [[ $DEBUG == "yes" ]]
 		then
-			echo "MY_BOOT_DIR $MY_BOOT_DIR"
+			echo "EFI Processing: MY_BOOT_DIR $MY_BOOT_DIR"
 		fi
 
 		# Change EFI DOS style backslashes to Linux style forward-slashes
 		MY_BOOT_DIR=${MY_BOOT_DIR//\\//}
 		if [[ $DEBUG == "yes" ]]
 		then
-			echo "MY_BOOT_DIR FORWARD SLASHES $MY_BOOT_DIR"
+			echo "EFI Processing: Change backslashes to slashes MY_BOOT_DIR $MY_BOOT_DIR"
 		fi
 
 	fi
@@ -1970,8 +2094,8 @@ fi
 
 if [[ $DEBUG == "yes" ]]
 then
-	echo "MY_BOOT_DIR FINAL $MY_BOOT_DIR"
-	echo "DIST_UEFI_DIR $DIST_UEFI_DIR"
+	echo "Boot Configuration: MY_BOOT_DIR FINAL $MY_BOOT_DIR"
+	echo "Boot Configuration: DIST_UEFI_DIR $DIST_UEFI_DIR"
 fi
 
 item_title "item_grubconf"		"GRUB Config File" "cat grub.cfg"
@@ -2143,7 +2267,7 @@ textarea_close
 
 #############=============-----------------................
 #
-# Networking Configuration
+# Network Configuration
 #
 #############=============-----------------................
 
@@ -2452,29 +2576,15 @@ else
 		# Empty out MY_XDISPLAY so clients just use the env $DISPLAY setting
 		MY_XDISPLAY=""
 	else
-
-		# We are running on an ssh session or something without X
-
-		# See if a single X display server is running as id :0
-		# and we'll use that for reporting.
-
-#		Oops, looks like we -- root -- can't use another display for info
-
-#		if [[ `ps a | grep "X :0" | grep -v grep | wc -l` -eq 1 ]]
-#		then
-#			MY_XDISPLAY="-display :0.0"
-#		else
-			MY_XDISPLAY="skip"
-#		fi
-
+		MY_XDISPLAY="skip"
 	fi
 fi
 
 if [[ $DEBUG = "yes" ]]
 then
-	echo "DISPLAY $DISPLAY"
-	echo "DEF_XDISPLAY $DEF_XDISPLAY"
-	echo "MY_XDISPLAY $MY_XDISPLAY"
+	echo "X-Windows: DISPLAY $DISPLAY"
+	echo "X-Windows: DEF_XDISPLAY $DEF_XDISPLAY"
+	echo "X-Windows: MY_XDISPLAY $MY_XDISPLAY"
 fi
 
 item_title "item_xrandr"	"RandR - X Resize, Rotate and Reflect Extension" "xrandr"
@@ -2780,6 +2890,11 @@ raw_open
 cat /proc/ioports >> $HTML 2>&1
 raw_close
 
+item_title "item_dma"		"Peripheral DMA" "cat /proc/dma"
+raw_open
+cat /proc/dma >> $HTML 2>&1
+raw_close
+
 item_title "item_devices" 		"Devices" "cat /proc/devices"
 raw_open
 cat /proc/devices >> $HTML 2>&1
@@ -2860,7 +2975,7 @@ helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DM
 #
 #############=============-----------------................
 
-section "section_network_devices" "Networking Devices"
+section "section_network_devices" "Network Devices"
 
 item_title "item_sutlnics"		"Network cards" "sutl nics"
 FILE_EXISTS="no"
@@ -2915,7 +3030,6 @@ else
 		# Report on each network device port discovered and placed in NIC_LIST
 		for EACHNIC in $NIC_LIST
 		do
-
 			# Do raw_open/raw_close for each NIC so each is presented individually
 			raw_open
 
@@ -2997,7 +3111,6 @@ else
 	line "lsscsi is not installed on this system."
 fi
 raw_close
-
 
 item_title "item_procscsi" "SCSI Information via proc" "cat /proc/scsi/scsi"
 raw_open
@@ -3182,7 +3295,6 @@ then
 		done
 		raw_close
 
-
 		item_title "item_vm_details" "Virtual Machine Details" "--"
 		for EACH_VM in `virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//'`
 		do
@@ -3190,22 +3302,34 @@ then
 			raw_open
 			# Determine the state of the VM: Running, Shut offf
 
+			QUIRK_VIRSH_DOMSTATE="no-reason"
+
 			# Acquire the state of the VM and a possible reason for its state
-			VM_STATE=`virsh domstate $EACH_VM --reason`
+			# If Quirk_virsh_domstate is set, we don't have the -reason feature
+			if [[ $QUIRK_VIRSH_DOMSTATE == "no-reason" ]]
+			then
+				VM_STATE=`virsh domstate $EACH_VM`
+			else
+				VM_STATE=`virsh domstate $EACH_VM --reason`
+			fi
 
 			# Report the name of the VM and its current state
 			line "<strong>Virtual Machine $EACH_VM is $VM_STATE</strong>"
 			line ""
 
 			# Try to acquire the description of this VM
-			VM_DESC=`virsh desc $EACH_VM`
-
-			# If the VM has something other than "No description" then report it.
-			if [[ ${VM_DESC:1:14} != "No description" ]]
+			if [[ QUIRK_VIRSH_DESC != "no-desc" ]]
 			then
-				# Report the VM description text
-				line "$VM_DESC"
-				line ""
+				VM_DESC=`virsh desc $EACH_VM`
+
+
+				# If the VM has something other than "No description" then report it.
+				if [[ ${VM_DESC:1:14} != "No description" ]]
+				then
+					# Report the VM description text
+					line "$VM_DESC"
+					line ""
+				fi
 			fi
 
 			# Report technical information on the VM like its ID, UUID, Memory, CPU
@@ -3234,6 +3358,28 @@ else
 	raw_open
 	line "Skipping Virtual Machines (--novirt)"
 	raw_close
+fi # If DEF_SHOW_VIRT is yes, show this section.
+
+#############=============-----------------................
+#
+# XEN Virtualization
+#
+#############=============-----------------................
+
+section "section_xen" "Xen Virtualization"
+
+if [[ $DEF_SHOW_VIRT == "yes" ]]
+then
+
+	item_title "item_xenconfig" "Xen Configuration" "cat /etc/xen/xend-config.sxp"
+
+else
+
+	echo "Skipping Xen Virtualization (--novirt)"
+	raw_open
+	line "Skipping Xen Virtualization (--novirt)"
+	raw_close
+
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
 #############=============-----------------................
