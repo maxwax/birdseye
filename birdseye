@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0627.01"
+VERSION="2013.0627.02"
 
 ###########################################################
 #
@@ -20,27 +20,8 @@ VERSION="2013.0627.01"
 # TODO: include re-written nic-info functionality internally
 # TODO: installed kernels on dpkg, zypper?
 
-# 2013.0627.01
-# + Quirk: Linuxmint has no lscpu -e
-# + lsblk should use -i to use ASCII characters for +---^ relationships
-# + Table of contents now has master and detail sections
-# + Table of contents master is now divided into environment, hardware, virt
-# + Working trap handling of CONTROL-C
-# 2013.0626.01
-# + Now outputs /var/log/messages and /var/log/syslog seperately 
-# + Now handling rpm, dpkg and zypper package config, repos and installed pkgs
-# + All textarea_open alls now to 120 chars wide.
-# + Use raw_open instead of textarea_open if we don't have much info to show.
-# + Made all prompts two line for consistency
-# + Added Network for general network info, old is Network_Devices
-# + Handles single CPU systems now
-# + Got hyperlink to OOB working.  Prepends http: to what user supplies for now
-
-# 2013.0625.01
-# + All commands outputting to HTML now redirect stderr to there as well.
-# + Adding boot/EFI configuration
-# + Adding kernel configuration
-# + Added styling to textareas - looks like programlisting raw areas now
+# 2013.0627.02
+# Housekeeping: Removing commented out code to clean things up.
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -3244,20 +3225,6 @@ then
 
 		done
 		
-#			for EACH_POOL in `virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//'`
-#			do
-#				line "<strong>Volumes in storage pool $EACH_POOL</strong>"
-#				line ""
-
-#				for EACH_VOL in `virsh vol-list $EACH_POOL | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//'`
-#				do
-#					line "<strong>Volume info for $EACH_VOL in storage pool $EACH_POOL</strong>"
-#					line ""
-#					virsh vol-info --pool $EACH_POOL $EACH_VOL >> $HTML 2>&1
-#				done
-#			done
-#		done
-
 	else
 		line "virsh is not installed in this environment."
 	fi
