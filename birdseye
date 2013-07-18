@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0628.01"
+VERSION="2013.0717.01"
 
 ###########################################################
 #
@@ -21,10 +21,10 @@ VERSION="2013.0628.01"
 # TODO: installed kernels on dpkg, zypper?
 # TODO----> Run check_for_file once at atop of program, set var, avoid looping
 
-# 2013.0628.01
-# Adding Xen Configuration section
-# QUIRK: Early versions of virsh don't have the --reason feature
-# Removing X-Windows feature to use another X server for info. Feature dropped
+# 2013.0717.01
+# Bug: s/r error created "FILE_QUIRK_DMESG_NOTIME_OPTION" -> FILE_DMESG_NOTIME
+# Began work on serial reporting
+
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -1534,6 +1534,7 @@ toc_master "#toc_network_cfg"		"Network Configuration"
 toc_master "#toc_storage_cfg"		"Storage Configuration"
 toc_master "#toc_packages"			"Repositories and Software Packages"
 toc_master "#toc_udev"					"Udev configuration"
+toc_master "#toc_serial"				"Serial device configuration"
 toc_master "#toc_xwindows"			"X-Windows"
 
 paragraph "Hardware Resources"
@@ -1679,6 +1680,13 @@ toc_section "toc_udev"				"Udev configuration" "#section_udev"
 unordered_list_open
 list "item_udevconf"					"udev configuration" "cat /etc/udev.conf"
 list "item_udevrules"					"udev rules" "cat /etc/udev/rules.d/*"
+unordered_list_close
+
+toc_section "toc_serial"			"Serial device configuration" "#section_serial"
+
+unordered_list_open
+list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
+#list "item_serial"						"udev rules" "cat /etc/udev/rules.d/*"
 unordered_list_close
 
 toc_section "toc_xwindows"		"X-Windows" "#section_xwindows"
@@ -1879,7 +1887,7 @@ else
 	if [[ $QUIRK_DMESG_NOTIME_OPTION != "null" ]]
 	then
 		dmesg --notime >> $HTML 2>&1
-		dmesg --notime >> $FILE_QUIRK_DMESG_NOTIME_OPTION
+		dmesg --notime >> $FILE_DMESG_NOTIME
 	else
 		# quirk: SLES 11 SP3 - no atime option, use cut to remove the time
 		dmesg | cut -c15-254 >> $HTML 2>&1
@@ -2523,6 +2531,9 @@ fi
 # udev Configuration
 #
 #############=============-----------------................
+toc_section "toc_serial"			"Serial device configuration" "#section_serial"
+
+unordered_list_open
 
 section "section_udev" "udev configuration"
 
@@ -2546,6 +2557,36 @@ do
 	line "------------------------"
 	cat $EACHFILE >> $HTML 2>&1
 done
+raw_close
+
+#############=============-----------------................
+#
+# Serial Device Configuration
+#
+#############=============-----------------................
+toc_section "toc_serial"			"Serial device configuration" "#section_serial"
+
+unordered_list_open
+
+section "section_serial" "Serial device configuration"
+
+item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep ttyS"
+raw_open
+	# standard serial ports - try to ignore non-serial console tty devices
+	dmesg | grep "tty" | grep -v "tty[0123456789]" > $HTML 2>&1
+
+	# what else should we add here?
+raw_close
+
+item_title "item_setserial"	"Serial devices" "setserial -g ttyS[0123456789]"
+raw_open
+FILE_EXISTS="no"
+check_for_program setserial
+if [[ $FILE_EXISTS == "yes" ]]
+	setserial -g ttyS[0123456789] >> $HTML 2>&1
+else
+	echo "setserial is not installed." > $HTML 2>&1
+fi
 raw_close
 
 #############=============-----------------................
