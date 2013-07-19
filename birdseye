@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0717.01"
+VERSION="2013.0718.01"
 
 ###########################################################
 #
@@ -21,9 +21,11 @@ VERSION="2013.0717.01"
 # TODO: installed kernels on dpkg, zypper?
 # TODO----> Run check_for_file once at atop of program, set var, avoid looping
 
-# 2013.0717.01
-# Bug: s/r error created "FILE_QUIRK_DMESG_NOTIME_OPTION" -> FILE_DMESG_NOTIME
-# Began work on serial reporting
+# 2013.0718.01
+# Cleaning up serial work, added stty
+# Handles large /var/log/messages files; limit 25k lines
+
+
 
 
 # Bash variable UID returns the user id # of the user
@@ -1685,8 +1687,8 @@ unordered_list_close
 toc_section "toc_serial"			"Serial device configuration" "#section_serial"
 
 unordered_list_open
+list "item_serialdmesg"				"Serial devices in dmesg logs" "dmesg | grep tty<serial>"
 list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
-#list "item_serial"						"udev rules" "cat /etc/udev/rules.d/*"
 unordered_list_close
 
 toc_section "toc_xwindows"		"X-Windows" "#section_xwindows"
@@ -1911,8 +1913,26 @@ item_title "item_messages"	"Linux system log" "cat /var/log/messages | cat /var/
 # need to edit for debian, newer fedora, etc
 if [ -f /var/log/messages ]
 then
+	declare -i MSG_LINES
+
+	# Check the size of /var/log/messages
+	MSG_LINES=`wc -l /var/log/messages | awk '{FS=" ";print $1}'`
+
 	textarea_open 120 24
-	cat /var/log/messages >> $HTML 2>&1
+
+	# A large messages file is usually full of unwanted crap like
+	# sound card and GUI errors.  So lets show only a reasonable amount
+	# if the file is very large.
+	if [[ $MSG_LINES -gt 25000 ]]
+	then
+		# file is longer than 25000 lines
+		echo "/var/log/messages is $MSG_LINES long.  This is the last 25000 lines" >> $HTML 2>&1
+		tail -n 25000 /var/log/messages >> $HTML 2>&1
+	else
+		# file is shorter than 25000 lines
+		cat /var/log/messages >> $HTML 2>&1
+	fi
+
 	textarea_close
 
 	echo "/var/log/messages:" >> $FILE_MSGS
@@ -2573,21 +2593,54 @@ section "section_serial" "Serial device configuration"
 item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep ttyS"
 raw_open
 	# standard serial ports - try to ignore non-serial console tty devices
-	dmesg | grep "tty" | grep -v "tty[0123456789]" > $HTML 2>&1
+	dmesg | grep "tty" | grep -v "tty[0123456789]" >> $HTML 2>&1
 
 	# what else should we add here?
 raw_close
 
 item_title "item_setserial"	"Serial devices" "setserial -g ttyS[0123456789]"
-raw_open
 FILE_EXISTS="no"
 check_for_program setserial
-if [[ $FILE_EXISTS == "yes" ]]
-	setserial -g ttyS[0123456789] >> $HTML 2>&1
-else
-	echo "setserial is not installed." > $HTML 2>&1
-fi
-raw_close
+
+for EACH_SERIAL_PREFIX in S USB
+do
+	for EACH_SERIAL_NUMBER in {0..9}
+	do
+
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "Serial Scanning /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+		fi
+		
+
+		if [[ -c /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER} ]]
+		then
+
+			raw_open
+
+			if [[ $DEBUG == "yes" ]]
+			then
+				echo "Device present."
+			fi
+	
+			if [[ $FILE_EXISTS == "yes" ]]
+			then
+
+				line "setserial /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+
+				setserial -a /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER} >> $HTML 2>&1
+				line
+				line "stty /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+				stty -a < /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER} >> $HTML 2>&1
+			else
+				echo "setserial is not installed." >> $HTML 2>&1
+			fi
+			raw_close
+
+		fi
+
+	done
+done
 
 #############=============-----------------................
 #
