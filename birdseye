@@ -39,10 +39,6 @@ fi
 
 # FQDN on each NIC's IP address. Similar to 'hostname --all-fqdns'
 
-# dmidecode missing on Jason's systems.. Check for it
-
-# Report on chkconfig for RHEL/CentOS
-# Report on systemctl for Fedora / RHEL 7
 # Report on zypper for SUSE
 # Report on dpkg for Debian
 
@@ -1190,6 +1186,20 @@ then
 	echo
 	echo "XEN Identification: XEN_HOST $XEN_HOST"
 fi
+
+###########################################################
+#
+# Check for Programs Once
+#
+###########################################################
+
+FILE_EXISTS="no"
+check_for_program dmidecode
+AVAILABLE_DMIDECODE=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lshw
+AVAILABLE_LSHW=$FILE_EXISTS
 
 ###########################################################
 #
@@ -2518,7 +2528,7 @@ raw_close
 #############=============-----------------................
 
 section "section_services" "Services Configuration"
-item_title "item_chkconfig"		"Chkconfig" "chkconfig"
+item_title "item_chkconfig"	"Chkconfig" "chkconfig"
 FILE_EXISTS="no"
 check_for_program chkconfig
 if [[ $FILE_EXISTS == "yes" ]]
@@ -2549,8 +2559,8 @@ section "section_packages" "Repositories and Software Packages"
 if [[ $DIST_PACKAGES = "rpm" ]]
 then
 
-		###########################################################
-		# RPM/YUM Repositories
+	###########################################################
+	# RPM/YUM Repositories
 
 	item_title "item_rpm_config"		"Software Repositories (rpm/yum)" "cat /etc/yum.conf"
 
@@ -2885,12 +2895,22 @@ section "section_hw_summary" "Hardware Summary"
 #item_title "item_product"		"Product Name (dmidecode -s system-product-name)"
 item_title "item_product"		"Product Name" "dmidecode -s system-product-name"
 raw_open
-dmidecode -s system-product-name >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s system-product-name >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_processor_line"	"Processor Summary" "dmidecode -s processor-version"
 raw_open
-dmidecode -s processor-version | head -1 >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s processor-version | head -1 >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_memsum"			"Memory" "/proc/meminfo" 
@@ -2900,17 +2920,32 @@ raw_close
 
 item_title "item_bios_vendor"	"BIOS Vendor" "dmidecode -s bios-vendor"
 raw_open
-dmidecode -s bios-vendor >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s bios-vendor >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_bios_vers"		"BIOS Version" "dmidecode -s bios-version"
 raw_open
-dmidecode -s bios-version  >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s bios-version  >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_bios_date"		"BIOS Release Date" "dmidecode -s bios-release-date"
 raw_open
-dmidecode -s bios-release-date  >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s bios-release-date  >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_lsinitrd" 		"initrd information" "lsinitrd"
@@ -2959,13 +2994,23 @@ section "section_processor" "Processor Information"
 item_title "item_proc_family"	"Processor Family" "dmidecode -s processor-family"
 # first line only please
 raw_open
-dmidecode -s processor-family | head -1 >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s processor-family | head -1 >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_proc_vers"		"Processor Version" "dmidecode -s processor-version"
 # first line only please
 raw_open
-dmidecode -s processor-version | head -1 >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode -s processor-version | head -1 >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 raw_close
 
 item_title "item_proc_count"		"Processor Count" ""
@@ -3220,12 +3265,22 @@ section "section_dmidecode" "System Board Information"
 item_title "item_dmidecode" "System Board information" "dmidecode"
 
 textarea_open 120 24
-dmidecode >> $HTML 2>&1
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode >> $HTML 2>&1
+else
+	line "'dmidecode' is not available on this system."
+fi
 textarea_close 
 
-dmidecode >> $FILE_DMI
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+then
+	dmidecode >> $FILE_DMI
+	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
+else
+	line "'dmidecode' is not available on this system." >> $FILE_DMI
+fi
 
-helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
 
 #############=============-----------------................
 #
