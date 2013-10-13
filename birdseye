@@ -1581,6 +1581,7 @@ toc_master "#toc_bootcfg" 			"Boot Configuration"
 toc_master "#toc_modules"		 		"Kernel Modules"
 toc_master "#toc_network_cfg"		"Network Configuration"
 toc_master "#toc_storage_cfg"		"Storage Configuration"
+toc_master "#toc_services"			"Services Configuration"
 toc_master "#toc_packages"			"Repositories and Software Packages"
 toc_master "#toc_udev"					"Udev configuration"
 toc_master "#toc_serial"				"Serial device configuration"
@@ -1687,6 +1688,12 @@ list "item_hosts"							"Local Hosts" "cat /etc/hosts"
 list "item_iproute"						"Network routing table via ip route" "ip route"
 list "item_netstat"						"Network routing table via netstat" "netstat"
 list "item_firewall"					"Firewall rules" "iptables -L"
+unordered_list_close
+
+toc_section "toc_services"		"Services Configuration" "#section_services"
+unordered_list_open
+list "item_chkconfig"					"Chkconfig" "chkconfig"
+list "item_systemctl"					"Systemctl" "chkconfig"
 unordered_list_close
 
 toc_section "toc_storage_cfg"	"Storage Configuration" "#section_storage_cfg"
@@ -2503,6 +2510,33 @@ else
 	line "No physical volumes present per pvscan"
 fi
 raw_close
+
+#############=============-----------------................
+#
+# Services Configuration
+#
+#############=============-----------------................
+
+section "section_services" "Services Configuration"
+item_title "item_chkconfig"		"Chkconfig" "chkconfig"
+FILE_EXISTS="no"
+check_for_program chkconfig
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	textarea_open 120 24
+	chkconfig --list >> $HTML 2>&1
+	textarea_close	
+fi
+
+item_title "item_systemctl"		"Systemctl" "systemctl"
+FILE_EXISTS="no"
+check_for_program systemctl
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	textarea_open 120 24
+	systemctl >> $HTML 2>&1
+	textarea_close	
+fi
 
 #############=============-----------------................
 #
