@@ -34,10 +34,12 @@ fi
 # cat /sys/block/sdX/queue/scheduler
 
 # Add lshw such as lshw --class -network on nics
-# Fedora 19 doesn't have lsb_release?
 # RPM package
 # Debian Package
 # Man page
+
+# Check lsinitrd on Debian systems.. Mohan got a 'no such file' error
+# Add zip in addition to tar, Josh
 
 # Replace calls to 'sutl' with new code:
 # sutl cards
@@ -47,6 +49,8 @@ fi
 # Replace calls to 'nic-info' with new code
 
 # Add plugin variables before/after each section
+
+# Testing: Fedora 19/RHEL7 do not have lsb_release
 
 ###########################################################
 #
@@ -278,11 +282,11 @@ fi
 # In most cases, there is no config file, so these defaults are used.
 
 DEF_TAG=${BIRDSEYE_TAG:-"birdseye"}
-DEF_NAME=${BIRDSEYE_NAME:-"Unknown User"}
-DEF_EMAIL=${BIRDSEYE_EMAIL:-"Unknown Email Address"}
-DEF_GROUP=${BIRDSEYE_GROUP:-"Unknown Group"}
-DEF_ISSUE=${BIRDSEYE_ISSUE:-"No issue specified."}
-DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"No configuration notes."}
+DEF_NAME=${BIRDSEYE_NAME:-"Not specified"}
+DEF_EMAIL=${BIRDSEYE_EMAIL:-"Not specified"}
+DEF_GROUP=${BIRDSEYE_GROUP:-"Not specified"}
+DEF_ISSUE=${BIRDSEYE_ISSUE:-"Not specified"}
+DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"Not specified"}
 
 DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
 # Nice idea, but we can't attach to another X display.. yet?
@@ -536,7 +540,7 @@ else
 
 	####################
 	echo -e "Provide a short tag to include with this [$DEF_TAG] ?"
-	read -p ":" MY_TAG
+	read -p "->" MY_TAG
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_TAG=${MY_TAG:-"null"}
@@ -556,7 +560,7 @@ else
 
 	####################
 	echo -e "What's your name [$DEF_NAME] ?" 
-	read -p ":" MY_NAME
+	read -p "->" MY_NAME
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_NAME=${MY_NAME:-"null"}
@@ -576,7 +580,7 @@ else
 
 	####################
 	echo -e "What's your email address [$DEF_EMAIL] ?" 
-	read -p ":" MY_EMAIL
+	read -p "->" MY_EMAIL
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_EMAIL=${MY_EMAIL:-"null"}
@@ -595,8 +599,8 @@ else
 	fi
 
 	####################
-	echo -e "What group are you in (linuxqa,io,aps?) [$DEF_GROUP] ?"
-	read -p ":" MY_GROUP
+	echo -e "What group/company/org are you in ('devops') [$DEF_GROUP] ?"
+	read -p "->" MY_GROUP
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_GROUP=${MY_GROUP:-"null"}
@@ -614,7 +618,7 @@ else
 
 	####################
 	echo -e "A simple description for the issue being reported [$DEF_ISSUE] ?"
-	read -p ":" MY_ISSUE
+	read -p "->" MY_ISSUE
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_ISSUE="${MY_ISSUE:-"null"}"
@@ -634,7 +638,7 @@ else
 
 	####################
 	echo -e "Notes about the system configuration? [$DEF_CFG_NOTES]"
-	read -p ":" MY_CFG_NOTES
+	read -p "->" MY_CFG_NOTES
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_CFG_NOTES="${MY_CFG_NOTES:-"null"}"
@@ -652,7 +656,7 @@ else
 
 	####################
 	echo -e "What is the FQDN for this systems primary NIC? [$DEF_FQDN]"
-	read -p ":" MY_FQDN
+	read -p "->" MY_FQDN
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_FQDN="${MY_FQDN:-"null"}"
@@ -670,7 +674,7 @@ else
 
 	####################
 	echo -e "What is the FQDN for this systems out-of-band mgmt NIC? [$DEF_OOB]"
-	read -p ":" MY_OOB
+	read -p "->" MY_OOB
 
 	# Keep a valid, non-null user supplied value or set it to "null"
 	MY_OOB="${MY_OOB:-"null"}"
@@ -1034,7 +1038,6 @@ then
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.conf"
 	fi
-
 
 	DIST_RELEASE_VERSION=`lsb_release -r`
 	DIST_RELEASE_VERSION=${DIST_RELEASE_VERSION#*:}
@@ -1876,7 +1879,14 @@ raw_close
 
 item_title "item_lsb"			"Distribution, Release" "lsb_release"
 raw_open
-lsb_release -d >> $HTML 2>&1
+FILE_EXISTS="no"
+check_for_program lsb_release
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	lsb_release -d >> $HTML 2>&1
+else
+	line "'lsb_release' does not exist on this system."
+fi
 raw_close
 
 item_title "item_kernelvers"			"Kernel Version & GCC Compile Version" "cat /proc/version"
