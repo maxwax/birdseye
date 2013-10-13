@@ -25,6 +25,10 @@ fi
 #
 ###########################################################
 
+# GPL
+
+# UEFI variables 'uefivars -l' - need uefi system for this.
+
 # Shorten display on small output:
 # system map
 # virsh list --all
@@ -42,6 +46,13 @@ fi
 # Report on zypper for SUSE
 # Report on dpkg for Debian
 
+# Test on multiple systems
+# Sample Alternate CSS outputs
+# Cleanup CSS styles
+# Populate github site and figure out how to use
+# Features from sosreport
+# Features from snapshot
+
 # Report on IO scheduler in use. See arch linux ssd for instructions
 # cat /sys/block/sdX/queue/scheduler
 
@@ -55,7 +66,6 @@ fi
 # Man page
 
 # Check lsinitrd on Debian systems.. Mohan got a 'no such file' error
-# Add zip in addition to tar, Josh
 # Output files should have user security if made with sudo - Josh
 # Tell the user about the -quiet option when prompting them. - JasonF
 
@@ -209,7 +219,7 @@ function helpful_tip {
 
 function check_for_program {
 	# Use whereis to see if the file exists
-	CMD_WHEREIS=`whereis $1`
+	CMD_WHEREIS=$(whereis $1)
 
 	# Remove the name of the program and a colon from the whereis output
 	CMD_WHEREIS=${CMD_WHEREIS#"$1:"}
@@ -313,7 +323,7 @@ DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
 DEF_FQDN=${BIRDSEYE_FQDN:-"null"}
 if [[ $DEF_FQDN == "null" ]]
 then
-	DEF_FQDN=`hostname --fqdn`
+	DEF_FQDN=$(hostname --fqdn)
 fi
 DEF_OOB=${BIRDSEYE_OOB:-"null"}
 
@@ -770,19 +780,19 @@ fi
 # Append year ("YYYY" format) to filename?
 if [[ $FILENAME_YEAR == "yes" ]]
 then
-	FILENAME_DATA=$FILENAME_DATA.`date +%Y`
+	FILENAME_DATA=$FILENAME_DATA.$(date +%Y)
 fi
 
 # Append month-day ("MMDD" format) to filename?
 if [[ $FILENAME_MONTH == "yes" ]]
 then
-	FILENAME_DATA=$FILENAME_DATA.`date +%m%d`
+	FILENAME_DATA=$FILENAME_DATA.$(date +%m%d)
 fi
 
 # Append 24-hour time ("HHMM" format) to filename?
 if [[ $FILENAME_TIME == "yes" ]]
 then
-	FILENAME_DATA=$FILENAME_DATA.`date +%H%M`
+	FILENAME_DATA=$FILENAME_DATA.$(date +%H%M)
 fi
 
 # Append hostname to filename ?
@@ -969,18 +979,18 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Fedora"
 
-	if [ `cat /etc/fedora-release | grep "release 16" | wc -l` -gt 0 ]
+	if [ $(cat /etc/fedora-release | grep "release 16" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=16
-	elif [ `cat /etc/fedora-release | grep "release 17" | wc -l` -gt 0 ]
+	elif [ $(cat /etc/fedora-release | grep "release 17" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=17
-	elif [ `cat /etc/fedora-release | grep "release 18" | wc -l` -gt 0 ]
+	elif [ $(cat /etc/fedora-release | grep "release 18" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=18
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.cfg"
-	elif [ `cat /etc/fedora-release | grep "release 19" | wc -l` -gt 0 ]
+	elif [ $(cat /etc/fedora-release | grep "release 19" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=19
 		DIST_BOOT_CFG="/boot/grub2"
@@ -994,14 +1004,14 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Oracle"
 
-	if [ `cat /etc/oracle-release | grep "release 5." | wc -l` -gt 0 ]
+	if [ $(cat /etc/oracle-release | grep "release 5." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
 		QUIRK_DMESG_NO_TIMESTAMP="null"
-	elif [ `cat /etc/oracle-release | grep "release 6." | wc -l` -gt 0 ]
+	elif [ $(cat /etc/oracle-release | grep "release 6." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=6
 		DIST_GRUB_CONF="grub.conf"
@@ -1014,18 +1024,18 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Centos"
 
-	if [ `cat /etc/centos-release | grep "release 5." | wc -l` -gt 0 ]
+	if [ $(cat /etc/centos-release | grep "release 5." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
 		QUIRK_DMESG_NO_TIMESTAMP="null"
-	elif [ `cat /etc/centos-release | grep "release 6." | wc -l` -gt 0 ]
+	elif [ $(cat /etc/centos-release | grep "release 6." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=6
 		DIST_GRUB_CONF="grub.conf"
-	elif [ `cat /etc/centos-release | grep "release 7." | wc -l` -gt 0 ]
+	elif [ $(cat /etc/centos-release | grep "release 7." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=7
 		DIST_BOOT_CFG="/boot/grub2"
@@ -1039,27 +1049,27 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Redhat"
 
-	if [ `cat /etc/redhat-release | grep "release 5." | wc -l` -gt 0 ]
+	if [ $(cat /etc/redhat-release | grep "release 5." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
 		QUIRK_DMESG_NO_TIMESTAMP="null"
-	elif [ `cat /etc/redhat-release | grep "release 6." | wc -l` -gt 0 ]
+	elif [ $(cat /etc/redhat-release | grep "release 6." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=6
 		DIST_GRUB_CONF="grub.conf"
-	elif [ `cat /etc/redhat-release | grep "release 7." | wc -l` -gt 0 ]
+	elif [ $(cat /etc/redhat-release | grep "release 7." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=7
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.conf"
 	fi
 
-	DIST_RELEASE_VERSION=`lsb_release -r`
+	DIST_RELEASE_VERSION=$(lsb_release -r)
 	DIST_RELEASE_VERSION=${DIST_RELEASE_VERSION#*:}
-	DIST_RELEASE_VERSION=`echo $DIST_RELEASE_VERSION | sed 's/ *$//'`
+	DIST_RELEASE_VERSION=$(echo $DIST_RELEASE_VERSION | sed 's/ *$//')
 
 	if [[ $DEBUG == "yes" ]]
 	then
@@ -1073,19 +1083,19 @@ then
 	DIST_PACKAGES="zypper"
 	DIST_UEFI_DIR="/boot/efi/efi/SuSE"
 
-	if [ `cat /etc/SuSE-release | grep "Server 11" | wc -l` -gt 0 ]
+	if [ $(cat /etc/SuSE-release | grep "Server 11" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="11"
 		QUIRK_DMESG_NOTIME_OPTION="no"
-	elif [ `cat /etc/SuSE-release | grep "Server 12" | wc -l` -gt 0 ]
+	elif [ $(cat /etc/SuSE-release | grep "Server 12" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="12"
-	elif [ `cat /etc/SuSE-release | grep "Server 10" | wc -l` -gt 0 ]
+	elif [ $(cat /etc/SuSE-release | grep "Server 10" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="10"
 	fi
 
-elif [[ `lsb_release --id | grep "Ubuntu" | wc -l` -eq 1 ]]
+elif [[ $(lsb_release --id | grep "Ubuntu" | wc -l) -eq 1 ]]
 then
 
 	DIST_NAME="ubuntu"
@@ -1093,7 +1103,7 @@ then
 	DIST_PACKAGES="dpkg"
 	DIST_UEFI_DIR="/boot/efi/efi/Ubuntu"
 
-	MY_VERSION=`lsb_release -r | awk '{ FS = "\t" ; print $2 } '`
+	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
 	if [[ $MY_VERSION == "13.04" ]]
 	then
@@ -1115,13 +1125,13 @@ then
 		#DIST_GRUB_CONF="grub.cfg"
 	fi
 
-elif [ `lsb_release --id | grep "LinuxMint" | wc -l` -eq 1 ]
+elif [ $(lsb_release --id | grep "LinuxMint" | wc -l) -eq 1 ]
 then
 	DIST_NAME="linuxmint"
 	DIST_FAMILY="debian"
 	DIST_PACKAGES="dpkg"
 
-	MY_VERSION=`lsb_release -r | awk '{ FS = "\t" ; print $2 } '`
+	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
 	if [[ $MY_VERSION == "15" ]]
 	then
@@ -1153,7 +1163,7 @@ FILE_EXISTS="no"
 check_for_program xm
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	if [[ `xm uptime | grep Domain-0 | wc -l ` -eq 1 ]]
+	if [[ $(xm uptime | grep Domain-0 | wc -l ) -eq 1 ]]
 	then
 		XEN_HOST="yes"
 	else
@@ -1166,7 +1176,7 @@ else
 	check_for_program xe
 	if [[ $FILE_EXISTS == "yes" ]]
 	then
-		if [[ `xe uptime | grep Domain-0 | wc -l ` -eq 1 ]]
+		if [[ $(xe uptime | grep Domain-0 | wc -l ) -eq 1 ]]
 		then
 			XEN_HOST="yes"
 		else
@@ -1518,7 +1528,7 @@ line "<body>"
 
 line "<h1><a name=\"Top\"><a href=http://www.maxwellspangler.com/linux/birdseye/>Bird's Eye</a> System Inventory for $MY_HOST</a></h1>" 
 
-paragraph "Produced on `date "+%A, %B %d %Y at %H:%m"` by $MY_NAME ( $MY_EMAIL ) of $MY_GROUP"
+paragraph "Produced on $(date "+%A, %B %d %Y at %H:%m") by $MY_NAME ( $MY_EMAIL ) of $MY_GROUP"
 
 if [[ $MY_ISSUE != "null" ]]
 then
@@ -1640,7 +1650,7 @@ unordered_list_open
 list "item_kernelsinstalled"	"Kernels Installed" "rpm -qa | grep kernel-"
 list "item_kerneltaint"				"Kernel Taint Value" "cat /proc/sys/kernel/tainted"
 list "item_sysctl"						"System Control Parameters" "sysctl"
-list "item_systemmap"					"System Map" "cat /boot/System.map.`uname -r`"
+list "item_systemmap"					"System Map" "cat /boot/System.map.$(uname -r)"
 unordered_list_close
 
 toc_section "toc_bootcfg"			"Boot Configuration" "#section_bootcfg"
@@ -1682,6 +1692,7 @@ unordered_list_close
 toc_section "toc_storage_cfg"	"Storage Configuration" "#section_storage_cfg"
 
 unordered_list_open
+list "item_fsblk"							"Filesystem Block Devices" "lsblk -fi"
 list "item_fstab"							"Filesystem mount table" "fstab"
 list "item_mount"							"Mounted filesystems" "mount"
 list "item_pvscan"						"LVM2: Physical Volumes" "pvscan"
@@ -1961,7 +1972,7 @@ then
 	declare -i MSG_LINES
 
 	# Check the size of /var/log/messages
-	MSG_LINES=`wc -l /var/log/messages | awk '{FS=" ";print $1}'`
+	MSG_LINES=$(wc -l /var/log/messages | awk '{FS=" ";print $1}')
 
 	textarea_open 120 24
 
@@ -2026,7 +2037,7 @@ raw_close
 
 item_title "item_sysrq"	"Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
 
-SYSRQ_ENABLE=`cat /proc/sys/kernel/sysrq`
+SYSRQ_ENABLE=$(cat /proc/sys/kernel/sysrq)
 raw_open
 if [[ $SYSRQ_ENABLE == "0" ]]
 then
@@ -2045,16 +2056,16 @@ textarea_open 120 24
 sysctl -a >> $HTML 2>&1
 textarea_close
 
-item_title "item_systemmap"	"System Map" "cat /boot/System.map.`uname -r`"
+item_title "item_systemmap"	"System Map" "cat /boot/System.map.$(uname -r)"
 
-if [[ -f /boot/System.map-`uname -r` ]]
+if [[ -f /boot/System.map-$(uname -r) ]]
 then
 	textarea_open 120 24
-	cat /boot/System.map-`uname -r`-a >> $HTML 2>&1
+	cat /boot/System.map-$(uname -r)  >> $HTML 2>&1
 	textarea_close
 else
 	raw_open
-	line "I cannot find a System.map file for kernel " `uname -r` " in /boot."
+	line "I cannot find a System.map file for kernel " $(uname -r) " in /boot."
 	raw_close
 fi
 
@@ -2099,7 +2110,7 @@ then
 	EFI_BOOT="yes"
 
 	#	Find out what kernel we booted: remove 'BOOT_IMAGE=dev0000:\"
-	MY_CMDLINE=`cat /proc/cmdline`
+	MY_CMDLINE=$(cat /proc/cmdline)
 
 	if [[ $DEBUG == "yes" ]]
 	then
@@ -2335,7 +2346,7 @@ textarea_close
 
 item_title "item_moddep"	"Module Dependencies" "cat /lib/modules/(kernel)/modules.dep"
 textarea_open 120 24
-cat /lib/modules/`uname -r`/modules.dep >> $HTML 2>&1
+cat /lib/modules/$(uname -r)/modules.dep >> $HTML 2>&1
 textarea_close
 
 #############=============-----------------................
@@ -2395,16 +2406,27 @@ textarea_close
 
 section "section_storage_cfg" "Storage Configuration"
 
+item_title "item_fsblk"		"File System Block Devices" "lsblk -fi"
+FILE_EXISTS="no"
+check_for_program lsblk
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	textarea_open 160 24
+	# -i option uses ASCII characters for tree relationships +--^ etc
+	# -f show filesystem information
+	lsblk -fi >> $HTML 2>&1
+	textarea_close	
+fi
+
 item_title "item_fstab" "Filesystem mount table" "fstab"
 raw_open
 cat /etc/fstab >> $HTML 2>&1
 raw_close
 
 item_title "item_mount"		"Mounted filesystems" "mount"
-line "Current mount, may not reflect status when issue occured."
-raw_open
+textarea_open 140 24
 mount >> $HTML 2>&1
-raw_close
+textarea_close
 
 # Enable by default" (most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
@@ -2414,7 +2436,7 @@ check_for_program pvscan
 if [[ $FILE_EXISTS == "yes" ]]
 then
 
-	PV_RESULTS=`pvscan 2>&1 | grep "  No matching physical volumes found" | wc -l`
+	PV_RESULTS=$(pvscan 2>&1 | grep "  No matching physical volumes found" | wc -l)
 
 	if [ $PV_RESULTS -ge 1 ]
 	then
@@ -2638,7 +2660,7 @@ item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep tty"
 raw_open
 # standard serial ports - try to ignore non-serial console tty devices
 # This should catch ttyS01 as well as ttyUSB01 and similar
-if [[ `dmesg | grep "tty" | grep -v "tty[0123456789]" | wc -l` -gt 0 ]]
+if [[ $(dmesg | grep "tty" | grep -v "tty[0123456789]" | wc -l) -gt 0 ]]
 then
 	dmesg | grep "tty" | grep -v "tty[0123456789]" >> $HTML 2>&1
 fi
@@ -2861,7 +2883,7 @@ item_title "item_lsinitrd" 		"initrd information" "lsinitrd"
 
 if [[ $DIST_NAME == "suse" ]]
 then
-	MY_KERNEL=`uname -a | cut --delimiter=" " -f 3`
+	MY_KERNEL=$(uname -a | cut --delimiter=" " -f 3)
 	MY_INITRD="/boot/initrd-$MY_KERNEL"
 fi
 
@@ -2914,7 +2936,7 @@ raw_close
 
 item_title "item_proc_count"		"Processor Count" ""
 raw_open
-line "`cat /proc/cpuinfo | grep processor | wc -l` count of `grep 'model name' /proc/cpuinfo | head -1 | cut -c 14-80` logical CPUs"
+line "$(cat /proc/cpuinfo | grep processor | wc -l) count of $(grep 'model name' /proc/cpuinfo | head -1 | cut -c 14-80) logical CPUs"
 raw_close
 
 item_title "item_processor_lscpu" "Processor Details" "lscpu"
@@ -2952,15 +2974,15 @@ item_title "item_processor_over"	"First Processor" "cat proc/cpuinfo"
 raw_open
 
 # Do we have more than one CPU?
-if [[ `grep processor /proc/cpuinfo | wc -l ` -gt 1 ]]
+if [[ $(grep processor /proc/cpuinfo | wc -l ) -gt 1 ]]
 then
 
 	# more than one CPU
 
-	ENDLINE=`grep -n processor /proc/cpuinfo  | grep ": 1$" | cut -f 1 --delimiter=":"`
+	ENDLINE=$(grep -n processor /proc/cpuinfo  | grep ": 1$" | cut -f 1 --delimiter=":")
 
 	# calculate how many lines to just show the first's detail
-	FIRSTCPU=`expr $ENDLINE - 1`
+	FIRSTCPU=$(expr $ENDLINE - 1)
 
 	# Show /proc/cpuinfo for first cpu only
 	cat /proc/cpuinfo | head --lines $FIRSTCPU >> $HTML 2>&1
@@ -2988,7 +3010,7 @@ raw_close
 
 item_title "item_freemem"		"Free Memory" "free --giga"
 raw_open
-if [ `free -V | grep procps-ng | wc -l` -gt 0 ]
+if [ $(free -V | grep procps-ng | wc -l) -gt 0 ]
 then
 	free --human >> $HTML 2>&1
 else
@@ -3077,14 +3099,30 @@ cat /proc/ioports >> $HTML 2>&1
 textarea_close
 
 item_title "item_dma"		"Peripheral DMA" "cat /proc/dma"
-textarea_open 120 24
-cat /proc/dma >> $HTML 2>&1
-textarea_close
+# Show a short raw box if we only have a few lines, textarea if many
+if [[ $(cat /proc/dma | wc -l) -le 15 ]]
+then
+	raw_open
+	cat /proc/dma >> $HTML 2>&1
+	raw_close
+else
+	textarea_open 120 24
+	cat /proc/dma >> $HTML 2>&1
+	textarea_close
+fi
 
 item_title "item_devices" 		"Devices" "cat /proc/devices"
-textarea_open 120 24
-cat /proc/devices >> $HTML 2>&1
-textarea_close
+# Show a short raw box if we only have a few lines, textarea if many
+if [[ $(cat /proc/devices | wc -l) -le 15 ]]
+then
+	raw_open
+	cat /proc/devices >> $HTML 2>&1
+	raw_close
+else
+	textarea_open 120 24
+	cat /proc/devices >> $HTML 2>&1
+	textarea_close
+fi
 
 item_title "item_lspci"			"PCI devices" "lspci"
 textarea_open 120 24
@@ -3348,11 +3386,11 @@ then
 
 		item_title "item_kvmhwinfo" "KVM Hardware Version" "modinfo kvm_intel | modinfo kvm_amd"
 		raw_open
-		if [ `lsmod | grep kvm_intel | wc -l` -gt 0 ]
+		if [ $(lsmod | grep kvm_intel | wc -l) -gt 0 ]
 		then
 			modinfo kvm_intel >> $HTML 2>&1
 		fi
-		if [ `lsmod | grep kvm_amd | wc -l` -gt 0 ]
+		if [ $(lsmod | grep kvm_amd | wc -l) -gt 0 ]
 		then
 			modinfo kvm_amd >> $HTML 2>&1
 		fi
@@ -3395,7 +3433,7 @@ then
 
 		item_title "item_virshnodedevxml"	"Virtualization nodes devices xml" "virsh nodedev-dumpxml"
 		textarea_open 120 24
-		for EACHDEV	in `virsh nodedev-list`
+		for EACHDEV	in $(virsh nodedev-list)
 		do	
 			virsh nodedev-dumpxml $EACHDEV >> $HTML 2>&1
 		done
@@ -3448,7 +3486,7 @@ then
 
 		item_title "item_virsh_pool_info" "Virtualization Storage Pool Info" "virsh pool-info"
 		raw_open
-		for EACH_POOL in `virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }'`
+		for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }')
 		do
 			line "<strong>Pool info for $EACH_POOL</strong>"
 			line ""
@@ -3458,7 +3496,7 @@ then
 
 		item_title "item_virsh_vol_list" "Virtualization Storage Volume List" "virsh vol-list"
 		raw_open
-		for EACH_POOL in `virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//'`
+		for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 		do
 			line "<strong>Volumes in storage pool $EACH_POOL</strong>"
 			line ""
@@ -3468,12 +3506,12 @@ then
 
 		item_title "item_virsh_vol_info" "Virtualization Storage Volume Info" "virsh vol-info"
 		raw_open
-		for EACH_POOL in `virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//'`
+		for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 		do
 			line "<strong>Volumes in storage pool $EACH_POOL</strong>"
 			line ""
 
-			for EACH_VOL in `virsh vol-list $EACH_POOL | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//'`
+			for EACH_VOL in $(virsh vol-list $EACH_POOL | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 			do
 				line "<strong>Volume info for $EACH_VOL in storage pool $EACH_POOL</strong>"
 				line ""
@@ -3484,7 +3522,7 @@ then
 		raw_close
 
 		item_title "item_vm_details" "Virtual Machine Details" "--"
-		for EACH_VM in `virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//'`
+		for EACH_VM in $(virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//')
 		do
 
 			raw_open
@@ -3496,9 +3534,9 @@ then
 			# If Quirk_virsh_domstate is set, we don't have the -reason feature
 			if [[ $QUIRK_VIRSH_DOMSTATE == "no-reason" ]]
 			then
-				VM_STATE=`virsh domstate $EACH_VM`
+				VM_STATE=$(virsh domstate $EACH_VM)
 			else
-				VM_STATE=`virsh domstate $EACH_VM --reason`
+				VM_STATE=$(virsh domstate $EACH_VM --reason)
 			fi
 
 			# Report the name of the VM and its current state
@@ -3508,7 +3546,7 @@ then
 			# Try to acquire the description of this VM
 			if [[ QUIRK_VIRSH_DESC != "no-desc" ]]
 			then
-				VM_DESC=`virsh desc $EACH_VM`
+				VM_DESC=$(virsh desc $EACH_VM)
 
 
 				# If the VM has something other than "No description" then report it.
@@ -3601,7 +3639,7 @@ FILE_EXISTS="no"
 check_for_program zip
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	zip -rl $OUTPUT_DIR.zip $OUTPUT_DIR
+	zip -qrl $OUTPUT_DIR.zip $OUTPUT_DIR
 fi
 
 echo -e "Birdseye capture complete: $OUTPUT_DIR.tar.gz\n"
