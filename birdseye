@@ -1201,6 +1201,62 @@ FILE_EXISTS="no"
 check_for_program lshw
 AVAILABLE_LSHW=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program lsb_release
+AVAILABLE_LSB_RELEASE=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program efibootmgr
+AVAILABLE_EFI_BOOTMGR=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsblk
+AVAILABLE_LSBLK=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program pvscan
+AVAILABLE_PVSCAN=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program chkconfig
+AVAILABLE_CHKCONFIG=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program systemctl
+AVAILABLE_SYSTEMCTL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program setserial
+AVAILABLE_SETSERIAL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsinitrd
+AVAILABLE_LSINITRD=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lscpu
+AVAILABLE_LSCPU=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program numactl
+AVAILABLE_NUMACTL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program ethtool
+AVAILABLE_ETHTOOL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsscsi
+AVAILABLE_LSSCSI=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program cd-info
+AVAILABLE_CDINFO=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program virsh
+AVAILABLE_VIRSH=$FILE_EXISTS
+
 ###########################################################
 #
 # Debugging: Report Distribution and Version Results
@@ -1925,9 +1981,7 @@ raw_close
 
 item_title "item_lsb"			"Distribution, Release" "lsb_release"
 raw_open
-FILE_EXISTS="no"
-check_for_program lsb_release
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSB_RELEASE == "yes" ]]
 then
 	lsb_release -d >> $HTML 2>&1
 else
@@ -2264,9 +2318,7 @@ item_title "item_efibootmgr"		"EFI Boot Configuration" "efibootmgr"
 if [[ $EFI_BOOT == "yes" ]]
 then
 
-	FILE_EXISTS="no"
-	check_for_program efibootmgr
-	if [[ $FILE_EXISTS == "yes" ]]
+	if [[ $AVAILABLE_EFI_BOOTMGR == "yes" ]]
 	then
 		textarea_open 120 24
 		efibootmgr >> $HTML 2>&1
@@ -2424,9 +2476,7 @@ textarea_close
 section "section_storage_cfg" "Storage Configuration"
 
 item_title "item_fsblk"		"File System Block Devices" "lsblk -fi"
-FILE_EXISTS="no"
-check_for_program lsblk
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
 	textarea_open 160 24
 	# -i option uses ASCII characters for tree relationships +--^ etc
@@ -2448,9 +2498,7 @@ textarea_close
 # Enable by default" (most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
 
-FILE_EXISTS="no"
-check_for_program pvscan
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_PVSCAN == "yes" ]]
 then
 
 	PV_RESULTS=$(pvscan 2>&1 | grep "  No matching physical volumes found" | wc -l)
@@ -2529,9 +2577,7 @@ raw_close
 
 section "section_services" "Services Configuration"
 item_title "item_chkconfig"	"Chkconfig" "chkconfig"
-FILE_EXISTS="no"
-check_for_program chkconfig
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_CHKCONFIG == "yes" ]]
 then
 	textarea_open 120 24
 	chkconfig --list >> $HTML 2>&1
@@ -2539,9 +2585,7 @@ then
 fi
 
 item_title "item_systemctl"		"Systemctl" "systemctl"
-FILE_EXISTS="no"
-check_for_program systemctl
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_SYSTEMCTL == "yes" ]]
 then
 	textarea_open 120 24
 	systemctl >> $HTML 2>&1
@@ -2721,8 +2765,6 @@ do
 done
 
 item_title "item_setserial"	"Serial devices" "setserial -g ttyS#"
-FILE_EXISTS="no"
-check_for_program setserial
 
 # Default this flag to no, we haven't seen/processed any ports
 SERIAL_PORTS_SEEN="no"
@@ -2761,7 +2803,7 @@ do
 				fi
 	
 				# If the setserial program is installed, then execute it
-				if [[ $FILE_EXISTS == "yes" ]]
+				if [[ $AVAILABLE_SETSERIAL == "yes" ]]
 				then
 
 					# setserial is really about serial port UART chips and
@@ -2956,9 +2998,7 @@ then
 	MY_INITRD="/boot/initrd-$MY_KERNEL"
 fi
 
-FILE_EXISTS="no"
-check_for_program lsinitrd
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSINITRD == "yes" ]]
 then
 	# Present the lsinitrd information in an HTML textarea box
 	textarea_open 120 24
@@ -3020,9 +3060,7 @@ raw_close
 
 item_title "item_processor_lscpu" "Processor Details" "lscpu"
 raw_open
-FILE_EXISTS="no"
-check_for_program lscpu
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSCPU == "yes" ]]
 then
 	lscpu >> $HTML 2>&1
 else
@@ -3032,9 +3070,7 @@ raw_close
 
 item_title "item_processor_lscpue" "Processor List " "lscpu -e"
 raw_open
-FILE_EXISTS="no"
-check_for_program lscpu
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSCPU == "yes" ]]
 then
 	# If QUIRK_LSCPU = "noext" then we don't have the -e (extended) option
 	if [[ $QUIRK_LSCPU != "noext" ]]
@@ -3105,9 +3141,7 @@ raw_close
 item_title "item_numashow"		"NUMA Topology" "numactl --show"
 
 raw_open
-FILE_EXISTS="no"
-check_for_program numactl
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_NUMACTL == "yes" ]]
 then
 	numactl --show >> $HTML 2>&1
 else
@@ -3119,9 +3153,7 @@ helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies 
 
 item_title "item_numahw"			"NUMA Memory Topology" "numactl --hardware"
 raw_open
-FILE_EXISTS="no"
-check_for_program numactl
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_NUMACTL == "yes" ]]
 then
 	numactl --hardware >> $HTML 2>&1
 else
@@ -3361,9 +3393,7 @@ else
 			line "# ifconfig $EACHNIC"
 			ifconfig $EACHNIC >> $HTML 2>&1
 
-			FILE_EXISTS="no"
-			check_for_program ethtool
-			if [[ $FILE_EXISTS == "yes" ]]
+			if [[ $AVAILABLE_ETHTOOL == "yes" ]]
 			then
 				line "# ethtool $EACHNIC"
 				ethtool $EACHNIC >> $HTML 2>&1
@@ -3403,9 +3433,7 @@ section "section_storage" "Storage Devices"
 #fi
 
 item_title "item_lsblk"		"Block Storage Devices" "lsblk"
-FILE_EXISTS="no"
-check_for_program lsblk
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
 	textarea_open 120 24
 	# -i option uses ASCII characters for tree relationships +--^ etc
@@ -3415,9 +3443,7 @@ fi
 
 item_title "item_lsscsi"		"SCSI Information" "lsscsi"
 raw_open
-FILE_EXISTS="no"
-check_for_program lsscsi
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_LSSCSI == "yes" ]]
 then
 	lsscsi >> $HTML 2>&1
 else
@@ -3440,9 +3466,7 @@ section "section_periphs" "Peripherals"
 
 item_title "item_cdinfo" "DVD/CD Drive Info" "cd-info"
 # quirk: SLES 11 SP3 - no cd-info by default
-FILE_EXISTS="no"
-check_for_program cd-info
-if [[ $FILE_EXISTS == "yes" ]]
+if [[ $AVAILABLE_CDINFO == "yes" ]]
 then
 	textarea_open 120 24
 	cd-info >> $HTML 2>&1
@@ -3464,9 +3488,7 @@ section "section_virt" "Virtualization"
 if [[ $DEF_SHOW_VIRT == "yes" ]]
 then
 
-	FILE_EXISTS="no"
-	check_for_program virsh
-	if [[ $FILE_EXISTS == "yes" ]]
+	if [[ $AVAILABLE_VIRSH == "yes" ]]
 	then
 		item_title "item_kvminfo" "KVM Version" "modinfo kvm"
 		raw_open
@@ -3559,9 +3581,7 @@ section "section_vms" "Virtual Machines"
 if [[ $DEF_SHOW_VIRT == "yes" ]]
 then
 
-	FILE_EXISTS="no"
-	check_for_program virsh
-	if [[ $FILE_EXISTS == "yes" ]]
+	if [[ $AVAILABLE_VIRSH == "yes" ]]
 	then
 		item_title "item_vmlist"	"Virtual Machines Defined" "virsh list --all"
 		raw_open
