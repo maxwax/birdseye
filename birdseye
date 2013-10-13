@@ -11,23 +11,6 @@
 # Version number set here: date produced plus a daily sequence version
 VERSION="2013.1012.01"
 
-###########################################################
-#
-# Recent Changes
-#
-###########################################################
-
-# TODO: include re-written nic-info functionality internally
-# TODO: installed kernels on dpkg, zypper?
-# TODO----> Run check_for_file once at atop of program, set var, avoid looping
-
-# 2013.0718.01
-# Cleaning up serial work, added stty
-# Handles large /var/log/messages files; limit 25k lines
-
-
-
-
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
 if [ $UID != 0 ]
@@ -35,6 +18,35 @@ then
 	echo "You must be root or use 'sudo' to run birdseye."
 	exit 1
 fi
+
+###########################################################
+#
+# TODO LIST
+#
+###########################################################
+
+# Report on chkconfig for RHEL/CentOS
+# Report on systemctl for Fedora / RHEL 7
+# Report on zypper for SUSE
+# Report on dpkg for Debian
+
+# Report on IO scheduler in use. See arch linux ssd for instructions
+# cat /sys/block/sdX/queue/scheduler
+
+# Add lshw such as lshw --class -network on nics
+# Fedora 19 doesn't have lsb_release?
+# RPM package
+# Debian Package
+# Man page
+
+# Replace calls to 'sutl' with new code:
+# sutl cards
+# sutl nics
+# sutl hbas
+# sutl nics (within nicports component)
+# Replace calls to 'nic-info' with new code
+
+# Add plugin variables before/after each section
 
 ###########################################################
 #
@@ -1692,7 +1704,7 @@ toc_section "toc_serial"			"Serial device configuration" "#section_serial"
 
 unordered_list_open
 list "item_serialdmesg"				"Serial devices in dmesg logs" "dmesg | grep tty<serial>"
-list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
+list "item_serialproc"				"Serial devices /proc" "cat /proc/tty/drivers/*"
 list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
 unordered_list_close
 
@@ -1748,7 +1760,7 @@ unordered_list_close
 toc_section "toc_pci"					"Expansion Cards" "PCI, PCI-X, PCIe, etc" "#section_pci"
 
 unordered_list_open
-list "item_cards"							"Expansion cards" "sutl cards"
+#list "item_cards"							"Expansion cards" "sutl cards"
 list "item_iomem"							"Peripheral IO memory" "cat /proc/iomem"
 list "item_ioports"						"Peripheral IO ports" "cat /proc/ioports"
 list "item_devices" 					"Devices" "cat /proc/devices"
@@ -1768,7 +1780,7 @@ unordered_list_close
 toc_section "toc_network_dev"	"Network Devices" "#section_network_devices"
 
 unordered_list_open
-list "item_sutlnics"					"Network cards" "sutl nics"
+#list "item_sutlnics"					"Network cards" "sutl nics"
 list "item_nicinfo"						"Network port information" "nic-info"
 list "item_nicports"					"Network port detail information" "ifconfig, ethtool, ethtool -i"
 unordered_list_close
@@ -1776,7 +1788,7 @@ unordered_list_close
 toc_section "toc_storage"  		"Storage" "#section_storage"
 
 unordered_list_open
-list "item_sutlhbas"					"Host Bus Adapter information" "sutl hbas"
+#list "item_sutlhbas"					"Host Bus Adapter information" "sutl hbas"
 list "item_lsblk"							"Block Storage Devices" "lsblk"
 list "item_lsscsi"						"SCSI Information" "lsscsi"
 list "item_procscsi"					"SCSI Information via proc" "cat /proc/scsi/scsi"
@@ -1881,7 +1893,7 @@ raw_close
 section "section_dmesg" "Boot messages"
 
 item_title "item_dmesg_notime"		"Linux boot messages without timestamps" "dmesg --notime"
-raw_open
+textarea_open 120 24
 if [[ $QUIRK_DMESG_PRE_TIMESTAMP == "yes" ]]
 then
 	line "The dmesg command in this version of Linux does not support timestamps."
@@ -1901,7 +1913,7 @@ else
 		dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
 	fi
 fi
-raw_close
+textarea_close
 
 item_title "item_dmesg_time"		"Linux boot messages with timestamps" "dmesg"
 textarea_open 120 24
@@ -2595,57 +2607,106 @@ unordered_list_open
 
 section "section_serial" "Serial device configuration"
 
-item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep ttyS"
+item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep tty"
 raw_open
-	# standard serial ports - try to ignore non-serial console tty devices
+# standard serial ports - try to ignore non-serial console tty devices
+# This should catch ttyS01 as well as ttyUSB01 and similar
+if [[ `dmesg | grep "tty" | grep -v "tty[0123456789]" | wc -l` -gt 0 ]]
+then
 	dmesg | grep "tty" | grep -v "tty[0123456789]" >> $HTML 2>&1
-
-	# what else should we add here?
+fi
 raw_close
 
-item_title "item_setserial"	"Serial devices" "setserial -g ttyS[0123456789]"
+item_title "item_serialproc"	"Serial devices in /proc" "cat /proc/tty/driver/*"
+raw_open
+for EACH_SERIAL_TYPE in /proc/tty/driver/*
+do
+	line "${EACH_SERIAL_TYPE}:" >> $HTML 2>&1
+	line "------------------------" >> $HTML 2>&1
+	cat $EACH_SERIAL_TYPE >> $HTML 2>&1
+	line
+done
+raw_close
+
+item_title "item_setserial"	"Serial devices" "setserial -g ttyS#"
 FILE_EXISTS="no"
 check_for_program setserial
 
+# Default this flag to no, we haven't seen/processed any ports
+SERIAL_PORTS_SEEN="no"
+
+raw_open
+# Loop on each type of serial port known
 for EACH_SERIAL_PREFIX in S USB
 do
+
+	# Loop on first ten serial ports. Haven't more than ten in a long time?
 	for EACH_SERIAL_NUMBER in {0..9}
 	do
 
+		# Let's set this variable to an actual serial port device name
+		EACH_SERIAL_DEVICE="/dev/${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+
 		if [[ $DEBUG == "yes" ]]
 		then
-			echo "Serial Scanning /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+			echo "Serial Scanning $EACH_SERIAL_DEVICE"
 		fi
 		
-
-		if [[ -c /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER} ]]
+		if [[ -c $EACH_SERIAL_DEVICE ]]
 		then
 
-			raw_open
-
-			if [[ $DEBUG == "yes" ]]
+			# The presence of UART chips on the computer may cause /dev/ttyS#
+			# entries to appear even when actual ports do not exist.
+			# If stty fails, then we probably don't have a real port.
+			# set serial will still run.
+			stty < $EACH_SERIAL_DEVICE > /dev/null 2>&1
+			if (( $? == 0 ))
 			then
-				echo "Device present."
-			fi
+
+				if [[ $DEBUG == "yes" ]]
+				then
+					echo "Device $EACH_SERIAL_DEVICE is present."
+				fi
 	
-			if [[ $FILE_EXISTS == "yes" ]]
-			then
+				# If the setserial program is installed, then execute it
+				if [[ $FILE_EXISTS == "yes" ]]
+				then
 
-				line "setserial /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+					# setserial is really about serial port UART chips and
+					# does not like USB based serial ports
+					if [[ ${EACH_SERIAL_DEVICE:1:6} != "ttyUSB" ]]
+					then
 
-				setserial -a /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER} >> $HTML 2>&1
+						line "setserial $EACH_SERIAL_DEVICE"
+
+						setserial -a $EACH_SERIAL_DEVICE >> $HTML 2>&1
+					fi
+
+				else
+					echo "'setserial' is not installed." >> $HTML 2>&1
+				fi
+
 				line
-				line "stty /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
-				stty -a < /dev/tty${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER} >> $HTML 2>&1
-			else
-				echo "setserial is not installed." >> $HTML 2>&1
-			fi
-			raw_close
+				line "stty $EACH_SERIAL_DEVICE"
+				stty -a < $EACH_SERIAL_DEVICE >> $HTML 2>&1
 
-		fi
+				# Now that we've seen/processed a port, set the seen to yes
+				SERIAL_PORTS_SEEN="yes"
 
-	done
-done
+			fi # endif - can we execute stty on the serial port?
+
+
+		fi # endif - do we have a serial port device in /dev/ ?
+	done # loop - process serial ports by number 0..9
+done # loop - process serial port prefixes 'S' and 'USB'
+
+# If we haven't seen any serial ports, report it cleanly to the user
+if [[ $SERIAL_PORTS_SEEN == "no" ]]
+then
+	line "There are no serial ports on this system."
+fi
+
+raw_close
 
 #############=============-----------------................
 #
@@ -2966,18 +3027,18 @@ cat /proc/interrupts >> $FILE_INTER
 
 section "section_pci" "Expansion Cards"
  
-item_title "item_cards"			"Expansion cards" "sutl cards"
+#item_title "item_cards"			"Expansion cards" "sutl cards"
 
-raw_open
-FILE_EXISTS="no"
-check_for_program sutl
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	sutl cards >> $HTML 2>&1
-else
-	line "'sutl' utility not installed, cannot execute 'sutl cards'" 
-fi
-raw_close
+#raw_open
+#FILE_EXISTS="no"
+#check_for_program sutl
+#if [[ $FILE_EXISTS == "yes" ]]
+#then
+#	sutl cards >> $HTML 2>&1
+#else
+#	line "'sutl' utility not installed, cannot execute 'sutl cards'" 
+#fi
+#raw_close
 
 item_title "item_iomem"			"Peripheral IO memory" "cat /proc/iomem"
 raw_open
@@ -3076,34 +3137,34 @@ helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DM
 
 section "section_network_devices" "Network Devices"
 
-item_title "item_sutlnics"		"Network cards" "sutl nics"
-FILE_EXISTS="no"
-check_for_program sutl
-raw_open
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	sutl nics >> $HTML 2>&1
-else
-	line "# not installed: sutl nics"
-fi
-raw_close
+#item_title "item_sutlnics"		"Network cards" "sutl nics"
+#FILE_EXISTS="no"
+#check_for_program sutl
+#raw_open
+#if [[ $FILE_EXISTS == "yes" ]]
+#then
+#	sutl nics >> $HTML 2>&1
+#else
+#	line "# not installed: sutl nics"
+#fi
+#raw_close
 
-item_title "item_nicinfo"		"Network port information" "nic-info"
-FILE_EXISTS="no"
-check_for_program nic-info
-raw_open
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	if [ $PUBLIC_REPORT = "yes" ]
-	then
-		line "This is a public report and no IP network information is included."
-	else
-		nic-info >> $HTML 2>&1
-	fi
-else
-	line "'nic-info' utility not installed, can't execute 'nic-info'" 
-fi
-raw_close
+#item_title "item_nicinfo"		"Network port information" "nic-info"
+#FILE_EXISTS="no"
+#check_for_program nic-info
+#raw_open
+#if [[ $FILE_EXISTS == "yes" ]]
+#then
+#	if [ $PUBLIC_REPORT = "yes" ]
+#	then
+#		line "This is a public report and no IP network information is included."
+#	else
+#		nic-info >> $HTML 2>&1
+#	fi
+#else
+#	line "'nic-info' utility not installed, can't execute 'nic-info'" 
+#fi
+#raw_close
 
 item_title "item_nicports"		"Network port detail information" "ifconfig, ethtool, ethtool -i"
 # process each ethernet device, skip vpn, bridges, localhost
@@ -3132,16 +3193,16 @@ else
 			# Do raw_open/raw_close for each NIC so each is presented individually
 			raw_open
 
-			FILE_EXISTS="no"
-			check_for_program sutl
-			line "<strong>"
-			if [[ $FILE_EXISTS == "yes" ]]
-			then
-				sutl nics | grep $EACHNIC >> $HTML 2>&1
-			else
-				line "Network device: $EACHNIC"
-			fi
-			line "</strong>"
+			#FILE_EXISTS="no"
+			#check_for_program sutl
+			#line "<strong>"
+			#if [[ $FILE_EXISTS == "yes" ]]
+			#then
+			#	sutl nics | grep $EACHNIC >> $HTML 2>&1
+			#else
+			#	line "Network device: $EACHNIC"
+			#fi
+			#line "</strong>"
 
 			line "" 
 			line "# ifconfig $EACHNIC"
@@ -3176,17 +3237,17 @@ raw_close
 
 section "section_storage" "Storage Devices"
 
-item_title "item_sutlhbas"	"Host Bus Adapter information" "sutl hbas"
-FILE_EXISTS="no"
-check_for_program sutl
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	raw_open
-	sutl hbas >> $HTML 2>&1
-	raw_close
-else
-	line "'sutl' utility not installed, can't execute 'sutl cards'" 
-fi
+#item_title "item_sutlhbas"	"Host Bus Adapter information" "sutl hbas"
+#FILE_EXISTS="no"
+#check_for_program sutl
+#if [[ $FILE_EXISTS == "yes" ]]
+#then
+#	raw_open
+#	sutl hbas >> $HTML 2>&1
+#	raw_close
+#else
+#	line "'sutl' utility not installed, can't execute 'sutl cards'" 
+#fi
 
 item_title "item_lsblk"		"Block Storage Devices" "lsblk"
 FILE_EXISTS="no"
