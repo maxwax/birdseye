@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.0718.01"
+VERSION="2013.1012.01"
 
 ###########################################################
 #
@@ -277,6 +277,10 @@ DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
 DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
 
 DEF_FQDN=${BIRDSEYE_FQDN:-"null"}
+if [[ $DEF_FQDN == "null" ]]
+then
+	DEF_FQDN=`hostname`
+fi
 DEF_OOB=${BIRDSEYE_OOB:-"null"}
 
 PUBLIC_REPORT=$BIRDSEYE_PUBLIC_REPORT
@@ -680,7 +684,7 @@ fi
 
 # If we don't have http on the front of the OOB FQDN, add it.
 # Without http:// clicking in this link takes users to a file
-if [[ ${MY_OOB:1:7} != "http://" ]]
+if [[ $MY_OOB != "null" && ${MY_OOB:1:7} != "http://" ]]
 then
 	MY_OOB="http://$MY_OOB/"
 fi
@@ -1688,6 +1692,7 @@ toc_section "toc_serial"			"Serial device configuration" "#section_serial"
 
 unordered_list_open
 list "item_serialdmesg"				"Serial devices in dmesg logs" "dmesg | grep tty<serial>"
+list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
 list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
 unordered_list_close
 
