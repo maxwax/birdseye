@@ -25,6 +25,18 @@ fi
 #
 ###########################################################
 
+# Shorten display on small output:
+# system map
+# virsh list --all
+# virsh pool-list
+
+# Run on Xen hypervisor host and see what is reported
+# Run on Amazon, Rackspace VM and see what is reported
+
+# FQDN on each NIC's IP address. Similar to 'hostname --all-fqdns'
+
+# dmidecode missing on Jason's systems.. Check for it
+
 # Report on chkconfig for RHEL/CentOS
 # Report on systemctl for Fedora / RHEL 7
 # Report on zypper for SUSE
@@ -33,6 +45,10 @@ fi
 # Report on IO scheduler in use. See arch linux ssd for instructions
 # cat /sys/block/sdX/queue/scheduler
 
+
+# More context-aware, friendly network device output. 
+# See lshw -class network as an example compared to what we do already
+
 # Add lshw such as lshw --class -network on nics
 # RPM package
 # Debian Package
@@ -40,6 +56,8 @@ fi
 
 # Check lsinitrd on Debian systems.. Mohan got a 'no such file' error
 # Add zip in addition to tar, Josh
+# Output files should have user security if made with sudo - Josh
+# Tell the user about the -quiet option when prompting them. - JasonF
 
 # Replace calls to 'sutl' with new code:
 # sutl cards
@@ -295,7 +313,7 @@ DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
 DEF_FQDN=${BIRDSEYE_FQDN:-"null"}
 if [[ $DEF_FQDN == "null" ]]
 then
-	DEF_FQDN=`hostname`
+	DEF_FQDN=`hostname --fqdn`
 fi
 DEF_OOB=${BIRDSEYE_OOB:-"null"}
 
@@ -2282,9 +2300,9 @@ fi
 section "section_modules" "Kernel Modules"
 
 item_title "item_lsmod"		"Kernel Modules" "lsmod"
-raw_open
+textarea_open 120 24
 lsmod >> $HTML 2>&1
-raw_close
+textarea_close
 
 item_title "item_modconf"		"Kernel Module Configuration" "cat /etc/modules.conf"
 raw_open
@@ -2360,14 +2378,14 @@ raw_close
 
 item_title "item_firewall"		"Firewall rules" "iptables -L"
 
-raw_open
+textarea_open 120 24
 if [ $PUBLIC_REPORT = "yes" ]
 then
 	line "This is a public report and no firewall information is included."
 else
 	iptables -L >> $HTML 2>&1
 fi
-raw_close
+textarea_close
 
 #############=============-----------------................
 #
@@ -2596,15 +2614,14 @@ fi
 raw_close
 
 item_title "item_udevrules"	"udev rules" "cat /etc/udev/rules.d/*"
-raw_open
+line
 for EACHFILE in /etc/udev/rules.d/*
 do
-	line "------------------------"
 	line "$EACHFILE"
-	line "------------------------"
+	raw_open
 	cat $EACHFILE >> $HTML 2>&1
+	raw_close
 done
-raw_close
 
 #############=============-----------------................
 #
@@ -2628,15 +2645,14 @@ fi
 raw_close
 
 item_title "item_serialproc"	"Serial devices in /proc" "cat /proc/tty/driver/*"
-raw_open
+line
 for EACH_SERIAL_TYPE in /proc/tty/driver/*
 do
 	line "${EACH_SERIAL_TYPE}:" >> $HTML 2>&1
-	line "------------------------" >> $HTML 2>&1
+	raw_open
 	cat $EACH_SERIAL_TYPE >> $HTML 2>&1
-	line
+	raw_close
 done
-raw_close
 
 item_title "item_setserial"	"Serial devices" "setserial -g ttyS#"
 FILE_EXISTS="no"
@@ -3051,29 +3067,29 @@ section "section_pci" "Expansion Cards"
 #raw_close
 
 item_title "item_iomem"			"Peripheral IO memory" "cat /proc/iomem"
-raw_open
+textarea_open 120 24
 cat /proc/iomem >> $HTML 2>&1 
-raw_close
+textarea_close
 
 item_title "item_ioports"		"Peripheral IO ports" "cat /proc/ioports"
-raw_open
+textarea_open 120 24
 cat /proc/ioports >> $HTML 2>&1
-raw_close
+textarea_close
 
 item_title "item_dma"		"Peripheral DMA" "cat /proc/dma"
-raw_open
+textarea_open 120 24
 cat /proc/dma >> $HTML 2>&1
-raw_close
+textarea_close
 
 item_title "item_devices" 		"Devices" "cat /proc/devices"
-raw_open
+textarea_open 120 24
 cat /proc/devices >> $HTML 2>&1
-raw_close
+textarea_close
 
 item_title "item_lspci"			"PCI devices" "lspci"
-raw_open
+textarea_open 120 24
 lspci >> $HTML 2>&1 
-raw_close
+textarea_close
 
 item_title "item_lspcivv"		"PCI Devices Detail" "lspci -vv"
 textarea_open 120 24
@@ -3264,10 +3280,10 @@ FILE_EXISTS="no"
 check_for_program lsblk
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	raw_open
+	textarea_open 120 24
 	# -i option uses ASCII characters for tree relationships +--^ etc
 	lsblk -i >> $HTML 2>&1
-	raw_close
+	textarea_close	
 fi
 
 item_title "item_lsscsi"		"SCSI Information" "lsscsi"
@@ -3283,9 +3299,9 @@ fi
 raw_close
 
 item_title "item_procscsi" "SCSI Information via proc" "cat /proc/scsi/scsi"
-raw_open
+textarea_open 120 24
 cat /proc/scsi/scsi >> $HTML 2>&1
-raw_close
+textarea_close
 
 #############=============-----------------................
 #
@@ -3296,17 +3312,19 @@ raw_close
 section "section_periphs" "Peripherals"
 
 item_title "item_cdinfo" "DVD/CD Drive Info" "cd-info"
-raw_open
 # quirk: SLES 11 SP3 - no cd-info by default
 FILE_EXISTS="no"
 check_for_program cd-info
 if [[ $FILE_EXISTS == "yes" ]]
 then
+	textarea_open 120 24
 	cd-info >> $HTML 2>&1
+	textarea_close
 else
+	raw_open
 	line "cd-info is not available on this system"
+	raw_close
 fi
-raw_close
 
 #############=============-----------------................
 #
@@ -3518,6 +3536,8 @@ then
 			raw_close
 
 		done
+
+		line
 		
 	else
 		line "virsh is not installed in this environment."
@@ -3576,5 +3596,12 @@ tar cf $OUTPUT_DIR.tar $OUTPUT_DIR
 
 echo "Compressing tar file."
 gzip -9 $OUTPUT_DIR.tar
+
+FILE_EXISTS="no"
+check_for_program zip
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	zip -rl $OUTPUT_DIR.zip $OUTPUT_DIR
+fi
 
 echo -e "Birdseye capture complete: $OUTPUT_DIR.tar.gz\n"
