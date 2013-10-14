@@ -30,11 +30,26 @@ fi
 # TODO LIST
 #
 ###########################################################
+# Design goals:
+# 1) Single file shell script that can be copied to a target system
+# and easily capture nearly all useful information
+# 2) Output in easy to navigate, quick to search, and context-aware
+# HTML using CSS for presentation
+# 3) CSS should facilitate different output presentations allowing
+# the script to focus on content generation not output tweaks
+# 4) Should be multi-distribution, multi-version aware
+# 5) Should be able to run on bare metal, hypervisor (Xen) and
+# several virtual machine guest environments
+# 6) Should be user extensible using plugins
+# 7) Should be well documented and easy to understand
 
 # When something isn't present, show a disabled TOC entry for it
 # and don't show it later?? Need to make things predictable without
 # having ten items that aren't present on a Debian system but
 # are normally included on a RHEL system
+
+# Capture log files in tar file for user, bring them home in unified
+# birdseye tar file? Could be useful, but could be big.
 
 # GPL
 # UEFI variables 'uefivars -l' - need uefi system for this.
@@ -2884,7 +2899,7 @@ fi
 # udev Configuration
 #
 #############=============-----------------................
-toc_section "toc_serial"			"Serial device configuration" "#section_serial"
+toc_section "toc_udev" "Udev configuration" "#section_udev"
 
 unordered_list_open
 
@@ -2916,7 +2931,7 @@ done
 # Serial Device Configuration
 #
 #############=============-----------------................
-toc_section "toc_serial"			"Serial device configuration" "#section_serial"
+toc_section "toc_serial" "Serial device configuration" "#section_serial"
 
 unordered_list_open
 
@@ -3121,7 +3136,7 @@ section "section_hw_summary" "Hardware Summary"
 
 item_title "item_product"		"Product Name" "dmidecode -s system-product-name"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s system-product-name >> $HTML 2>&1
 else
@@ -3131,7 +3146,7 @@ raw_close
 
 item_title "item_processor_line"	"Processor Summary" "dmidecode -s processor-version"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-version | head -1 >> $HTML 2>&1
 else
@@ -3146,7 +3161,7 @@ raw_close
 
 item_title "item_bios_vendor"	"BIOS Vendor" "dmidecode -s bios-vendor"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-vendor >> $HTML 2>&1
 else
@@ -3156,7 +3171,7 @@ raw_close
 
 item_title "item_bios_vers"		"BIOS Version" "dmidecode -s bios-version"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-version  >> $HTML 2>&1
 else
@@ -3166,7 +3181,7 @@ raw_close
 
 item_title "item_bios_date"		"BIOS Release Date" "dmidecode -s bios-release-date"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-release-date  >> $HTML 2>&1
 else
@@ -3218,7 +3233,7 @@ section "section_processor" "Processor Information"
 item_title "item_proc_family"	"Processor Family" "dmidecode -s processor-family"
 # first line only please
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-family | head -1 >> $HTML 2>&1
 else
@@ -3229,7 +3244,7 @@ raw_close
 item_title "item_proc_vers"		"Processor Version" "dmidecode -s processor-version"
 # first line only please
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-version | head -1 >> $HTML 2>&1
 else
@@ -3593,7 +3608,7 @@ section "section_dmidecode" "System Board Information"
 
 item_title "item_dmidecode" "System Board information" "dmidecode"
 
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	textarea_open 120 24
 	dmidecode >> $HTML 2>&1
@@ -3604,7 +3619,7 @@ else
 	raw_close
 fi
 
-if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode >> $FILE_DMI
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
