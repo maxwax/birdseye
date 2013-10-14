@@ -1645,6 +1645,7 @@ toc_master "#toc_messages"			"Console/System Messages"
 toc_master "#toc_kernelcfg"	 		"Kernel Configuration"
 toc_master "#toc_bootcfg" 			"Boot Configuration"
 toc_master "#toc_modules"		 		"Kernel Modules"
+toc_master "#toc_processes"		 	"Processes Running"
 toc_master "#toc_network_cfg"		"Network Configuration"
 toc_master "#toc_storage_cfg"		"Storage Configuration"
 toc_master "#toc_services"			"Services Configuration"
@@ -1744,6 +1745,11 @@ list "item_modconf"						"Kernel Module Configuration" "cat /etc/modules.conf"
 list "item_modblist"					"Kernel Module Blacklist" "cat /etc/modprobe.d/blacklist.conf"
 list "item_modinfo"						"Kernel Module Info" "modinfo"
 list "item_moddep"						"Module Dependencies" "cat /lib/modules/(kernel)/modules.dep"
+unordered_list_close
+
+toc_section "toc_processes"		"Processes Running" "#section_processes"
+unordered_list_open
+list "item_processes"					"Processes" "ps axf"
 unordered_list_close
 
 toc_section "toc_network_cfg"	"Network Configuration" "#section_network_cfg"
@@ -2416,6 +2422,20 @@ textarea_close
 item_title "item_moddep"	"Module Dependencies" "cat /lib/modules/(kernel)/modules.dep"
 textarea_open 120 24
 cat /lib/modules/$(uname -r)/modules.dep >> $HTML 2>&1
+textarea_close
+
+#############=============-----------------................
+#
+# Network Configuration
+#
+#############=============-----------------................
+
+section "section_processes" "Processes Running"
+
+item_title "item_processes"	"Processes" "ps axf"
+line "The processes shown here were running at the time of this Birdseye report and may not reflect the processes running at an earlier time of importance."
+textarea_open 120 24
+ps axf >> $HTML 2>&1
 textarea_close
 
 #############=============-----------------................
