@@ -9,14 +9,20 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1012.01"
+VERSION="2013.1014.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
+SUDO_USER="null"
 if [ $UID != 0 ]
 then
 	echo "You must be root or use 'sudo' to run birdseye."
 	exit 1
+else
+	# When this script is called using 'sudo' OR 'su' this records
+	# the name of the non-root user so we can set security to this
+	# user on our output files. Same as 'who am i'
+	SUDO_USER=$(who -m | awk '{print $1}')
 fi
 
 ###########################################################
@@ -25,14 +31,17 @@ fi
 #
 ###########################################################
 
+# When something isn't present, show a disabled TOC entry for it
+# and don't show it later?? Need to make things predictable without
+# having ten items that aren't present on a Debian system but
+# are normally included on a RHEL system
+
 # GPL
-
 # UEFI variables 'uefivars -l' - need uefi system for this.
-
 # Shorten display on small output:
-# system map
-# virsh list --all
-# virsh pool-list
+# 	system map
+# 	virsh list --all
+# 	virsh pool-list
 
 # Run on Xen hypervisor host and see what is reported
 # Run on Amazon, Rackspace VM and see what is reported
@@ -52,6 +61,8 @@ fi
 # Report on IO scheduler in use. See arch linux ssd for instructions
 # cat /sys/block/sdX/queue/scheduler
 
+# More tips? - Not just NUMA stuff?
+# --include-tips?
 
 # More context-aware, friendly network device output. 
 # See lshw -class network as an example compared to what we do already
@@ -851,25 +862,25 @@ fi
 # These additional ASCII files contain raw output and many users
 # wish to have them seperate for processing with 'grep' and other
 # programs.
-FILENAME_DMI=dmidecode.$FILENAME_DATA.txt
-FILENAME_CPU=cpuinfo.$FILENAME_DATA.txt
-FILENAME_MSGS=messages.$FILENAME_DATA.txt
-FILENAME_SYSLOG=syslog.$FILENAME_DATA.txt
-FILENAME_DMESG=dmesg.$FILENAME_DATA.txt
-FILENAME_DMESG_NOTIME=dmesg-notime.$FILENAME_DATA.txt
-FILENAME_INTER=interrupts.$FILENAME_DATA.txt
-FILENAME_PCI=lspci.$FILENAME_DATA.txt
-FILENAME_INITRD=initrd.$FILENAME_DATA.txt
+FILE_DMI="$OUTPUT_DIR/dmidecode.$FILENAME_DATA.txt"
+FILE_CPU="$OUTPUT_DIR/cpuinfo.$FILENAME_DATA.txt"
+FILE_MSGS="$OUTPUT_DIR/messages.$FILENAME_DATA.txt"
+FILE_SYSLOG="$OUTPUT_DIR/syslog.$FILENAME_DATA.txt"
+FILE_DMESG="$OUTPUT_DIR/dmesg.$FILENAME_DATA.txt"
+FILE_DMESG_NOTIME="$OUTPUT_DIR/dmesg-notime.$FILENAME_DATA.txt"
+FILE_INTER="$OUTPUT_DIR/interrupts.$FILENAME_DATA.txt"
+FILE_PCI="$OUTPUT_DIR/lspci.$FILENAME_DATA.txt"
+FILE_INITRD="$OUTPUT_DIR/initrd.$FILENAME_DATA.txt"
 
-FILE_DMI=$OUTPUT_DIR/$FILENAME_DMI
-FILE_CPU=$OUTPUT_DIR/$FILENAME_CPU
-FILE_MSGS=$OUTPUT_DIR/$FILENAME_MSGS
-FILE_SYSLOG=$OUTPUT_DIR/$FILENAME_SYSLOG
-FILE_DMESG=$OUTPUT_DIR/$FILENAME_DMESG
-FILE_DMESG_NOTIME=$OUTPUT_DIR/$FILENAME_DMESG
-FILE_INTER=$OUTPUT_DIR/$FILENAME_INTER
-FILE_PCI=$OUTPUT_DIR/$FILENAME_PCI
-FILE_INITRD=$OUTPUT_DIR/$FILENAME_INITRD
+#FILE_DMI=$OUTPUT_DIR/$FILENAME_DMI
+#FILE_CPU=$OUTPUT_DIR/$FILENAME_CPU
+#FILE_MSGS=$OUTPUT_DIR/$FILENAME_MSGS
+#FILE_SYSLOG=$OUTPUT_DIR/$FILENAME_SYSLOG
+#FILE_DMESG=$OUTPUT_DIR/$FILENAME_DMESG
+#FILE_DMESG_NOTIME=$OUTPUT_DIR/$FILENAME_DMESG
+#FILE_INTER=$OUTPUT_DIR/$FILENAME_INTER
+#FILE_PCI=$OUTPUT_DIR/$FILENAME_PCI
+#FILE_INITRD=$OUTPUT_DIR/$FILENAME_INITRD
 
 ###########################################################
 #
@@ -928,7 +939,6 @@ done
 QUIRK_LSCPU="null"
 QUIRK_VIRSH_DOMSTATE="null"
 QUIRK_VIRSH_DESC="null"
-QUIRK_DMESG_PRE_TIMESTAMP="null"
 QUIRK_DMESG_NOTIME_OPTION="null"
 
 ###########################################################
@@ -1006,7 +1016,6 @@ then
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
-		QUIRK_DMESG_NO_TIMESTAMP="null"
 	elif [ $(cat /etc/oracle-release | grep "release 6." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=6
@@ -1026,7 +1035,6 @@ then
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
-		QUIRK_DMESG_NO_TIMESTAMP="null"
 	elif [ $(cat /etc/centos-release | grep "release 6." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=6
@@ -1051,7 +1059,6 @@ then
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
-		QUIRK_DMESG_NO_TIMESTAMP="null"
 	elif [ $(cat /etc/redhat-release | grep "release 6." | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE=6
@@ -1082,7 +1089,7 @@ then
 	if [ $(cat /etc/SuSE-release | grep "Server 11" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="11"
-		QUIRK_DMESG_NOTIME_OPTION="no"
+		QUIRK_DMESG_NOTIME_OPTION="notime"
 	elif [ $(cat /etc/SuSE-release | grep "Server 12" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="12"
@@ -1143,48 +1150,6 @@ then
 	# handle other versions here
 	# handle other versions here
 
-fi
-
-###########################################################
-#
-# Virtualization Host Discovery
-#
-###########################################################
-
-# default to no
-XEN_HOST="no"
-
-# Check for xen management 'xm' command (RHEL 5.x, SLES)
-FILE_EXISTS="no"
-check_for_program xm
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	if [[ $(xm uptime | grep Domain-0 | wc -l ) -eq 1 ]]
-	then
-		XEN_HOST="yes"
-	else
-		XEN_HOST="no"
-	fi
-else
-
-	# Check for xen management 'xe' command (Citrix XenServer)
-	FILE_EXISTS="no"
-	check_for_program xe
-	if [[ $FILE_EXISTS == "yes" ]]
-	then
-		if [[ $(xe uptime | grep Domain-0 | wc -l ) -eq 1 ]]
-		then
-			XEN_HOST="yes"
-		else
-			XEN_HOST="no"
-		fi
-	fi
-fi
-
-if [[ $DEBUG == "yes" ]]
-then
-	echo
-	echo "XEN Identification: XEN_HOST $XEN_HOST"
 fi
 
 ###########################################################
@@ -1257,6 +1222,117 @@ FILE_EXISTS="no"
 check_for_program virsh
 AVAILABLE_VIRSH=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program lsusb
+AVAILABLE_LSUSB=$FILE_EXISTS
+
+# This is a special check because the whereis program that
+# function check_for_program uses doesn't find it
+if [[ -f /usr/bin/lsusb.py ]]
+then
+	AVAILABLE_LSUSB="yes"
+else
+	AVAILABLE_LSUSB="no"
+fi
+
+###########################################################
+#
+# Check to see if programs work.  Failure often means VMs
+#
+###########################################################
+
+# If we have dmidecode present, let's try to use it.
+# If it fails, we're probably in a virtual machine with no real
+# hardware to report on and we can't use it.
+# 2013.1014 RHEL 6.4 on Amazon AMI reports:
+# 'No SMBIOS nor DMI entry point found, sorry.'
+# So we'll check for part of that and see how it goes - Maxwell
+DMIDECODE_WORKS="yes"
+if [[ $AVAILBLE_DMIDECODE == "yes" ]]
+then
+	if [[ $(dmidecode | grep "No SMBIOS nor DMI" | wc -l) -gt 0 ]]
+	then
+		DMIDECODE_WORKS="no"
+	else
+		DMIDECODE_WORKS="yes"
+	fi
+fi
+
+# 2013.1014 RHEL 6.4 on Amazon AMI reports:
+# 'unable to initialize libusb: -99'
+# So we'll check for that and avoid USB stuff if we find it.
+# Hard to think of any non-virtual machine that doesn't have USB hw
+LSUSB_WORKS="yes"
+if [[ $AVAILBLE_LSUSB == "yes" ]]
+then
+	if [[ $(lsusb | grep "unable to initialize libusb" | wc -l) -gt 0 ]]
+	then
+		LSUSB_WORKS="no"
+	else
+		LSUSB_WORKS="yes"
+	fi
+fi
+
+###########################################################
+#
+# Virtualization Discovery
+#
+###########################################################
+
+# We default to 'no' until we confirm in some way that we are a Xen Host
+# IOW, we're not set to 'null'
+XEN_HOST="no"
+
+# Check for xen management 'xm' command (RHEL 5.x, SLES)
+FILE_EXISTS="no"
+check_for_program xm
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	if [[ $(xm uptime | grep Domain-0 | wc -l ) -eq 1 ]]
+	then
+		XEN_HOST="yes"
+	else
+		XEN_HOST="no"
+	fi
+else
+
+	# Check for xen management 'xe' command (Citrix XenServer)
+	FILE_EXISTS="no"
+	check_for_program xe
+	if [[ $FILE_EXISTS == "yes" ]]
+	then
+		if [[ $(xe uptime | grep Domain-0 | wc -l ) -eq 1 ]]
+		then
+			XEN_HOST="yes"
+		else
+			XEN_HOST="no"
+		fi
+	fi
+fi
+
+# We default to 'no' until we confirm in some way that we are a Xen VM
+# IOW, we're not set to 'null'
+XEN_VM="no"
+
+# 2013.1014 Testing on the Amazon AWS reveals that lscpu reports
+# "Hypervisor vendor" as 'Xen' while reporting Intel chip details.
+# This might be a nice way to determine if we're in a VM.
+if [[ $AVAILABLE_LSCPU == "yes" ]]
+then
+	if [[ $(lscpu | grep "Hypervisor vendor" | grep "Xen" | wc -l) -gt 0 ]]
+	then
+		XEN_VM="yes"
+	fi
+
+fi
+
+if [[ $DEBUG == "yes" ]]
+then
+	echo
+	echo "Xen Identification: XEN_HOST $XEN_HOST"
+fi
+
+
 ###########################################################
 #
 # Debugging: Report Distribution and Version Results
@@ -1290,9 +1366,7 @@ fi
 #
 ###########################################################
 
-line "<html>"
-
-line "<head><title>Birdseye Report for $MY_HOST</title>"
+line "<!doctype html>\n<html>\n<head>\n<title>Birdseye Report for $MY_HOST</title>"
 
 #############=============-----------------................
 #
@@ -1972,7 +2046,12 @@ raw_close
 
 item_title "item_hwclock"		"Hardware Clock System date/time" "hwclock"
 raw_open
-hwclock >> $HTML 2>&1
+if [[ $XEN_VM == "no" ]]
+then
+	hwclock >> $HTML 2>&1
+else
+	line "There is no hardware clock in a Xen virtual machine."
+fi
 raw_close
 
 item_title "item_uname"		"System identification" "uname -a"
@@ -2009,25 +2088,18 @@ raw_close
 section "section_dmesg" "Boot messages"
 
 item_title "item_dmesg_notime"		"Linux boot messages without timestamps" "dmesg --notime"
+
+# Some versions of Linux have a dmesg which doesn't support the
+# stripping of timestamps with --notime.  Check for this quick and
+# work around it.
 textarea_open 120 24
-if [[ $QUIRK_DMESG_PRE_TIMESTAMP == "yes" ]]
+if [[ $QUIRK_DMESG_NOTIME_OPTION != "notime" ]]
 then
-	line "The dmesg command in this version of Linux does not support timestamps."
+	dmesg | cut -c15-254 >> $HTML 2>&1
+	dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
 else
-
-	# This version of Linux does support timestamps, strip them with --notime
-	# or manually using cut
-
-	# If this quirk is not set to no, then use the --notime option
-	if [[ $QUIRK_DMESG_NOTIME_OPTION != "null" ]]
-	then
-		dmesg --notime >> $HTML 2>&1
-		dmesg --notime >> $FILE_DMESG_NOTIME
-	else
-		# quirk: SLES 11 SP3 - no atime option, use cut to remove the time
-		dmesg | cut -c15-254 >> $HTML 2>&1
-		dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
-	fi
+	dmesg --notime >> $HTML 2>&1
+	dmesg --notime >> $FILE_DMESG_NOTIME
 fi
 textarea_close
 
@@ -2160,16 +2232,32 @@ cat /proc/cmdline >> $HTML 2>&1
 raw_close
 
 item_title "item_bootdir"		"Boot directory" "ls -l /boot"
-textarea_open 120 24
-ls -lR /boot >> $HTML 2>&1
-textarea_close
+BOOT_LINES=$(ls -lR /boot | wc -l)
+if [[ $BOOT_LINES -le 15 ]]
+then
+	raw_open
+	ls -lR /boot >> $HTML 2>&1
+	raw_close
+else
+	textarea_open 120 24
+	ls -lR /boot >> $HTML 2>&1
+	textarea_close
+fi
 
 item_title "item_efidir"		"EFI Boot directory" "ls -l /boot/efi"
 if [[ -d /boot/efi ]]
 then
-	textarea_open 120 24
-	ls -lR /boot/efi >> $HTML 2>&1
-	textarea_close
+	EFI_BOOT_LINES=$(ls -lR /boot/efi | wc -l)
+	if [[ $EFI_BOOT_LINES -le 15 ]]
+	then
+		raw_open
+		ls -lR /boot/efi >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		ls -lR /boot/efi >> $HTML 2>&1
+		textarea_close
+	fi
 else
 	raw_open
 	line "There is no /boot/efi directory on this system."
@@ -2259,29 +2347,45 @@ then
 	echo "Boot Configuration: DIST_UEFI_DIR $DIST_UEFI_DIR"
 fi
 
-item_title "item_grubconf"		"GRUB Config File" "cat grub.cfg"
+item_title "item_grubconf" "GRUB Config File" "cat grub.cfg"
 if [[ -f $MY_BOOT_DIR/$DIST_GRUB_CONF ]]
 then
 	paragraph "Reporting on $MY_BOOT_DIR/$DIST_GRUB_CONF"
 
-	textarea_open 120 24
-	cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
-	textarea_close
+	GRUB_LINES=$(cat $MY_BOOT_DIR/$DIST_GRUB_CONF | wc -l)
+	if [[ $GRUB_LINES -le 15 ]]
+	then
+		raw_open
+		cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+		textarea_close
+	fi
 else
 
 	if [[ $EFI_BOOT == "yes" ]] && [[ -f $DIST_UEFI_DIR/$DIST_GRUB_CONF ]]
 	then
 		paragraph "Reporting on $DIST_UEFI_DIR/$DIST_GRUB_CONF"
 
-		textarea_open 120 24
-		cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
-		textarea_close
+		GRUB_LINES=$(cat $DIST_UEFI_DIR/$DIST_GRUB_CONF | wc -l)
+		if [[ $GRUB_LINES -le 15 ]]
+		then
+			raw_open
+			cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+			raw_close
+		else
+			textarea_open 120 24
+			cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+			textarea_close
+		fi
+
 	else
 		raw_open
 		line "I can't find $DIST_GRUB_CONF in the expected places."
 		raw_close
 	fi
-
 fi
 
 item_title "item_grubmenulst"		"GRUB Config File" "cat menu.lst"
@@ -2289,18 +2393,36 @@ if [[ -f $MY_BOOT_DIR/menu.lst ]]
 then
 	paragraph "Reporting on $MY_BOOT_DIR/menu.lst"
 
-	textarea_open 120 24
-	cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
-	textarea_close
+	GRUB_LINES=$(cat $MY_BOOT_DIR/menu.lst | wc -l)
+	if [[ $GRUB_LINES -le 15 ]]
+	then
+		raw_open
+		cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
+		textarea_close
+	fi
+
 else
 
 	if [[ $EFI_BOOT == "yes" ]] && [[ -f $DIST_UEFI_DIR/menu.lst ]]
 	then
 		paragraph "Reporting on $DIST_UEFI_DIR/menu.lst"
 
-		textarea_open 120 24
-		cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
-		textarea_close
+		GRUB_LINES=$(cat $DIST_UEFI_DIR/menu.lst | wc -l)
+		if [[ $GRUB_LINES -le 15 ]]
+		then
+			raw_open
+			cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
+			raw_close
+		else
+			textarea_open 120 24
+			cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
+			textarea_close
+		fi
+
 	else
 		raw_open
 		line "I can't find menu.lst in the expected places."
@@ -2401,14 +2523,16 @@ fi
 raw_close
 
 item_title "item_modblist"		"Kernel Module Blacklist" "cat /etc/modprobe.d/blacklist.conf"
-raw_open
 if [[ -f /etc/modprobe.d/blacklist.conf ]]
 then
+	textarea_open 120 24
 	cat /etc/modprobe.d/blacklist.conf >> $HTML 2>&1
+	textarea_close
 else
+	raw_open
 	line "/etc/blacklist.conf does not exist on this system."
+	raw_close
 fi
-raw_close
 
 item_title "item_modinfo"	"Kernel Module Info" "modinfo"
 textarea_open 120 24
@@ -2478,14 +2602,22 @@ raw_close
 
 item_title "item_firewall"		"Firewall rules" "iptables -L"
 
-textarea_open 120 24
 if [ $PUBLIC_REPORT = "yes" ]
 then
 	line "This is a public report and no firewall information is included."
 else
-	iptables -L >> $HTML 2>&1
+	IPTABLES_LINES=$(iptables -L | wc -l)
+	if [[ $IPTABLES_LINES -le 15 ]]
+	then
+		raw_open
+		iptables -L >> $HTML 2>&1
+	 	raw_close
+	else
+		textarea_open 120 24
+		iptables -L >> $HTML 2>&1
+		textarea_close
+	fi
 fi
-textarea_close
 
 #############=============-----------------................
 #
@@ -2498,11 +2630,21 @@ section "section_storage_cfg" "Storage Configuration"
 item_title "item_fsblk"		"File System Block Devices" "lsblk -fi"
 if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
-	textarea_open 160 24
-	# -i option uses ASCII characters for tree relationships +--^ etc
-	# -f show filesystem information
-	lsblk -fi >> $HTML 2>&1
-	textarea_close	
+	FSBLOCK_LINES=$(lsblk -fi | wc -l)
+	if [[ $FSBLOCK_LINES -le 15 ]]
+	then
+		raw_open
+		# -i option uses ASCII characters for tree relationships +--^ etc
+		# -f show filesystem information
+		lsblk -fi >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 160 24
+		# -i option uses ASCII characters for tree relationships +--^ etc
+		# -f show filesystem information
+		lsblk -fi >> $HTML 2>&1
+		textarea_close	
+	fi
 fi
 
 item_title "item_fstab" "Filesystem mount table" "fstab"
@@ -2511,9 +2653,17 @@ cat /etc/fstab >> $HTML 2>&1
 raw_close
 
 item_title "item_mount"		"Mounted filesystems" "mount"
-textarea_open 140 24
-mount >> $HTML 2>&1
-textarea_close
+MOUNT_LINES=$(mount | wc -l)
+if [[ $MOUNT_LINES -le 15 ]]
+then
+	raw_open
+	mount >> $HTML 2>&1
+	raw_close
+else
+	textarea_open 140 24
+	mount >> $HTML 2>&1
+	textarea_close
+fi
 
 # Enable by default" (most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
@@ -2602,6 +2752,10 @@ then
 	textarea_open 120 24
 	chkconfig --list >> $HTML 2>&1
 	textarea_close	
+else
+	raw_open
+	line "chkconfig is not present on this system."
+	raw_close
 fi
 
 item_title "item_systemctl"		"Systemctl" "systemctl"
@@ -2610,6 +2764,10 @@ then
 	textarea_open 120 24
 	systemctl >> $HTML 2>&1
 	textarea_close	
+else
+	raw_open
+	line "systemctl is not present on this system."
+	raw_close
 fi
 
 #############=============-----------------................
@@ -2903,48 +3061,55 @@ fi
 
 item_title "item_xrandr"	"RandR - X Resize, Rotate and Reflect Extension" "xrandr"
 
-raw_open
 if [[ $MY_XDISPLAY != "skip" ]]
 then
+	textarea_open 120 24
 	xrandr $MY_XDISPLAY >> $HTML 2>&1 
+	textarea_close
 else
+	raw_open
 	line "No X Display is available for reporting."
+	raw_close
 fi
-raw_close
 
 item_title "item_dpyinfo"	"X Display Info" "xdpyinfo"
 
-textarea_open 120 24
 if [[ $MY_XDISPLAY != "skip" ]]
 then
+	textarea_open 120 24
 	xdpyinfo $MY_DISPLAY >> $HTML 2>&1 
+	textarea_close
 else
+	raw_open
 	line "No X Display is available for reporting."
+	raw_close
 fi
-textarea_close
 
 item_title "item_xvinfo"	"Xvideo info" "xvinfo"
 
-textarea_open 120 24
 if [[ $MY_XDISPLAY != "skip" ]]
 then
+	textarea_open 120 24
 	xvinfo $MY_XDISPLAY >> $HTML 2>&1 
+	textarea_close
 else
+	raw_open
 	line "No X Display is available for reporting."
+	raw_close
 fi
-textarea_close
 
 item_title "item_glxinfo"	"GLX Info" "glxinfo"
 
-textarea_open 120 24
 if [[ $MY_XDISPLAY != "skip" ]]
 then
+	textarea_open 120 24
 	glxinfo $MY_XDISPLAY >> $HTML 2>&1
+	textarea_close
 else
+	raw_open
 	line "No X Display is available for reporting."
+	raw_close
 fi
-textarea_close
-
 
 #############=============-----------------................
 #
@@ -2954,20 +3119,19 @@ textarea_close
 
 section "section_hw_summary" "Hardware Summary"
 
-#item_title "item_product"		"Product Name (dmidecode -s system-product-name)"
 item_title "item_product"		"Product Name" "dmidecode -s system-product-name"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s system-product-name >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
 item_title "item_processor_line"	"Processor Summary" "dmidecode -s processor-version"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-version | head -1 >> $HTML 2>&1
 else
@@ -2982,7 +3146,7 @@ raw_close
 
 item_title "item_bios_vendor"	"BIOS Vendor" "dmidecode -s bios-vendor"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-vendor >> $HTML 2>&1
 else
@@ -2992,7 +3156,7 @@ raw_close
 
 item_title "item_bios_vers"		"BIOS Version" "dmidecode -s bios-version"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-version  >> $HTML 2>&1
 else
@@ -3002,7 +3166,7 @@ raw_close
 
 item_title "item_bios_date"		"BIOS Release Date" "dmidecode -s bios-release-date"
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-release-date  >> $HTML 2>&1
 else
@@ -3054,7 +3218,7 @@ section "section_processor" "Processor Information"
 item_title "item_proc_family"	"Processor Family" "dmidecode -s processor-family"
 # first line only please
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-family | head -1 >> $HTML 2>&1
 else
@@ -3065,7 +3229,7 @@ raw_close
 item_title "item_proc_vers"		"Processor Version" "dmidecode -s processor-version"
 # first line only please
 raw_open
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-version | head -1 >> $HTML 2>&1
 else
@@ -3155,7 +3319,12 @@ raw_close
 
 item_title "item_mtrr"			"MTRR" "cat /proc/mtrr"
 raw_open
-cat /proc/mtrr >> $HTML 2>&1
+if [[ -f /proc/mtrr ]]
+then
+	cat /proc/mtrr >> $HTML 2>&1
+else
+	line "This system doesn't have /proc/mtrr, is it a virtual machine?"
+fi
 raw_close
 
 item_title "item_numashow"		"NUMA Topology" "numactl --show"
@@ -3220,14 +3389,30 @@ section "section_pci" "Expansion Cards"
 #raw_close
 
 item_title "item_iomem"			"Peripheral IO memory" "cat /proc/iomem"
-textarea_open 120 24
-cat /proc/iomem >> $HTML 2>&1 
-textarea_close
+IOMEM_LINES=$(cat /proc/iomem | wc -l)
+if [[ $IOMEM_LINES -le 15 ]]
+then
+	raw_open
+	cat /proc/iomem >> $HTML 2>&1 
+	raw_close
+else
+	textarea_open 120 24
+	cat /proc/iomem >> $HTML 2>&1 
+	textarea_close
+fi
 
 item_title "item_ioports"		"Peripheral IO ports" "cat /proc/ioports"
-textarea_open 120 24
-cat /proc/ioports >> $HTML 2>&1
-textarea_close
+IOPORT_LINES=$(cat /proc/ioports | wc -l)
+if [[ $IOPORT_LINES -le 15 ]]
+then
+	raw_open
+	cat /proc/ioports >> $HTML 2>&1 
+	raw_close
+else
+	textarea_open 120 24
+	cat /proc/ioports >> $HTML 2>&1 
+	textarea_close
+fi
 
 item_title "item_dma"		"Peripheral DMA" "cat /proc/dma"
 # Show a short raw box if we only have a few lines, textarea if many
@@ -3256,17 +3441,52 @@ else
 fi
 
 item_title "item_lspci"			"PCI devices" "lspci"
-textarea_open 120 24
-lspci >> $HTML 2>&1 
-textarea_close
+LSPCI_LINES=$(lspci | wc -l)
+if [[ $LSPCI_LINES -gt 0 && $LSPCI_LINES -le 15 ]]
+then
+	raw_open
+	lspci >> $HTML 2>&1 
+	raw_close
+elif [[ $LSPCI_LINES -gt 0 && $LSPCI_LINES -le 15 ]]
+then
+	textarea_open 120 24
+	lspci >> $HTML 2>&1 
+	textarea_close
+else
+	raw_open
+	line "This system doesn't list any PCI devices, is it a virtual machine?"
+	raw_close
+fi
 
-item_title "item_lspcivv"		"PCI Devices Detail" "lspci -vv"
-textarea_open 120 24
-lspci -vv >> $HTML 2>&1 
-lspci -vv >> $FILE_PCI 2>&1
-textarea_close
+item_title "item_lspcivv"	"PCI Devices Detail" "lspci -vv"
+# LSPCI_LINES is set above, the first time we try to do lspci alone.
+if [[ $LSPCI_LINES -gt 0 ]]
+then
+	if [[ $LSPCI_LINES -le 15 ]]
+	then
+		raw_open
+		lspci -vv >> $HTML 2>&1 
+		raw_close
+	else
+		textarea_open 120 24
+		lspci -vv >> $HTML 2>&1 
+		textarea_close
+	fi
 
-helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_PCI target=_file_pci>separate lspci file.</a>"
+	# Record this information into the raw file
+	lspci -vv >> $FILE_PCI 2>&1
+	# If we've recorded something into the file, then show this tip, too
+	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_PCI target=_file_pci>separate lspci file.</a>"
+
+else
+	raw_open
+	line "This system doesn't list any PCI devices, is it a virtual machine?"
+	raw_close
+
+	# Place a warning in the text output file too in case the user
+	# doesn't bother to look at this info in the HTML file first.
+	echo "This system doesn't list any PCI devices, is it a virtual machine?">> $FILE_PCI 2>&1
+fi
 
 #############=============-----------------................
 #
@@ -3277,34 +3497,91 @@ helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_PC
 section "section_usb" "USB System"
 
 item_title "item_lsusb"			"USB Devices" "lsusb"
-raw_open
-lsusb >> $HTML 2>&1
-raw_close
+if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
+then
+	# Setting LSUSB_LINES here is important, we use it to determine
+	# how long the output of lsusb.py is later
+	LSUSB_LINES=$(lsusb | wc -l)
+	if [[ $LSUSB_LINES -le 15 ]]
+	then
+		raw_open
+		lsusb >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		lsusb >> $HTML 2>&1
+		textarea_close
+	fi
+else
+	raw_open
+	line "The USB system doesn't appear to work. Is this a virtual machine?"
+	raw_close
+fi
 
 item_title "item_lsusbpy"		"USB Devices Speed & Power" "lsusb.py"
-raw_open
-#FILE_EXISTS="no"
-#check_for_program lsusb.py
-#if [[ $FILE_EXISTS == "yes" ]]
-# check_for_program doesn't work with programs that have extensions
-if [[ -f /usr/bin/lsusb.py ]]
+if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
 then
-	/usr/bin/lsusb.py >> $HTML 2>&1
+
+	# Because lsusb.py requres invoking Python and a fair amount of CPU
+	# cycles compared to most of the small, lean compiled C binaries
+	# used in Birdseye, we're not going to first check for the size
+	# of 
+
+	if [[ $AVAILABLE_LSUSBPY == "yes" ]]
+	then
+		textarea_open 120 24
+		/usr/bin/lsusb.py >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "/usr/bin/lsusb.py is not installed."
+		raw_close
+	fi
 else
-	line "/usr/bin/lsusb.py is not installed."
+	raw_open
+	line "The USB system doesn't appear to work. Is this a virtual machine?"
+	raw_close
 fi
-raw_close
 
 item_title "item_lsusbv"			"USB Devices Detail" "lsusb -v"
-textarea_open 120 24
-lsusb -v >> $HTML 2>&1
-textarea_close
+if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
+then
+	if [[ $(lsusb -v | wc -l) -le 15 ]]
+	then
+		raw_open
+		lsusb -v >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		lsusb -v >> $HTML 2>&1
+		textarea_close
+	fi
+else
+	raw_open
+	line "The USB system doesn't appear to work. Is this a virtual machine?"
+	raw_close
+fi
 
 item_title "item_lsusbt"			"USB Devices Tree" "lsusb -t"
-# redirect stderr to stdout as some information is sent do stderr too, not sure why.
-raw_open
-lsusb -t >> $HTML 2>&1
-raw_close
+if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
+then
+	# redirect stderr to stdout as some information is sent 
+	# to stderr too, not sure why.
+	if [[ $(lsusb -t | wc -l) -le 15 ]]
+	then
+		raw_open
+		lsusb -t >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		lsusb -t >> $HTML 2>&1
+		textarea_close
+	fi
+else
+	raw_open
+	line "The USB system doesn't appear to work. Is this a virtual machine?"
+	raw_close
+fi
 
 #############=============-----------------................
 #
@@ -3316,23 +3593,22 @@ section "section_dmidecode" "System Board Information"
 
 item_title "item_dmidecode" "System Board information" "dmidecode"
 
-textarea_open 120 24
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
+	textarea_open 120 24
 	dmidecode >> $HTML 2>&1
+	textarea_close 
 else
+	raw_open
 	line "'dmidecode' is not available on this system."
+	raw_close
 fi
-textarea_close 
 
-if [[ $AVAILABLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" && DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode >> $FILE_DMI
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
-else
-	line "'dmidecode' is not available on this system." >> $FILE_DMI
 fi
-
 
 #############=============-----------------................
 #
@@ -3455,26 +3731,68 @@ section "section_storage" "Storage Devices"
 item_title "item_lsblk"		"Block Storage Devices" "lsblk"
 if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
-	textarea_open 120 24
-	# -i option uses ASCII characters for tree relationships +--^ etc
-	lsblk -i >> $HTML 2>&1
-	textarea_close	
+	# This is done earlier, but we'll repeat it for safety here.
+	FSBLOCK_LINES=$(lsblk -fi | wc -l)
+	if [[ $FSBLOCK_LINES -le 15 ]]
+	then
+		raw_open
+		# -i option uses ASCII characters for tree relationships +--^ etc
+		lsblk -i >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 160 24
+		# -i option uses ASCII characters for tree relationships +--^ etc
+		lsblk -i >> $HTML 2>&1
+		textarea_close	
+	fi
 fi
 
-item_title "item_lsscsi"		"SCSI Information" "lsscsi"
-raw_open
+item_title "item_lsscsi" "SCSI Information" "lsscsi"
 if [[ $AVAILABLE_LSSCSI == "yes" ]]
 then
-	lsscsi >> $HTML 2>&1
+	LSSCSI_LINES=$(lsscsi | wc -l)
+	if [[ $LSSCSI_LINES -gt 0 ]]
+	then
+		if [[ $LSSCSI_LINES -le 15 ]]
+		then
+			raw_open
+			lsscsi >> $HTML 2>&1
+			raw_close
+		else
+			textarea_open 120 24
+			lsscsi >> $HTML 2>&1
+			textarea_close
+		fi
+	else
+		raw_open
+		line "There are no SCSI devices on your system. Maybe this is a virtual machine?"
+		raw_close
+	fi
 else
-	line "lsscsi is not installed on this system."
+	raw_open
+	line "'lsscsi' is not installed on this system."
+	raw_close
 fi
-raw_close
 
 item_title "item_procscsi" "SCSI Information via proc" "cat /proc/scsi/scsi"
-textarea_open 120 24
-cat /proc/scsi/scsi >> $HTML 2>&1
-textarea_close
+PROC_SCSI_LINES=$(cat /proc/scsi/scsi | grep -v "Attached" | wc -l)
+if [[ $PROC_SCSI_LINES -gt 0 ]]
+then
+	if [[ $PROC_SCSI_LINES -le 15 ]]
+	then
+		raw_open
+		cat /proc/scsi/scsi >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		cat /proc/scsi/scsi >> $HTML 2>&1
+		textarea_close
+	fi
+else
+	raw_open
+	line "There are no SCSI devices being reported on this system. Is it a virtual machine?"
+	raw_close
+fi
 
 #############=============-----------------................
 #
@@ -3571,14 +3889,40 @@ then
 		textarea_close
 
 		item_title "item_virsh_iflist" "Virtualization Interface List" "virsh iface-list"
-		raw_open
-		virsh iface-list >> $HTML 2>&1
-		raw_close
+		VIRSH_IFACE_COUNT=$(virsh iface-list | tail -n +4 | wc -l)
+		if [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -le 15 ]]
+		then
+			raw_open
+			virsh iface-list >> $HTML 2>&1
+			raw_close
+		elif [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -gt 15 ]]
+		then
+			textarea_open 120 24
+			virsh iface-list >> $HTML 2>&1
+			textarea_close
+		else
+			raw_open
+			line "There are no interfaces defined for this system."
+			raw_close
+		fi
 
 		item_title "item_virsh_netlist" "Virtualization Network List" "virsh net-list"
-		raw_open
-		virsh net-list >> $HTML 2>&1
-		raw_close
+		VIRSH_NETLIST_COUNT=$(virsh net-list | tail -n +4 | wc -l)
+		if [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -le 15 ]]
+		then
+			raw_open
+			virsh net-list >> $HTML 2>&1
+			raw_close
+		elif [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -gt 15 ]]
+		then
+			textarea_open 120 24
+			virsh net-list >> $HTML 2>&1
+			textarea_close
+		else
+			raw_open
+			line "There are no networks defined for this system."
+			raw_close
+		fi
 
 	else
 		line "virsh is not installed in this environment."
@@ -3588,6 +3932,7 @@ else
 	raw_open
 	line "Skipping Virtualization Configuration (--novirt)"
 	raw_close
+	line
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
 #############=============-----------------................
@@ -3604,110 +3949,167 @@ then
 	if [[ $AVAILABLE_VIRSH == "yes" ]]
 	then
 		item_title "item_vmlist"	"Virtual Machines Defined" "virsh list --all"
-		raw_open
-		virsh list --all >> $HTML 2>&1
-		raw_close
+		# Even on a system with no VMs, a header will be produced by virsh
+		# So attempt to list all VMs by starting with line four of the output
+		VIRSH_VM_COUNT=$(virsh list --all | tail -n +4 | wc -l)
+		if [[ $VIRSH_VM_COUNT -gt 0 && $VIRSH_VM_COUNT -le 15 ]]
+		then
+			raw_open
+			virsh list --all >> $HTML 2>&1
+			raw_close
+		elif [[ $VIRSH_VM_COUNT -gt 0 && $VIRSH_VM_COUNT -gt 15 ]]
+		then
+			textarea_open 120 24
+			virsh list --all >> $HTML 2>&1
+			textarea_close
+		else
+			raw_open
+			line "There are no virtual machines defined for this system."
+			raw_close
+		fi
 
 		item_title "item_virsh_pool_list" "Virtualization Storage Pool List" "virsh pool-list"
-		raw_open
-		virsh pool-list >> $HTML 2>&1
-		raw_close
+
+		VIRSH_POOL_COUNT=$(virsh pool-list | tail -n +4| wc -l)
+		if [[ $VIRSH_POOL_COUNT -gt 0 && $VIRSH_POOL_COUNT -le 15 ]]
+		then
+			raw_open
+			virsh pool-list >> $HTML 2>&1
+			raw_close
+		elif [[ $VIRSH_POOL_COUNT -gt 0 && $VIRSH_POOL_COUNT -gt 15 ]]
+		then
+			textarea_open 120 24
+			virsh pool-list >> $HTML 2>&1
+			textarea_close
+		else
+			raw_open
+			line "There are no pool objects defined for this system."
+			raw_close
+		fi
 
 		item_title "item_virsh_pool_info" "Virtualization Storage Pool Info" "virsh pool-info"
-		raw_open
-		for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }')
-		do
-			line "<strong>Pool info for $EACH_POOL</strong>"
-			line ""
-			virsh pool-info $EACH_POOL >> $HTML 2>&1
-		done
-		raw_close
+		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
+		then
+			raw_open
+			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }')
+			do
+				line "<strong>Pool info for $EACH_POOL</strong>"
+				line ""
+				virsh pool-info $EACH_POOL >> $HTML 2>&1
+			done
+			raw_close
+		else
+			raw_open
+			line "There are no pool objects defined for this system."
+			raw_close
+		fi
 
 		item_title "item_virsh_vol_list" "Virtualization Storage Volume List" "virsh vol-list"
-		raw_open
-		for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
-		do
-			line "<strong>Volumes in storage pool $EACH_POOL</strong>"
-			line ""
-			virsh vol-list $EACH_POOL >> $HTML 2>&1
-		done
-		raw_close
+		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
+		then
+			raw_open
+			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
+			do
+				line "<strong>Volumes in storage pool $EACH_POOL</strong>"
+				line ""
+				virsh vol-list $EACH_POOL >> $HTML 2>&1
+			done
+			raw_close
+		else
+			raw_open
+			line "There are no pool objects defined for this system."
+			raw_close
+		fi
 
 		item_title "item_virsh_vol_info" "Virtualization Storage Volume Info" "virsh vol-info"
-		raw_open
-		for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
-		do
-			line "<strong>Volumes in storage pool $EACH_POOL</strong>"
-			line ""
-
-			for EACH_VOL in $(virsh vol-list $EACH_POOL | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
+		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
+		then
+			raw_open
+			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 			do
-				line "<strong>Volume info for $EACH_VOL in storage pool $EACH_POOL</strong>"
+				line "<strong>Volumes in storage pool $EACH_POOL</strong>"
 				line ""
-				virsh vol-info --pool $EACH_POOL $EACH_VOL >> $HTML 2>&1
-			done
 
-		done
-		raw_close
+				for EACH_VOL in $(virsh vol-list $EACH_POOL | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
+				do
+					line "<strong>Volume info for $EACH_VOL in storage pool $EACH_POOL</strong>"
+					line ""
+					virsh vol-info --pool $EACH_POOL $EACH_VOL >> $HTML 2>&1
+				done
+			done
+			raw_close
+		else
+			raw_open
+			line "There are no pool objects defined for this system."
+			raw_close
+		fi
 
 		item_title "item_vm_details" "Virtual Machine Details" "--"
-		for EACH_VM in $(virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//')
-		do
+		if [[ $VIRSH_VM_COUNT -gt 0 ]]
+		then
+			for EACH_VM in $(virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//')
+			do
 
-			raw_open
-			# Determine the state of the VM: Running, Shut offf
+				raw_open
+				# Determine the state of the VM: Running, Shut offf
 
-			QUIRK_VIRSH_DOMSTATE="no-reason"
+				QUIRK_VIRSH_DOMSTATE="no-reason"
 
-			# Acquire the state of the VM and a possible reason for its state
-			# If Quirk_virsh_domstate is set, we don't have the -reason feature
-			if [[ $QUIRK_VIRSH_DOMSTATE == "no-reason" ]]
-			then
-				VM_STATE=$(virsh domstate $EACH_VM)
-			else
-				VM_STATE=$(virsh domstate $EACH_VM --reason)
-			fi
-
-			# Report the name of the VM and its current state
-			line "<strong>Virtual Machine $EACH_VM is $VM_STATE</strong>"
-			line ""
-
-			# Try to acquire the description of this VM
-			if [[ QUIRK_VIRSH_DESC != "no-desc" ]]
-			then
-				VM_DESC=$(virsh desc $EACH_VM)
-
-
-				# If the VM has something other than "No description" then report it.
-				if [[ ${VM_DESC:1:14} != "No description" ]]
+				# Acquire the state of the VM and a possible reason for its state
+				# If Quirk_virsh_domstate is set, we don't have the -reason feature
+				if [[ $QUIRK_VIRSH_DOMSTATE == "no-reason" ]]
 				then
-					# Report the VM description text
-					line "$VM_DESC"
-					line ""
+					VM_STATE=$(virsh domstate $EACH_VM)
+				else
+					VM_STATE=$(virsh domstate $EACH_VM --reason)
 				fi
-			fi
 
-			# Report technical information on the VM like its ID, UUID, Memory, CPU
-			virsh dominfo $EACH_VM >> $HTML 2>&1
+				# Report the name of the VM and its current state
+				line "<strong>Virtual Machine $EACH_VM is $VM_STATE</strong>"
+				line ""
 
-			# Report storage devices defined for the VM
-			line "Defined storage devices:"
-			line ""
-			virsh domblklist $EACH_VM >> $HTML 2>&1
+				# Try to acquire the description of this VM
+				if [[ QUIRK_VIRSH_DESC != "no-desc" ]]
+				then
+					VM_DESC=$(virsh desc $EACH_VM)
 
-			# Report network interfaces defined for the VM
-			line "Defined network interfaces:"
-			line ""
-			virsh domiflist $EACH_VM >> $HTML 2>&1
 
+					# If the VM has something other than "No description" then report it.
+					if [[ ${VM_DESC:1:14} != "No description" ]]
+					then
+						# Report the VM description text
+						line "$VM_DESC"
+						line ""
+					fi
+				fi
+
+				# Report technical information on the VM like its ID, UUID, Memory, CPU
+				virsh dominfo $EACH_VM >> $HTML 2>&1
+
+				# Report storage devices defined for the VM
+				line "Defined storage devices:"
+				line ""
+				virsh domblklist $EACH_VM >> $HTML 2>&1
+
+				# Report network interfaces defined for the VM
+				line "Defined network interfaces:"
+				line ""
+				virsh domiflist $EACH_VM >> $HTML 2>&1
+
+				raw_close
+
+			done
+		else
+			raw_open
+			line "There are no virtual machines defined for this system."
 			raw_close
-
-		done
+		fi
 
 		line
 		
 	else
 		line "virsh is not installed in this environment."
+		line
 	fi
 
 else
@@ -3729,6 +4131,25 @@ if [[ $DEF_SHOW_VIRT == "yes" ]]
 then
 
 	item_title "item_xenconfig" "Xen Configuration" "cat /etc/xen/xend-config.sxp"
+
+	if [[ $XEN_HOST == "yes" ]]
+	then
+		XEN_CONFIG_LINES=$(cat /etc/xen/xend-config.sxp | wc -l)
+		if [[ $XEN_CONFIG_LINES -le 15 ]]
+		then
+			raw_open
+			cat /etc/xen/xend-config.sxp >> $HTML 2>&1
+			raw_close
+		else
+			textarea_open 120 24
+			cat /etc/xen/xend-config.sxp >> $HTML 2>&1
+			textarea_close
+		fi
+	else
+		raw_open
+		line "This is not a Xen hypervisor host system."
+		raw_close
+	fi
 
 else
 
@@ -3769,6 +4190,31 @@ check_for_program zip
 if [[ $FILE_EXISTS == "yes" ]]
 then
 	zip -qrl $OUTPUT_DIR.zip $OUTPUT_DIR
+fi
+
+# If we ran this script using sudo or su -- anything but a real
+# login as 'root', then change the output directory and files
+# to the non-root username
+# ONLY CHANGE FILES WE MADE - No wildcards!! - maxwell
+
+if [[ $SUDO_USER != "root" ]]
+then
+	if [[ $DEBUG = "yes" ]]
+	then
+		echo "Changing ownership of output directory to $SUDO_USER"
+	fi
+	chown $SUDO_USER "${OUTPUT_DIR}" 
+	for EACH_FILE in \
+		"${FILE_DMI}" "${FILE_CPU}" "${FILE_MSGS}" "${FILE_SYSLOG}" \
+		"${FILE_DMESG}" "${FILE_DMESG_NOTIME}" "${FILE_INTER}" \
+		"${FILE_PCI}" "${FILE_INITRD}"
+	do
+		if [[ $DEBUG = "yes" ]]
+		then
+			echo "Changing ownership of ${EACH_FILE} to $SUDO_USER"
+		fi
+		chown $SUDO_USER "${EACH_FILE}"
+	done
 fi
 
 echo -e "Birdseye capture complete: $OUTPUT_DIR.tar.gz\n"
