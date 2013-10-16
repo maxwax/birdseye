@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1014.01"
+VERSION="2013.1015.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -82,7 +82,6 @@ fi
 # More context-aware, friendly network device output. 
 # See lshw -class network as an example compared to what we do already
 
-# Add lshw such as lshw --class -network on nics
 # RPM package
 # Debian Package
 # Man page
@@ -93,10 +92,7 @@ fi
 
 # Replace calls to 'sutl' with new code:
 # sutl cards
-# sutl nics
 # sutl hbas
-# sutl nics (within nicports component)
-# Replace calls to 'nic-info' with new code
 
 # Add plugin variables before/after each section
 
@@ -256,6 +252,15 @@ function check_for_program {
 	fi
 }
 
+function nic_list {
+
+	# This code used when calling the external script during development
+	./nics >> $HTML 2>&1
+
+	# integrate 'nics' bash code here to avoid external calls 
+
+}
+
 # Documentation: check_for_program function (above)
 # 1. Set FILE_EXISTS to no
 # 2. Call check_for_program with the name of the file you question
@@ -269,6 +274,153 @@ function check_for_program {
 #else
 #	echo "lsinitrd is missing."
 #fi
+
+###########################################################
+#
+# Check for Programs Once
+#
+###########################################################
+
+FILE_EXISTS="no"
+check_for_program dmidecode
+AVAILABLE_DMIDECODE=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lshw
+AVAILABLE_LSHW=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsb_release
+AVAILABLE_LSB_RELEASE=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program efibootmgr
+AVAILABLE_EFI_BOOTMGR=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsblk
+AVAILABLE_LSBLK=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program pvscan
+AVAILABLE_PVSCAN=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program chkconfig
+AVAILABLE_CHKCONFIG=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program systemctl
+AVAILABLE_SYSTEMCTL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program setserial
+AVAILABLE_SETSERIAL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsinitrd
+AVAILABLE_LSINITRD=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lscpu
+AVAILABLE_LSCPU=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program numactl
+AVAILABLE_NUMACTL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program ethtool
+AVAILABLE_ETHTOOL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsscsi
+AVAILABLE_LSSCSI=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program cd-info
+AVAILABLE_CDINFO=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program virsh
+AVAILABLE_VIRSH=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsusb
+AVAILABLE_LSUSB=$FILE_EXISTS
+
+# This is a special check because the whereis program that
+# function check_for_program uses doesn't find it
+if [[ -f /usr/bin/lsusb.py ]]
+then
+	AVAILABLE_LSUSB="yes"
+else
+	AVAILABLE_LSUSB="no"
+fi
+
+###########################################################
+#
+# Check to see if programs work.  Failure often means VMs
+#
+###########################################################
+
+# If we have dmidecode present, let's try to use it.
+# If it fails, we're probably in a virtual machine with no real
+# hardware to report on and we can't use it.
+# 2013.1014 RHEL 6.4 on Amazon AMI reports:
+# 'No SMBIOS nor DMI entry point found, sorry.'
+# So we'll check for part of that and see how it goes - Maxwell
+DMIDECODE_WORKS="no"
+if [[ $AVAILBLE_DMIDECODE == "yes" ]]
+then
+	if [[ $(dmidecode | grep "No SMBIOS nor DMI" | wc -l) -gt 0 ]]
+	then
+		DMIDECODE_WORKS="no"
+	else
+		DMIDECODE_WORKS="yes"
+	fi
+fi
+
+# 2013.1014 RHEL 6.4 on Amazon AMI reports:
+# 'unable to initialize libusb: -99'
+# So we'll check for that and avoid USB stuff if we find it.
+# Hard to think of any non-virtual machine that doesn't have USB hw
+LSUSB_WORKS="no"
+if [[ $AVAILBLE_LSUSB == "yes" ]]
+then
+	if [[ $(lsusb | grep "unable to initialize libusb" | wc -l) -gt 0 ]]
+	then
+		LSUSB_WORKS="no"
+	else
+		LSUSB_WORKS="yes"
+	fi
+fi
+
+# RHEL 6.X: dmesg lacks --notime option
+# Attempt to perform dmesg using --notime to see if we have this feature
+FEATURE_DMESG_NOTIME="null"
+dmesg --notime >> /dev/null 2>&1
+if (( $? == 0 ))
+then
+	# Error code 0 means we have this feature, hooray!
+	FEATURE_DMESG_NOTIME="yes"
+else
+	# Error code > 0 means we don't have this feature, boo!
+	FEATURE_DMESG_NOTIME="no"
+fi
+
+# RHEL 6.X: dmesg lacks --ctime option
+# Attempt to perform dmesg using --ctime to see if we have this feature
+FEATURE_DMESG_CTIME="null"
+dmesg --ctime >> /dev/null 2>&1
+if (( $? == 0 ))
+then
+	# Error code 0 means we have this feature, hooray!
+	FEATURE_DMESG_CTIME="yes"
+else
+	# Error code > 0 means we don't have this feature, boo!
+	FEATURE_DMESG_CTIME="no"
+fi
 
 ########################################################################
 #
@@ -887,16 +1039,6 @@ FILE_INTER="$OUTPUT_DIR/interrupts.$FILENAME_DATA.txt"
 FILE_PCI="$OUTPUT_DIR/lspci.$FILENAME_DATA.txt"
 FILE_INITRD="$OUTPUT_DIR/initrd.$FILENAME_DATA.txt"
 
-#FILE_DMI=$OUTPUT_DIR/$FILENAME_DMI
-#FILE_CPU=$OUTPUT_DIR/$FILENAME_CPU
-#FILE_MSGS=$OUTPUT_DIR/$FILENAME_MSGS
-#FILE_SYSLOG=$OUTPUT_DIR/$FILENAME_SYSLOG
-#FILE_DMESG=$OUTPUT_DIR/$FILENAME_DMESG
-#FILE_DMESG_NOTIME=$OUTPUT_DIR/$FILENAME_DMESG
-#FILE_INTER=$OUTPUT_DIR/$FILENAME_INTER
-#FILE_PCI=$OUTPUT_DIR/$FILENAME_PCI
-#FILE_INITRD=$OUTPUT_DIR/$FILENAME_INITRD
-
 ###########################################################
 #
 # Traps for CONTROL-C interruption by user
@@ -954,7 +1096,6 @@ done
 QUIRK_LSCPU="null"
 QUIRK_VIRSH_DOMSTATE="null"
 QUIRK_VIRSH_DESC="null"
-QUIRK_DMESG_NOTIME_OPTION="null"
 
 ###########################################################
 #
@@ -1104,7 +1245,6 @@ then
 	if [ $(cat /etc/SuSE-release | grep "Server 11" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="11"
-		QUIRK_DMESG_NOTIME_OPTION="notime"
 	elif [ $(cat /etc/SuSE-release | grep "Server 12" | wc -l) -gt 0 ]
 	then
 		DIST_RELEASE="12"
@@ -1165,127 +1305,6 @@ then
 	# handle other versions here
 	# handle other versions here
 
-fi
-
-###########################################################
-#
-# Check for Programs Once
-#
-###########################################################
-
-FILE_EXISTS="no"
-check_for_program dmidecode
-AVAILABLE_DMIDECODE=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lshw
-AVAILABLE_LSHW=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lsb_release
-AVAILABLE_LSB_RELEASE=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program efibootmgr
-AVAILABLE_EFI_BOOTMGR=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lsblk
-AVAILABLE_LSBLK=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program pvscan
-AVAILABLE_PVSCAN=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program chkconfig
-AVAILABLE_CHKCONFIG=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program systemctl
-AVAILABLE_SYSTEMCTL=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program setserial
-AVAILABLE_SETSERIAL=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lsinitrd
-AVAILABLE_LSINITRD=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lscpu
-AVAILABLE_LSCPU=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program numactl
-AVAILABLE_NUMACTL=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program ethtool
-AVAILABLE_ETHTOOL=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lsscsi
-AVAILABLE_LSSCSI=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program cd-info
-AVAILABLE_CDINFO=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program virsh
-AVAILABLE_VIRSH=$FILE_EXISTS
-
-FILE_EXISTS="no"
-check_for_program lsusb
-AVAILABLE_LSUSB=$FILE_EXISTS
-
-# This is a special check because the whereis program that
-# function check_for_program uses doesn't find it
-if [[ -f /usr/bin/lsusb.py ]]
-then
-	AVAILABLE_LSUSB="yes"
-else
-	AVAILABLE_LSUSB="no"
-fi
-
-###########################################################
-#
-# Check to see if programs work.  Failure often means VMs
-#
-###########################################################
-
-# If we have dmidecode present, let's try to use it.
-# If it fails, we're probably in a virtual machine with no real
-# hardware to report on and we can't use it.
-# 2013.1014 RHEL 6.4 on Amazon AMI reports:
-# 'No SMBIOS nor DMI entry point found, sorry.'
-# So we'll check for part of that and see how it goes - Maxwell
-DMIDECODE_WORKS="yes"
-if [[ $AVAILBLE_DMIDECODE == "yes" ]]
-then
-	if [[ $(dmidecode | grep "No SMBIOS nor DMI" | wc -l) -gt 0 ]]
-	then
-		DMIDECODE_WORKS="no"
-	else
-		DMIDECODE_WORKS="yes"
-	fi
-fi
-
-# 2013.1014 RHEL 6.4 on Amazon AMI reports:
-# 'unable to initialize libusb: -99'
-# So we'll check for that and avoid USB stuff if we find it.
-# Hard to think of any non-virtual machine that doesn't have USB hw
-LSUSB_WORKS="yes"
-if [[ $AVAILBLE_LSUSB == "yes" ]]
-then
-	if [[ $(lsusb | grep "unable to initialize libusb" | wc -l) -gt 0 ]]
-	then
-		LSUSB_WORKS="no"
-	else
-		LSUSB_WORKS="yes"
-	fi
 fi
 
 ###########################################################
@@ -1844,8 +1863,10 @@ unordered_list_close
 toc_section "toc_network_cfg"	"Network Configuration" "#section_network_cfg"
 
 unordered_list_open
+list "item_nics_list"					"Network Device List" "nics (script)"
 list "item_resolv"						"DNS Resolution" "cat /etc/resolv.conf"
 list "item_hosts"							"Local Hosts" "cat /etc/hosts"
+list "item_nsswitch"					"Name Service Switch Config" "cat /etc/nsswitch.conf"
 list "item_iproute"						"Network routing table via ip route" "ip route"
 list "item_netstat"						"Network routing table via netstat" "netstat"
 list "item_firewall"					"Firewall rules" "iptables -L"
@@ -1980,8 +2001,7 @@ unordered_list_close
 toc_section "toc_network_dev"	"Network Devices" "#section_network_devices"
 
 unordered_list_open
-#list "item_sutlnics"					"Network cards" "sutl nics"
-list "item_nicinfo"						"Network port information" "nic-info"
+list "item_nicinfo"						"Network port information" "nics (script)"
 list "item_nicports"					"Network port detail information" "ifconfig, ethtool, ethtool -i"
 unordered_list_close
 
@@ -2104,24 +2124,34 @@ section "section_dmesg" "Boot messages"
 
 item_title "item_dmesg_notime"		"Linux boot messages without timestamps" "dmesg --notime"
 
-# Some versions of Linux have a dmesg which doesn't support the
-# stripping of timestamps with --notime.  Check for this quick and
-# work around it.
 textarea_open 120 24
-if [[ $QUIRK_DMESG_NOTIME_OPTION != "notime" ]]
+if [[ $FEATURE_DMESG_NOTIME == "yes" ]]
 then
-	dmesg | cut -c15-254 >> $HTML 2>&1
-	dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
-else
 	dmesg --notime >> $HTML 2>&1
 	dmesg --notime >> $FILE_DMESG_NOTIME
+else
+	# Show dmesg output using default output information for this dist.
+	dmesg >> $HTML 2>&1
+	dmesg >> $FILE_DMESG_NOTIME
+
+	# If we can determine who shows timestamps by default, then 
+	# we can cut them out manually here
+	#	dmesg | cut -c15-254 >> $HTML 2>&1
+	#	dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
+
 fi
 textarea_close
 
 item_title "item_dmesg_time"		"Linux boot messages with timestamps" "dmesg"
 textarea_open 120 24
-dmesg >> $HTML 2>&1
-dmesg >> $FILE_DMESG
+if [[ $FEATURE_DMESG_CTIME == "yes" ]]
+then
+	dmesg --ctime >> $HTML 2>&1
+	dmesg --ctime >> $FILE_DMESG
+else
+	dmesg >> $HTML 2>&1
+	dmesg >> $FILE_DMESG
+fi
 textarea_close
 
 helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMESG target=_file_dmesg>separate dmesg info file.</a>"
@@ -2566,7 +2596,7 @@ textarea_close
 #############=============-----------------................
 #
 # Network Configuration
-#
+
 #############=============-----------------................
 
 section "section_processes" "Processes Running"
@@ -2585,6 +2615,18 @@ textarea_close
 
 section "section_network_cfg" "Network Configuration"
 
+item_title "item_nics_list"		"Network Device List" "nics"
+if [ $PUBLIC_REPORT = "yes" ]
+then
+	raw_open
+	line "This is a public report and no IP network information is included."
+	raw_close
+else
+	raw_open
+	nic_list >> $HTML 2>&1
+	raw_close
+fi
+
 item_title "item_resolv"		"DNS Resolution" "cat /etc/resolv.conf"
 raw_open
 cat /etc/resolv.conf >> $HTML 2>&1
@@ -2594,6 +2636,11 @@ item_title "item_hosts"		"Local Hosts" "cat /etc/hosts"
 raw_open
 cat /etc/hosts >> $HTML 2>&1
 raw_close
+
+item_title "item_nsswitch" "Name Service Switch Config" "cat /etc/nsswitch"
+textarea_open 120 24
+cat /etc/nsswitch.conf >> $HTML 2>&1
+textarea_close
 
 item_title "item_iproute"		"Network routing table via ip route" "ip route"
 raw_open
@@ -2899,41 +2946,6 @@ fi
 # udev Configuration
 #
 #############=============-----------------................
-toc_section "toc_udev" "Udev configuration" "#section_udev"
-
-unordered_list_open
-
-section "section_udev" "udev configuration"
-
-item_title "item_udevconf"	"udev configuration" "cat /etc/udev.conf"
-raw_open
-if [ -f /etc/udev.conf ]
-then
-	cat /etc/udev.conf >> $HTML 2>&1
-elif [ -f /etc/udev/udev.conf ]
-then
-	cat /etc/udev/udev.conf >> $HTML 2>&1
-fi
-raw_close
-
-item_title "item_udevrules"	"udev rules" "cat /etc/udev/rules.d/*"
-line
-for EACHFILE in /etc/udev/rules.d/*
-do
-	line "$EACHFILE"
-	raw_open
-	cat $EACHFILE >> $HTML 2>&1
-	raw_close
-done
-
-#############=============-----------------................
-#
-# Serial Device Configuration
-#
-#############=============-----------------................
-toc_section "toc_serial" "Serial device configuration" "#section_serial"
-
-unordered_list_open
 
 section "section_serial" "Serial device configuration"
 
@@ -3010,7 +3022,7 @@ do
 					fi
 
 				else
-					echo "'setserial' is not installed." >> $HTML 2>&1
+					echo "'setserial' is not available on this system." >> $HTML 2>&1
 				fi
 
 				line
@@ -3150,7 +3162,7 @@ if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-version | head -1 >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
@@ -3165,7 +3177,7 @@ if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-vendor >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
@@ -3175,7 +3187,7 @@ if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-version  >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
@@ -3185,7 +3197,7 @@ if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s bios-release-date  >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
@@ -3237,7 +3249,7 @@ if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-family | head -1 >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
@@ -3248,7 +3260,7 @@ if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode -s processor-version | head -1 >> $HTML 2>&1
 else
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
 
@@ -3263,7 +3275,7 @@ if [[ $AVAILABLE_LSCPU == "yes" ]]
 then
 	lscpu >> $HTML 2>&1
 else
-	line "lscpu is not installed on this system." 
+	line "lscpu is not available on this system." 
 fi
 raw_close
 
@@ -3280,7 +3292,7 @@ then
 		line "QUIRK: 'lscpu -e' is not available with this distribution."
 	fi
 else
-	line "lscpu is not installed on this system."
+	line "lscpu is not available on this system."
 fi
 raw_close
 
@@ -3348,24 +3360,24 @@ raw_open
 if [[ $AVAILABLE_NUMACTL == "yes" ]]
 then
 	numactl --show >> $HTML 2>&1
+
+	helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies for the current process.  It can be useful to see how physical CPUs and memory are organized."
 else
-	paragraph "numactl is not installed."
+	line "numactl is not available."
 fi
 raw_close 
-
-helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies for the current process.  It can be useful to see how physical CPUs and memory are organized."
 
 item_title "item_numahw"			"NUMA Memory Topology" "numactl --hardware"
 raw_open
 if [[ $AVAILABLE_NUMACTL == "yes" ]]
 then
 	numactl --hardware >> $HTML 2>&1
+
+	helpful_tip "<p><strong>Tip:</strong> 'numactl --hardware' lists each node in the NUMA domain and produces table showing the cost of memory access from one node to another node."
 else
-	paragraph "numactl is not installed."
+	line "numactl is not available."
 fi
 raw_close
-
-helpful_tip "<p><strong>Tip:</strong> 'numactl --hardware' lists each node in the NUMA domain and produces table showing the cost of memory access from one node to another node."
 
 #############=============-----------------................
 #
@@ -3399,7 +3411,7 @@ section "section_pci" "Expansion Cards"
 #then
 #	sutl cards >> $HTML 2>&1
 #else
-#	line "'sutl' utility not installed, cannot execute 'sutl cards'" 
+#	line "'sutl' utility not available, cannot execute 'sutl cards'" 
 #fi
 #raw_close
 
@@ -3549,7 +3561,7 @@ then
 		textarea_close
 	else
 		raw_open
-		line "/usr/bin/lsusb.py is not installed."
+		line "/usr/bin/lsusb.py is not available."
 		raw_close
 	fi
 else
@@ -3615,7 +3627,7 @@ then
 	textarea_close 
 else
 	raw_open
-	line "'dmidecode' is not available on this system."
+	line "'dmidecode' is not available or does not work on this system."
 	raw_close
 fi
 
@@ -3641,30 +3653,35 @@ section "section_network_devices" "Network Devices"
 #then
 #	sutl nics >> $HTML 2>&1
 #else
-#	line "# not installed: sutl nics"
+#	line "# not available: sutl nics"
 #fi
 #raw_close
 
-#item_title "item_nicinfo"		"Network port information" "nic-info"
-#FILE_EXISTS="no"
-#check_for_program nic-info
-#raw_open
-#if [[ $FILE_EXISTS == "yes" ]]
-#then
-#	if [ $PUBLIC_REPORT = "yes" ]
-#	then
-#		line "This is a public report and no IP network information is included."
-#	else
-#		nic-info >> $HTML 2>&1
-#	fi
-#else
-#	line "'nic-info' utility not installed, can't execute 'nic-info'" 
-#fi
-#raw_close
+item_title "item_nicinfo" "Network port information" "nics"
+if [ $PUBLIC_REPORT = "yes" ]
+then
+	raw_open
+	line "This is a public report and no IP network information is included."
+	raw_close
+else
+	raw_open
+	nic_list >> $HTML 2>&1
+	raw_close
+fi
+
+item_title "item_nicinfo"		"Network port information" "nics"
+if [[ $AVAILABLE_LSHW == "yes" ]]
+then
+	textarea_open 160 24
+	lshw -c network >> $HTML 2>&1
+	textarea_close	
+else
+	raw_open
+	line "lshw is not available on this system."
+	raw_close
+fi
 
 item_title "item_nicports"		"Network port detail information" "ifconfig, ethtool, ethtool -i"
-# process each ethernet device, skip vpn, bridges, localhost
-
 if [ $PUBLIC_REPORT = "yes" ]
 then
 	raw_open
@@ -3672,56 +3689,73 @@ then
 	raw_close
 else
 
-	# QUIRK: handling of network device names in Fedora like em1, p10p1, etc
-	if	( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "18" ]] ) ||
-			( [[ $DIST_NAME="fedora" ]] && [[ $DIST_RELEASE = "19" ]] )
-	then
-		# FEDORA 18-19
-		NIC_LIST=$(ifconfig -a | fgrep " mtu " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
-	else
-		# ALL OTHERS
-		NIC_LIST=$(ifconfig -a | fgrep " HWaddr " | grep -v lo | grep -v virbr | grep -v vboxnet | grep -v tap | awk -F " " '{print $1}')
-	fi
+	# Use 'ip link list' to make a list of network devices.
+	# We can't just look for 'ethX' anymore!
+	NIC_LIST=$(ip link list | grep -e "[0-9]: " | awk '{FS=" ";print $2}' | sed "s/://g")
 
-		# Report on each network device port discovered and placed in NIC_LIST
-		for EACHNIC in $NIC_LIST
-		do
-			# Do raw_open/raw_close for each NIC so each is presented individually
-			raw_open
+	# Report on each network device port discovered and placed in NIC_LIST
+	for EACH_NIC in $NIC_LIST
+	do
+		# Do raw_open/raw_close for each NIC so each is presented individually
 
-			#FILE_EXISTS="no"
-			#check_for_program sutl
-			#line "<strong>"
-			#if [[ $FILE_EXISTS == "yes" ]]
-			#then
-			#	sutl nics | grep $EACHNIC >> $HTML 2>&1
-			#else
-			#	line "Network device: $EACHNIC"
-			#fi
-			#line "</strong>"
+		#FILE_EXISTS="no"
+		#check_for_program sutl
+		#line "<strong>"
+		#if [[ $FILE_EXISTS == "yes" ]]
+		#then
+		#	sutl nics | grep $EACH_NIC >> $HTML 2>&1
+		#else
+		#	line "Network device: $EACH_NIC"
+		#fi
+		#line "</strong>"
 
-			line "" 
-			line "# ifconfig $EACHNIC"
-			ifconfig $EACHNIC >> $HTML 2>&1
+		# We show network device information in both 'ip' and 'ifconfig'
+		# style because users may be familiar with one style and trained
+		# to easily review one over the other.
+	
+		line "# ip -s link show $EACH_NIC"
+		raw_open
+		ip -s link show $EACH_NIC >> $HTML 2>&1
+		raw_close
 
-			if [[ $AVAILABLE_ETHTOOL == "yes" ]]
+		line "# ifconfig $EACH_NIC"
+		raw_open
+		ifconfig $EACH_NIC >> $HTML 2>&1
+		raw_close
+
+		if [[ $AVAILABLE_ETHTOOL == "yes" ]]
+		then
+
+			if [[ $EACH_NIC == "lo" || ${EACH_NIC:0:7} == "vboxnet" ]]
 			then
-				line "# ethtool $EACHNIC"
-				ethtool $EACHNIC >> $HTML 2>&1
-
-				line "# ethtool -i $EACHNIC"
-				ethtool -i $EACHNIC >> $HTML 2>&1
+				raw_open
+				line "Skipping ethtool on non-network port device $EACH_NIC"
+				raw_close
 			else
-				line "ethtool is not available" >> $HTML 2>&1
+
+				line "# ethtool $EACH_NIC"
+				raw_open
+				ethtool $EACH_NIC >> $HTML 2>&1
+				raw_close
+
+				line
+
+				line "# ethtool -i $EACH_NIC"
+				raw_open
+				ethtool -i $EACH_NIC >> $HTML 2>&1
+				raw_close
 			fi
 
-			# Do raw_open/raw_close for each NIC so each is presented individually
-			raw_close
+		else
+			line "ethtool is not available on this system." >> $HTML 2>&1
+		fi
 
-		done # on to next nic port in NIC_LIST
+		# Do raw_open/raw_close for each NIC so each is presented individually
+		raw_close
+
+	done # on to next nic port in NIC_LIST
 
 fi
-raw_close
 
 #############=============-----------------................
 #
@@ -3740,7 +3774,7 @@ section "section_storage" "Storage Devices"
 #	sutl hbas >> $HTML 2>&1
 #	raw_close
 #else
-#	line "'sutl' utility not installed, can't execute 'sutl cards'" 
+#	line "'sutl' utility not available, can't execute 'sutl cards'" 
 #fi
 
 item_title "item_lsblk"		"Block Storage Devices" "lsblk"
@@ -3785,7 +3819,7 @@ then
 	fi
 else
 	raw_open
-	line "'lsscsi' is not installed on this system."
+	line "'lsscsi' is not available on this system."
 	raw_close
 fi
 
@@ -3940,7 +3974,7 @@ then
 		fi
 
 	else
-		line "virsh is not installed in this environment."
+		line "virsh is not available in this environment."
 	fi
 else
 	echo "Skipping Virtualization Configuration (--novirt)"
@@ -4123,7 +4157,7 @@ then
 		line
 		
 	else
-		line "virsh is not installed in this environment."
+		line "virsh is not available in this environment."
 		line
 	fi
 
@@ -4228,7 +4262,10 @@ then
 		then
 			echo "Changing ownership of ${EACH_FILE} to $SUDO_USER"
 		fi
-		chown $SUDO_USER "${EACH_FILE}"
+		if [[ -f $EACH_FILE ]]
+		then
+			chown $SUDO_USER "${EACH_FILE}"
+		fi
 	done
 fi
 
