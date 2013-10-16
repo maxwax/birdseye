@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1015.01"
+VERSION="2013.1016.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -79,15 +79,11 @@ fi
 # More tips? - Not just NUMA stuff?
 # --include-tips?
 
-# More context-aware, friendly network device output. 
-# See lshw -class network as an example compared to what we do already
-
 # RPM package
 # Debian Package
 # Man page
 
 # Check lsinitrd on Debian systems.. Mohan got a 'no such file' error
-# Output files should have user security if made with sudo - Josh
 # Tell the user about the -quiet option when prompting them. - JasonF
 
 # Replace calls to 'sutl' with new code:
@@ -117,6 +113,13 @@ function line {
 }
 
 # Output a string of text to the html file
+# with a trailing line break for readability
+#function raw_caption {
+#	#echo -e "${1}" >> $HTML
+#	echo -e "<p class=\"raw_caption\">" >> $HTML
+#}
+
+# Output a string of text to the html file
 # Wrap it in <p> so it can be styled as a line
 function paragraph {
 	echo -e "<p>${1}</p>" >> $HTML
@@ -141,7 +144,7 @@ function toc_section {
 function section {
 	# Output section information to HTML report file
 	echo -e "<h2><a name=\"$1\">$2</a></h2>" >> $HTML
-#	echo -e "<h2><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Return to Top</a></h2>" >> $HTML
+#	echo -e "<h2><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Table of Contents</a></h2>" >> $HTML
 
 	# Output name of section to user as status report
 	echo "$2"
@@ -157,11 +160,27 @@ function group_title {
 	# without bold 
 	if [[ $RAW_CMD != "null" ]]
 	then
-		echo -e "<h3><a name=\"$1\">$2 <span class=h3_nobold>($3)</span></a> <a href="#top" class="boxtop">Return to Top</a></h3>" >> $HTML
+		echo -e "<h3><a name=\"$1\">$2 <span class=h3_nobold>($3)</span></a> <a href="#top" class="boxtop">Table of Contents</a></h3>" >> $HTML
 	else
-		echo -e "<h3><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Return to Top</a></h3>" >> $HTML
+		echo -e "<h3><a name=\"$1\">$2</a> <a href="#top" class="boxtop">Table of Contents</a></h3>" >> $HTML
 	fi
 }
+
+# Output a title for a single item of data being reported
+function raw_caption {
+
+	RAW_CMD=${3:-"null"}
+
+	# If a third parameter has been passed, put it in parenthesis
+	# without bold 
+	if [[ $RAW_CMD != "null" ]]
+	then
+		echo -e "<h5><a name=\"$1\">$2 <span class=h5_nobold>($3)</span></a><a href="#top" class="boxtop">Table of Contents</a></h5>" >> $HTML
+	else
+		echo -e "<h5><a name=\"$1\">$2</a><a href="#top" class="boxtop">Table of Contents</a></h5>" >> $HTML
+	fi
+}
+
 
 # Output a title for a single item of data being reported
 function item_title {
@@ -172,9 +191,9 @@ function item_title {
 	# without bold 
 	if [[ $RAW_CMD != "null" ]]
 	then
-		echo -e "<h4><a name=\"$1\">$2 <span class=h4_nobold>($3)</span></a><a href="#top" class="boxtop">Return to Top</a></h4>" >> $HTML
+		echo -e "<h4><a name=\"$1\">$2 <span class=h4_nobold>($3)</span></a><a href="#top" class="boxtop">Table of Contents</a></h4>" >> $HTML
 	else
-		echo -e "<h4><a name=\"$1\">$2</a><a href="#top" class="boxtop">Return to Top</a></h4>" >> $HTML
+		echo -e "<h4><a name=\"$1\">$2</a><a href="#top" class="boxtop">Table of Contents</a></h4>" >> $HTML
 	fi
 }
 
@@ -349,6 +368,10 @@ FILE_EXISTS="no"
 check_for_program lsusb
 AVAILABLE_LSUSB=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program sensors
+AVAILABLE_SENSORS=$FILE_EXISTS
+
 # This is a special check because the whereis program that
 # function check_for_program uses doesn't find it
 if [[ -f /usr/bin/lsusb.py ]]
@@ -517,6 +540,9 @@ OUTPUT_FORCE=$BIRDSEYE_OUTPUT_FORCE
 # Report on Virtualization Details?
 DEF_SHOW_VIRT=$BIRDSEYE_SHOW_VIRT
 
+# Use Farenheit instead of the default Celsius readings for sensors?
+USE_FARENHEIT=" -f "
+
 ###########################################################
 #
 # Command Line Syntax
@@ -546,6 +572,7 @@ function usage {
 	echo "-f --fqdn     Specify a FQDN for this system's primary NIC"
 	echo
 	echo "-c --css      Use an external CSS style file's contents '/home/user/style.css'"
+	echo "   --celsius  Use Celsius instead of Farenheit readings for sensors"
 	echo
 	echo "   --novirt   Skip the sections related to Virtualization"
 	echo
@@ -591,6 +618,10 @@ do
 		# don't prompt the user for information, just run it using defaults
 		-q | --quick )
 			PROMPT_USER="no";;
+
+		# don't prompt the user for information, just run it using defaults
+		--celsius)
+			USE_FARENHEIT="";; # Changes " -f " to "" and uses sensors default
 
 		# Include 24-hour format time in output filename
 		--time )
@@ -739,6 +770,15 @@ then
 	MY_OOB=${DEF_OOB:-"null"}
 	MY_CFG_NOTES=${DEF_CFG_NOTES:-"null"}
 else
+
+	echo
+	echo "Answers to the following questions are used in Birdseye's HTML"
+	echo "report to title and describe the system being inventoried."
+	echo
+	echo "Providing a unique tag in the first question is highly recommended."
+	echo
+	echo "All other questions are optional and can be skipped by hitting ENTER."
+	echo
 
 	####################
 	echo -e "Provide a short tag to include with this [$DEF_TAG] ?"
@@ -1503,6 +1543,12 @@ h3 {
   color: #3c6eb4; 
 }
 
+/* Used to show raw commands in title without the title's bold */
+.h3_nobold {
+	font-weight: underline;
+	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
+}
+
 /* Used as a title for each sub-item of information being reported */
 h4 {
   font-size: 0.95em;
@@ -1510,13 +1556,20 @@ h4 {
 }
 
 /* Used to show raw commands in title without the title's bold */
-.h3_nobold {
-	font-weight: underline;
+.h4_nobold {
+	font-weight: normal;
 	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
 }
 
+/* Used as a title for each sub-item of information being reported */
+h5 {
+  font-size: 0.95em;
+  font-weight: bold;
+  margin: 0px 25px 5px 25px;
+}
+
 /* Used to show raw commands in title without the title's bold */
-.h4_nobold {
+.h5_nobold {
 	font-weight: normal;
 	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
 }
@@ -1572,6 +1625,7 @@ ol, ul, li {
    back to the top of the page */
 .boxtop {
 	color: #A7ABBE;
+  margin: 0px 0px 0px 10px;
 /*
 	padding: 2px;
 	background-color: rgb(214,227,255);
@@ -1752,8 +1806,10 @@ toc_master "#toc_bootmsgs" 			"Boot messages"
 toc_master "#toc_messages"			"Console/System Messages"
 toc_master "#toc_kernelcfg"	 		"Kernel Configuration"
 toc_master "#toc_bootcfg" 			"Boot Configuration"
+toc_master "#toc_security" 			"Security Configuration"
 toc_master "#toc_modules"		 		"Kernel Modules"
 toc_master "#toc_processes"		 	"Processes Running"
+toc_master "#toc_hw_sensors"		"Hardware Sensors"
 toc_master "#toc_network_cfg"		"Network Configuration"
 toc_master "#toc_storage_cfg"		"Storage Configuration"
 toc_master "#toc_services"			"Services Configuration"
@@ -1845,6 +1901,11 @@ list "item_elilolist"					"ELILO List Config (EFI only)" "cat /boot/efi/efi/(dis
 list "item_redhatgrub"				"EFI: Redhat Grub" "cat /boot/efi/redhat/grub.conf"
 unordered_list_close
 
+toc_section "toc_security"		"Security Configuration" "#section_security"
+unordered_list_open
+list "item_selinux"						"SELinux Status" "cat /etc/selinux/config"
+unordered_list_close
+
 toc_section "toc_modules"			"Kernel Modules" "#section_modules"
 
 unordered_list_open
@@ -1858,6 +1919,11 @@ unordered_list_close
 toc_section "toc_processes"		"Processes Running" "#section_processes"
 unordered_list_open
 list "item_processes"					"Processes" "ps axf"
+unordered_list_close
+
+toc_section "toc_hw_sensors"	"Hardware Sensors" "#section_hw_sensors"
+unordered_list_open
+list "item_hw_sensors"				"Hardware Sensors Readings" "sensors"
 unordered_list_close
 
 toc_section "toc_network_cfg"	"Network Configuration" "#section_network_cfg"
@@ -2001,8 +2067,9 @@ unordered_list_close
 toc_section "toc_network_dev"	"Network Devices" "#section_network_devices"
 
 unordered_list_open
-list "item_nicinfo"						"Network port information" "nics (script)"
-list "item_nicports"					"Network port detail information" "ifconfig, ethtool, ethtool -i"
+list "item_nicinfo"						"Network device summary" "nics (script)"
+list "item_lshw_network"			"Network device hardware details" "lshw -c network"
+list "item_nicports"					"Network device detail information" "ifconfig, ethtool, ethtool -i"
 unordered_list_close
 
 toc_section "toc_storage"  		"Storage" "#section_storage"
@@ -2041,7 +2108,7 @@ unordered_list_close
 
 toc_section "toc_vms"					"Virtual Machines" "#section_vms"
 unordered_list_open
-list "item_vms"								"Virtual Machines Defined" "virsh list --all"
+list "item_vmlist"						"Virtual Machines Defined" "virsh list --all"
 list "item_virsh_pool_list"		"Virtualization Storage Pool List" "virsh pool-list"
 list "item_virsh_pool_info"		"Virtualization Storage Pool Info" "virsh pool-info"
 list "item_virsh_vol_list"		"Virtualization Storage Volume List" "virsh vol-list"
@@ -2546,6 +2613,33 @@ fi
 
 #############=============-----------------................
 #
+# Security Configuration
+#
+#############=============-----------------................
+section "section_security" "Security Configuration"
+
+item_title "item_selinux"		"SELinux Configuration" "cat /etc/selinux/config"
+
+if [ $PUBLIC_REPORT = "yes" ]
+then
+	raw_open
+	line "This is a public report and no security information is included."
+	raw_close
+else
+	if [[ -f /etc/selinux/config ]]
+	then
+		raw_open
+		cat /etc/selinux/config >> $HTML 2>&1
+		raw_close
+	else
+		raw_open
+		line "This system does not have an /etc/selinux/config file."
+		raw_close
+	fi
+fi
+
+#############=============-----------------................
+#
 # Kernel Modules
 #
 #############=============-----------------................
@@ -2596,7 +2690,7 @@ textarea_close
 #############=============-----------------................
 #
 # Network Configuration
-
+#
 #############=============-----------------................
 
 section "section_processes" "Processes Running"
@@ -2606,6 +2700,35 @@ line "The processes shown here were running at the time of this Birdseye report 
 textarea_open 120 24
 ps axf >> $HTML 2>&1
 textarea_close
+
+#############=============-----------------................
+#
+# Hardware Sensors
+#
+#############=============-----------------................
+
+section "section_hw_sensors" "Hardware Sensors"
+
+item_title "item_hw_sensors"	"Hardware Sensor Readings" "sensors"
+line "The sensor readings shown here are accurate as of the time of this Birdseye report and may not reflect the readings at an earlier time of importance."
+if [[ $AVAILABLE_SENSORS == "yes" ]]
+then
+	SENSORS_LINES=$(sensors | wc -l)
+	if [[ $SENSORS_LINES -le 15 ]]
+	then
+		raw_open
+		sensors $USE_FARENHEIT >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		sensors $USE_FARENHEIT >> $HTML 2>&1
+		textarea_close
+	fi
+else
+	raw_open
+	line "The lm_sensors package's 'sensors' program is not available on this system."
+	raw_close
+fi
 
 #############=============-----------------................
 #
@@ -2963,7 +3086,7 @@ item_title "item_serialproc"	"Serial devices in /proc" "cat /proc/tty/driver/*"
 line
 for EACH_SERIAL_TYPE in /proc/tty/driver/*
 do
-	line "${EACH_SERIAL_TYPE}:" >> $HTML 2>&1
+	raw_caption "cap_serial_driver" "${EACH_SERIAL_TYPE}:"
 	raw_open
 	cat $EACH_SERIAL_TYPE >> $HTML 2>&1
 	raw_close
@@ -2974,7 +3097,6 @@ item_title "item_setserial"	"Serial devices" "setserial -g ttyS#"
 # Default this flag to no, we haven't seen/processed any ports
 SERIAL_PORTS_SEEN="no"
 
-raw_open
 # Loop on each type of serial port known
 for EACH_SERIAL_PREFIX in S USB
 do
@@ -3016,9 +3138,10 @@ do
 					if [[ ${EACH_SERIAL_DEVICE:1:6} != "ttyUSB" ]]
 					then
 
-						line "setserial $EACH_SERIAL_DEVICE"
-
+						raw_caption "caption_setserial" "setserial $EACH_SERIAL_DEVICE"
+						raw_open
 						setserial -a $EACH_SERIAL_DEVICE >> $HTML 2>&1
+						raw_close
 					fi
 
 				else
@@ -3026,8 +3149,11 @@ do
 				fi
 
 				line
-				line "stty $EACH_SERIAL_DEVICE"
+
+				raw_caption "caption_stty" "stty $EACH_SERIAL_DEVICE"
+				raw_open
 				stty -a < $EACH_SERIAL_DEVICE >> $HTML 2>&1
+				raw_close
 
 				# Now that we've seen/processed a port, set the seen to yes
 				SERIAL_PORTS_SEEN="yes"
@@ -3042,10 +3168,10 @@ done # loop - process serial port prefixes 'S' and 'USB'
 # If we haven't seen any serial ports, report it cleanly to the user
 if [[ $SERIAL_PORTS_SEEN == "no" ]]
 then
+	raw_open
 	line "There are no serial ports on this system."
+	raw_close
 fi
-
-raw_close
 
 #############=============-----------------................
 #
@@ -3669,7 +3795,7 @@ else
 	raw_close
 fi
 
-item_title "item_nicinfo"		"Network port information" "nics"
+item_title "item_lshw_network"		"Network port hardware details" "lshw -c network"
 if [[ $AVAILABLE_LSHW == "yes" ]]
 then
 	textarea_open 160 24
@@ -3713,12 +3839,12 @@ else
 		# style because users may be familiar with one style and trained
 		# to easily review one over the other.
 	
-		line "# ip -s link show $EACH_NIC"
+		raw_caption "caption_iplinkshow" "# ip -s link show $EACH_NIC"
 		raw_open
 		ip -s link show $EACH_NIC >> $HTML 2>&1
 		raw_close
 
-		line "# ifconfig $EACH_NIC"
+		raw_caption "caption_ifconfig" "# ifconfig $EACH_NIC"
 		raw_open
 		ifconfig $EACH_NIC >> $HTML 2>&1
 		raw_close
@@ -3733,25 +3859,24 @@ else
 				raw_close
 			else
 
-				line "# ethtool $EACH_NIC"
+				raw_caption "caption_ethtool" "# ethtool $EACH_NIC"
 				raw_open
 				ethtool $EACH_NIC >> $HTML 2>&1
 				raw_close
 
 				line
 
-				line "# ethtool -i $EACH_NIC"
+				raw_caption "caption_ethtool_i" "# ethtool -i $EACH_NIC"
 				raw_open
 				ethtool -i $EACH_NIC >> $HTML 2>&1
 				raw_close
 			fi
 
 		else
+			raw_open
 			line "ethtool is not available on this system." >> $HTML 2>&1
+			raw_close
 		fi
-
-		# Do raw_open/raw_close for each NIC so each is presented individually
-		raw_close
 
 	done # on to next nic port in NIC_LIST
 
@@ -4039,14 +4164,13 @@ then
 		item_title "item_virsh_pool_info" "Virtualization Storage Pool Info" "virsh pool-info"
 		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
 		then
-			raw_open
 			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }')
 			do
-				line "<strong>Pool info for $EACH_POOL</strong>"
-				line ""
+				raw_caption "caption_pool_info" "Pool info for pool '$EACH_POOL'"
+				raw_open
 				virsh pool-info $EACH_POOL >> $HTML 2>&1
+				raw_close
 			done
-			raw_close
 		else
 			raw_open
 			line "There are no pool objects defined for this system."
@@ -4056,14 +4180,13 @@ then
 		item_title "item_virsh_vol_list" "Virtualization Storage Volume List" "virsh vol-list"
 		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
 		then
-			raw_open
 			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 			do
-				line "<strong>Volumes in storage pool $EACH_POOL</strong>"
-				line ""
+				raw_caption "caption_virsh_vol_pool" "Volumes in storage pool '$EACH_POOL'"
+				raw_open
 				virsh vol-list $EACH_POOL >> $HTML 2>&1
+				raw_close
 			done
-			raw_close
 		else
 			raw_open
 			line "There are no pool objects defined for this system."
@@ -4073,20 +4196,17 @@ then
 		item_title "item_virsh_vol_info" "Virtualization Storage Volume Info" "virsh vol-info"
 		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
 		then
-			raw_open
 			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 			do
-				line "<strong>Volumes in storage pool $EACH_POOL</strong>"
-				line ""
 
 				for EACH_VOL in $(virsh vol-list $EACH_POOL | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
 				do
-					line "<strong>Volume info for $EACH_VOL in storage pool $EACH_POOL</strong>"
-					line ""
+					raw_caption "caption_volinfo2" "Volume info for volume '$EACH_VOL' in storage pool '$EACH_POOL'"
+					raw_open
 					virsh vol-info --pool $EACH_POOL $EACH_VOL >> $HTML 2>&1
+					raw_close
 				done
 			done
-			raw_close
 		else
 			raw_open
 			line "There are no pool objects defined for this system."
@@ -4099,7 +4219,6 @@ then
 			for EACH_VM in $(virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//')
 			do
 
-				raw_open
 				# Determine the state of the VM: Running, Shut offf
 
 				QUIRK_VIRSH_DOMSTATE="no-reason"
@@ -4114,8 +4233,7 @@ then
 				fi
 
 				# Report the name of the VM and its current state
-				line "<strong>Virtual Machine $EACH_VM is $VM_STATE</strong>"
-				line ""
+				raw_caption "caption_vmstate" "Virtual Machine '$EACH_VM' is $VM_STATE"
 
 				# Try to acquire the description of this VM
 				if [[ QUIRK_VIRSH_DESC != "no-desc" ]]
@@ -4127,24 +4245,25 @@ then
 					if [[ ${VM_DESC:1:14} != "No description" ]]
 					then
 						# Report the VM description text
-						line "$VM_DESC"
-						line ""
+						raw_caption "caption_vmdesc" "'$VM_DESC'"
 					fi
 				fi
 
 				# Report technical information on the VM like its ID, UUID, Memory, CPU
+				raw_open
 				virsh dominfo $EACH_VM >> $HTML 2>&1
+				raw_close
 
 				# Report storage devices defined for the VM
-				line "Defined storage devices:"
-				line ""
+				raw_caption "caption_vmstorage" "Defined storage devices for VM '$EACH_VM' "
+				raw_open
 				virsh domblklist $EACH_VM >> $HTML 2>&1
+				raw_close
 
 				# Report network interfaces defined for the VM
-				line "Defined network interfaces:"
-				line ""
+				raw_caption "caption_vmstorage" "Defined network interfaces for VM '$EACH_VM':"
+				raw_open
 				virsh domiflist $EACH_VM >> $HTML 2>&1
-
 				raw_close
 
 			done
