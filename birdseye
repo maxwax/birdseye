@@ -4099,7 +4099,9 @@ then
 		fi
 
 	else
+		raw_open
 		line "virsh is not available in this environment."
+		raw_close
 	fi
 else
 	echo "Skipping Virtualization Configuration (--novirt)"
@@ -4276,8 +4278,9 @@ then
 		line
 		
 	else
+		raw_open
 		line "virsh is not available in this environment."
-		line
+		raw_close
 	fi
 
 else
