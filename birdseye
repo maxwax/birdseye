@@ -66,6 +66,8 @@ fi
 # Report on zypper for SUSE
 # Report on dpkg for Debian
 
+# .json output? nahhhh
+
 # Test on multiple systems
 # Sample Alternate CSS outputs
 # Cleanup CSS styles
@@ -274,31 +276,173 @@ function check_for_program {
 function nic_list {
 
 	# This code used when calling the external script during development
-	./nics >> $HTML 2>&1
+#	./nics >> $HTML 2>&1
 
 	# integrate 'nics' bash code here to avoid external calls 
 
+	STYLE="ipv4"
+	TRAFFIC="short"
+
+	if [[ $STYLE == "ipv4" ]]
+	then
+		printf "%10s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
+			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX" 
+	else
+		printf "%10s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
+			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "IP6 ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX" 2>&1
+	fi
+
+	# 1: ip link list - lists all network devices
+	# 2: Use only the first line using a regex that looks for '1:', '99:', etc
+	# 3: From that first line, we only want the device name which is param #2
+	# 4: remove the colon that sits to the right of the device name
+	# 5: macvtap bridges (used with KVM) look like this:
+	#    macvtap0@p10p1
+	#    convert the "@" symbol to ATSYMBOL and then we'll use a bash
+	#    parameter expansion below to remove everything to the right of ATSYMBOL
+
+	for EACH_NIC in $(ip link list | grep -e "[0-9]: " | awk -F " " '{print $2}' | sed "s/://g" | sed "s/@/ATSYMBOL/" )
+	do
+
+		# If ATSYMBOL is present, remove everything to right of it so we have
+		# just a simple name like macvtap0
+		EACH_NIC=${EACH_NIC%%ATSYMBOL*}
+
+		if [[ $EACH_NIC != "lo" ]]
+		then
+			MAC_ADDRESS=$(ip address show $EACH_NIC | grep -F "link/ether" | awk -F " " '{ print $2}')
+			MAC_ADDRESS=${MAC_ADDRESS:-" "}
+		else
+			MAC_ADDRESS="none"
+		fi
+
+		LINK_STATE=$( ip link show $EACH_NIC | grep -e "[0-9]: " | awk -F " " '{ print $9}')
+		LINK_STATE=${LINK_STATE:-" "}
+
+		# Uppercase results are cold and boring: let's make them friendly with lowercase
+		# Anything that's not up/down/unknown gets presented literally because
+		# it's unusual and we don't want to filter it.
+		case $LINK_STATE in
+			"UP") LINK_STATE="up";;
+			"DOWN") LINK_STATE="down";;
+			"UNKNOWN") LINK_STATE="unknown";;
+		esac
+
+		IP_ADDRESS=$(ip addr show $EACH_NIC | grep "inet " | awk -F " " '{print $2}')
+		IP_ADDRESS=${IP_ADDRESS:-"none"}
+
+		# NOT SURE ABOUT THE GLOBAL CHECK! 2013.1016 maxwell
+		# NOT SURE ABOUT THE GLOBAL CHECK! 2013.1016 maxwell
+
+		IP6_ADDRESS=$(ip addr show $EACH_NIC | grep "inet6 " | grep global | awk -F " " '{print $2}')
+		IP6_ADDRESS=${IP6_ADDRESS:-"none"}
+
+		MTU=$( ip link show $EACH_NIC | grep -e "[0-9]: " | awk -F " " '{ print $5}')
+		MTU=${MTU:-"none"}
+
+		# The position of our statistics varies based on whether or not
+		# the 'ip' command includes a 'mode' attribute and its value.
+		# Let's check to see if it's there and we'll use it for RX and TX data
+		MODE_CHECK=$(ip link show $EACH_NIC | grep -F " mode " | wc -l)
+
+		if [[ $MODE_CHECK -eq 1 ]]
+		then
+			let RX_BYTES=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $26}')
+			let RX_PACKETS=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $27}')
+		else
+			let RX_BYTES=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $24}')
+			let RX_PACKETS=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $25}')
+		fi
+
+		RX_BYTES=${RX_BYTES:-"0"}
+		RX_PACKETS=${RX_PACKETS:-"0"}
+
+		let RX_MIB=( RX_BYTES / 1048576)
+		let RX_GIB=( RX_BYTES / 1073741824)
+
+		RX_HUMAN=" "
+		if [[ $RX_GIB > 1 ]]
+		then
+			RX_HUMAN="${RX_GIB}"
+			RX_HUMAN_TYPE="GiB"
+		elif [[ $RX_MIB > 1 ]]
+		then
+			RX_HUMAN="${RX_MIB}"
+			RX_HUMAN_TYPE="MiB"
+		else
+			RX_HUMAN="${RX_BYTES}"
+			RX_HUMAN_TYPE="B"
+		fi
+
+		if [[ $MODE_CHECK -eq 1 ]]
+		then
+			let TX_BYTES=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $41}')
+			let TX_PACKETS=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $42}')
+		else
+			let TX_BYTES=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $39}')
+			let TX_PACKETS=$(ip -o -s link show $EACH_NIC | awk -F " " '{ print $40}')
+		fi
+
+		TX_BYTES=${TX_BYTES:-"0"}
+		TX_PACKETS=${TX_PACKETS:-"0"}
+
+		let TX_MIB=( TX_BYTES / 1048576)
+		let TX_GIB=( TX_BYTES / 1073741824)
+
+		TX_HUMAN=" "
+		if [[ $TX_GIB > 1 ]]
+		then
+			TX_HUMAN="${TX_GIB}"
+			TX_HUMAN_TYPE="GiB"
+		elif [[ $TX_MIB > 1 ]]
+		then
+			TX_HUMAN="${TX_MIB}"
+			TX_HUMAN_TYPE="MiB"
+		else
+			TX_HUMAN="${TX_BYTES}"
+			TX_HUMAN_TYPE="B"
+		fi
+
+		# We need ethtool to show the link speed and we won't always have this.
+		# So default to Unknown
+		WIRE_SPEED="Unknown"
+		# Then, run ethtool and see if this attempt returns an error
+		ethtool $EACH_NIC > /dev/null 2>&1
+		# Do we have an error?
+		if (( $? == 0 ))
+		then
+			# No error, try to run ethtool and get the line we need
+			WIRE_SPEED=$( ethtool $EACH_NIC | grep Speed | awk '{FS=":"; print $2}')
+			WIRE_SPEED=${WIRE_SPEED:-"-"}
+		fi
+
+		if [[ $STYLE == "ipv4" ]]
+		then
+			#printf "%10s %17s %8s %18s %7s %16s %8s %-3s %16s %8s %-3s\n" \
+			#			$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $RX_BYTES $RX_HUMAN $RX_HUMAN_TYPE $TX_BYTES $TX_HUMAN $TX_HUMAN_TYPE
+			# 1-nic 2-mac 3-link 4-ip 5-mtu 6-spd 7-rxhu 8-hutype 9-hu 10-huty
+			#       1    2    3   4    5   6    7   8   9
+			printf "%10s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
+							$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $WIRE_SPEED $RX_HUMAN $RX_HUMAN_TYPE $TX_HUMAN $TX_HUMAN_TYPE 
+		else
+			printf "%10s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
+							$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $IP6_ADDRESS $MTU $WIRE_SPEED $RX_HUMAN $RX_HUMAN_TYPE $TX_HUMAN $TX_HUMAN_TYPE 
+		fi
+
+	done
+
 }
-
-# Documentation: check_for_program function (above)
-# 1. Set FILE_EXISTS to no
-# 2. Call check_for_program with the name of the file you question
-# 3. Check value of FILE_EXISTS.  Yes, present, no, missing.
-
-#FILE_EXISTS="no"
-#check_for_program lsinitrd
-#if [[ $FILE_EXISTS == "yes" ]]
-#then
-#	echo "lsinitrd exists."
-#else
-#	echo "lsinitrd is missing."
-#fi
 
 ###########################################################
 #
 # Check for Programs Once
 #
 ###########################################################
+
+# Documentation: check_for_program function (above)
+# 1. Set FILE_EXISTS to no
+# 2. Call check_for_program with the name of the file you question
+# 3. Check value of FILE_EXISTS.  Yes, present, no, missing.
 
 FILE_EXISTS="no"
 check_for_program dmidecode
@@ -1145,29 +1289,39 @@ QUIRK_VIRSH_DESC="null"
 #
 ###########################################################
 
-# Distribution: fedora, redhat, oracle, centos, suse, ubuntu
+# Distribution: fedora, redhat, oracle, centos, suse, ubuntu, debian
+# Used to identify the distribution
 DIST_NAME="null"
 
-# Release version "5", "6", "11"
+# Release version "5", "6", "7"
+# Used to identify and handle quirks associated with a major release cycle
 DIST_RELEASE="null"
 
 # FUTURE: Release minor version -- We don't use this yet 2013.06.19
+# Used to identify and handle quirks associated with a minor release cycle
 DIST_RELEASE_MINOR="null"
 
 # Release Family: "redhat" = (redhat, oracle, centos)
+# Used to identify and handle quirks with a common set (fedora+centos+redhat)
+# of distributions.  Combine with DIST_RELEASE for granularity
 DIST_FAMILY="null"
 
-# Release Family: "redhat" = (redhat, oracle, centos)
+# Used to identify the type of packaging tools used: rpm, dpkg, zypper
 DIST_PACKAGES="null"
 
 # Grub configuration file used by distribution+version
+# Used to identfy this distribution+version's grub configuration file name
 DIST_GRUB_CONF="grub.cfg"
 
-# Location for grub.cfg / menu.lst and other files
-# /boot/grub is a good default but Redhat uses /boot/grub2 and
+# Used to identfy this distribution+version's grub configuration file name
+# Set to /boot/grub default then modify as we identify changes 
 # EFI systems may place their files in /boot/efi/efi/Distribution/
 # so we'll have to process this some later.
 DIST_BOOT_CFG="/boot/grub"
+
+###########################################################
+# Identify Distribution and Version using standard /etc/os-release file
+###########################################################
 
 # Fedora contains fedora-release and redhat-release
 # Oracle main contain oracle-release and redhat-release as well
@@ -1175,175 +1329,179 @@ DIST_BOOT_CFG="/boot/grub"
 # So, look for fedora first, set it and skip the others if found
 # If not fedora, check for oracle, then redhat and others
 
-if [ -f /etc/fedora-release ]
+# Try to use an /etc/os-release file to identify this release
+if [[ -f /etc/os-release ]]
 then
-	DIST_NAME="fedora"
+	# in /etc/os-release,
+	# find only the line that begins with NAME=
+	# and print the second parameter which is the distribution name
+	DIST_NAME=$(cat /etc/os-release | grep "^NAME=" | awk -F "=" '{print $2}')
+
+	# in /etc/os-release,
+	# find only the line that begins with NAME=
+	# and print the second parameter which is the distribution name
+	DIST_VERSION_ID=$(cat /etc/os-release | grep "^VERSION_ID=" | awk -F "=" '{print $2}')
+	DIST_PRETTY_NAME=$(cat /etc/os-release | grep "^PRETTY_NAME=" | awk -F "=" '{print $2}')
+fi
+
+###########################################################
+
+if [[ $DIST_NAME == "Fedora" ]]
+then
 	DIST_PACKAGES="rpm"
+	DIST_FAMILY="redhat"
 	DIST_UEFI_DIR="/boot/efi/EFI/Fedora"
 
-	if [ $(cat /etc/fedora-release | grep "release 16" | wc -l) -gt 0 ]
+	/* This script only officially supports Fedora 18+ */
+	
+	if [[ $DIST_VERSION_ID == "18" ]]
 	then
-		DIST_RELEASE=16
-	elif [ $(cat /etc/fedora-release | grep "release 17" | wc -l) -gt 0 ]
-	then
-		DIST_RELEASE=17
-	elif [ $(cat /etc/fedora-release | grep "release 18" | wc -l) -gt 0 ]
-	then
-		DIST_RELEASE=18
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.cfg"
-	elif [ $(cat /etc/fedora-release | grep "release 19" | wc -l) -gt 0 ]
+	elif [[ $DIST_VERSION_ID == "19" ]]
 	then
-		DIST_RELEASE=19
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.cfg"
 	fi
 
-elif [ -f /etc/oracle-release ]
+elif [[ $DIST_NAME == "Oracle" ]]
 then
-	DIST_NAME="oracle"
 	DIST_FAMILY="redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Oracle"
 
-	if [ $(cat /etc/oracle-release | grep "release 5." | wc -l) -gt 0 ]
+	if [[ $DIST_VERSION_ID == "5" ]]
 	then
-		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
-	elif [ $(cat /etc/oracle-release | grep "release 6." | wc -l) -gt 0 ]
+	elif [[ $DIST_VERSION_ID == "6" ]]
 	then
-		DIST_RELEASE=6
 		DIST_GRUB_CONF="grub.conf"
+	elif [[ $DIST_VERSION_ID == "7" ]]
+	then
+		/* expected, not tested 2013.1017.01 maxwell */
+		DIST_GRUB_CONF="grub2.conf"
 	fi
 
-elif [ -f /etc/centos-release ]
+elif [[ $DIST_NAME == "Centos" ]]
 then
-	DIST_NAME="centos"
 	DIST_FAMILY="redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Centos"
 
-	if [ $(cat /etc/centos-release | grep "release 5." | wc -l) -gt 0 ]
+	if [[ $DIST_VERSION_ID == "5" ]]
 	then
-		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
-	elif [ $(cat /etc/centos-release | grep "release 6." | wc -l) -gt 0 ]
+	elif [[ $DIST_VERSION_ID == "6" ]]
 	then
-		DIST_RELEASE=6
 		DIST_GRUB_CONF="grub.conf"
-	elif [ $(cat /etc/centos-release | grep "release 7." | wc -l) -gt 0 ]
+	elif [[ $DIST_VERSION_ID == "7" ]]
 	then
-		DIST_RELEASE=7
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.conf"
 	fi
 
-elif [ -f /etc/redhat-release ]
+elif [[ $DIST_NAME == "Redhat" ]]
 then
-	DIST_NAME="redhat"
 	DIST_FAMILY="redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Redhat"
 
-	if [ $(cat /etc/redhat-release | grep "release 5." | wc -l) -gt 0 ]
+	if [[ $DIST_VERSION_ID == "5" ]]
 	then
-		DIST_RELEASE=5
 		DIST_GRUB_CONF="grub.conf"
 		QUIRK_VIRSH_DOMSTATE="no-reason"
 		QUIRK_VIRSH_DESC="no-desc"
-	elif [ $(cat /etc/redhat-release | grep "release 6." | wc -l) -gt 0 ]
+	elif [[ $DIST_VERSION_ID == "6" ]]
 	then
-		DIST_RELEASE=6
 		DIST_GRUB_CONF="grub.conf"
-	elif [ $(cat /etc/redhat-release | grep "release 7." | wc -l) -gt 0 ]
+	elif [[ $DIST_VERSION_ID == "7" ]]
 	then
-		DIST_RELEASE=7
 		DIST_BOOT_CFG="/boot/grub2"
 		DIST_GRUB_CONF="grub.conf"
 	fi
 
-	DIST_RELEASE_VERSION=$(lsb_release -r)
-	DIST_RELEASE_VERSION=${DIST_RELEASE_VERSION#*:}
-	DIST_RELEASE_VERSION=$(echo $DIST_RELEASE_VERSION | sed 's/ *$//')
-
-	if [[ $DEBUG == "yes" ]]
-	then
-		echo "DIST_RELEASE_VERSION |${DIST_RELEASE_VERSION}|"
-	fi
-
-elif [ -f /etc/SuSE-release ]
+elif [[ $DIST_NAME == "SuSe" || $DIST_NAME == "Suse" ]]
 then
-	DIST_NAME="suse"
 	DIST_FAMILY="suse"
 	DIST_PACKAGES="zypper"
 	DIST_UEFI_DIR="/boot/efi/efi/SuSE"
 
-	if [ $(cat /etc/SuSE-release | grep "Server 11" | wc -l) -gt 0 ]
+	if [[ $DIST_VERSION_ID == "10" ]]
 	then
-		DIST_RELEASE="11"
-	elif [ $(cat /etc/SuSE-release | grep "Server 12" | wc -l) -gt 0 ]
+		/* placeholder */
+		FUTURE_CODE_HERE="yes"
+	elif [[ $DIST_VERSION_ID == "11" ]]
 	then
-		DIST_RELEASE="12"
-	elif [ $(cat /etc/SuSE-release | grep "Server 10" | wc -l) -gt 0 ]
+		/* placeholder */
+		FUTURE_CODE_HERE="yes"
+	elif [[ $DIST_VERSION_ID == "12" ]]
 	then
-		DIST_RELEASE="10"
+		/* placeholder */
+		FUTURE_CODE_HERE="yes"
 	fi
 
-elif [[ $(lsb_release --id | grep "Ubuntu" | wc -l) -eq 1 ]]
+elif [[ $DIST_NAME == "Ubuntu" ]]
 then
 
-	DIST_NAME="ubuntu"
 	DIST_FAMILY="debian"
 	DIST_PACKAGES="dpkg"
 	DIST_UEFI_DIR="/boot/efi/efi/Ubuntu"
 
-	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
+	#MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
-	if [[ $MY_VERSION == "13.04" ]]
+	if [[ $DIST_VERSION_ID == "13.10" || $DIST_VERSION_ID == "13.04" ]]
 	then
-		DIST_RELEASE="13"
 		QUIRK_LSCPU="noext"
 		DIST_BOOT_CFG="/boot/grub"
 		DIST_GRUB_CONF="grub.cfg"
-	elif [[ $MY_VERSION == "12.04" ]]
+	elif [[ $DIST_VERSION_ID == "12.04" || $DIST_VERSION_ID == "12.10" ]]
 	then
-		DIST_RELEASE="12"
 		QUIRK_LSCPU="noext"
 		DIST_BOOT_CFG="/boot/grub"
 		DIST_GRUB_CONF="grub.cfg"
-	elif [[ $MY_VERSION == "10.04" ]]
+	elif [[ $DIST_VERSION_ID == "11.04" || $DIST_VERSION_ID == "11.10" ]]
 	then
-		DIST_RELEASE="10"
 		QUIRK_LSCPU="noext"
-		#DIST_BOOT_CFG="/boot/grub"
-		#DIST_GRUB_CONF="grub.cfg"
+		DIST_BOOT_CFG="/boot/grub"
+		DIST_GRUB_CONF="grub.cfg"
+	elif [[ $DIST_VERSION_ID == "10.04" || $DIST_VERSION_ID == "10.10" ]]
+	then
+		QUIRK_LSCPU="noext"
 	fi
 
-elif [ $(lsb_release --id | grep "LinuxMint" | wc -l) -eq 1 ]
+elif [[ $DIST_NAME == "LinuxMint" || $DIST_NAME == "Linuxmint" ]]
 then
-	DIST_NAME="linuxmint"
 	DIST_FAMILY="debian"
 	DIST_PACKAGES="dpkg"
 
 	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
-	if [[ $MY_VERSION == "15" ]]
+	if [[ $DIST_VERSION_ID == "15" ]]
 	then
-		DIST_RELEASE="15"
 		QUIRK_LSCPU="noext"
-	elif [[ $MY_VERSION == "14" ]]
+	elif [[ $DIST_VERSION_ID == "14" ]]
 	then
-		DIST_RELEASE="12"
 		QUIRK_LSCPU="noext"
 	fi
 
-	# handle other versions here
-	# handle other versions here
-	# handle other versions here
+elif [[ $DIST_NAME == "Debian" ]]
+then
+	DIST_FAMILY="debian"
+	DIST_PACKAGES="dpkg"
+
+	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
+
+	if [[ $DIST_VERSION_ID == "7" ]]
+	then
+		QUIRK_LSCPU="noext"
+	elif [[ $DIST_VERSION_ID == "6" ]]
+	then
+		QUIRK_LSCPU="noext"
+	fi
 
 fi
 
@@ -1384,18 +1542,22 @@ else
 	fi
 fi
 
-# We default to 'no' until we confirm in some way that we are a Xen VM
+# We default to 'no' until we confirm in some way that we are a known VM type
 # IOW, we're not set to 'null'
-XEN_VM="no"
+VM_GUEST="no"
 
 # 2013.1014 Testing on the Amazon AWS reveals that lscpu reports
 # "Hypervisor vendor" as 'Xen' while reporting Intel chip details.
 # This might be a nice way to determine if we're in a VM.
+# 2013.1017 Fedora19+QEMU+KVM 'KVM' returned for KVM guests
 if [[ $AVAILABLE_LSCPU == "yes" ]]
 then
 	if [[ $(lscpu | grep "Hypervisor vendor" | grep "Xen" | wc -l) -gt 0 ]]
 	then
-		XEN_VM="yes"
+		VM_GUEST="xen"
+	elif [[ $(lscpu | grep "Hypervisor vendor" | grep "KVM" | wc -l) -gt 0 ]]
+	then
+		VM_GUEST="kvm"
 	fi
 
 fi
@@ -1403,24 +1565,21 @@ fi
 if [[ $DEBUG == "yes" ]]
 then
 	echo
-	echo "Xen Identification: XEN_HOST $XEN_HOST"
+	echo "VM Guest Identification: VM_GUEST $VM_GUEST"
 fi
-
 
 ###########################################################
 #
 # Debugging: Report Distribution and Version Results
 #
 ###########################################################
-if [[ $DEBUG == "yes" ]]
-then
-
+#if [[ $DEBUG == "yes" ]]
+#then
 	echo
 	echo "DIST_ Variables just before report production"
 	echo
 	echo "DIST_NAME $DIST_NAME"
-	echo "DIST_RELEASE $DIST_RELEASE"
-	echo "DIST_RELEASE_MINOR $DIST_RELEASE_MINOR"
+	echo "DIST_VERSION_ID $DIST_VERSION_ID"
 	echo "DIST_FAMILY $DIST_FAMILY"
 	echo "DIST_PACKAGES $DIST_PACKAGES"
 	echo "DIST_GRUB_CONF $DIST_GRUB_CONF"
@@ -1430,9 +1589,9 @@ then
 	echo
 	echo "QUIRK_LSCPU $QUIRK_LSCPU"
 	echo "QUIRK_VIRSH_DOMSTATE $QUIRK_VIRSH_DOMSTATE"
+	echo "QUIRK_VIRSH_DESC $QUIRK_VIRSH_DESC"
 	echo
-
-fi
+#fi
 
 ###########################################################
 #
@@ -1858,6 +2017,7 @@ list "item_date"							"System date/time" "date"
 list "item_uname"							"System identification" "uname -a"
 list "item_issue"							"Distribution, Version" "/etc/issue"
 list "item_lsb"								"Distribution, Release" "lsb_release"
+list "item_osrelease"					"Distribution, Release" "cat /etc/os-release"
 list "item_kerneltaint"				"Distribution, Release" "lsb_release"
 list "item_kernelvers"				"Kernel Version & GCC Compile Version" "cat /proc/version"
 unordered_list_close
@@ -2148,11 +2308,11 @@ raw_close
 
 item_title "item_hwclock"		"Hardware Clock System date/time" "hwclock"
 raw_open
-if [[ $XEN_VM == "no" ]]
+if [[ $VM_GUEST == "no" ]]
 then
 	hwclock >> $HTML 2>&1
 else
-	line "There is no hardware clock in a Xen virtual machine."
+	line "There is no hardware clock in a $VM_GUEST virtual machine."
 fi
 raw_close
 
@@ -2172,7 +2332,17 @@ if [[ $AVAILABLE_LSB_RELEASE == "yes" ]]
 then
 	lsb_release -d >> $HTML 2>&1
 else
-	line "'lsb_release' does not exist on this system."
+	line "'The lsb_release' command is not available on this system."
+fi
+raw_close
+
+item_title "item_osrelease"	"Distribution, Release" "cat /etc/os-release"
+raw_open
+if [[ -f /etc/os-release ]]
+then
+	cat /etc/os-release  >> $HTML 2>&1
+else
+	line "The /etc/os-release file is not available on this system."
 fi
 raw_close
 
@@ -2233,7 +2403,7 @@ then
 	declare -i MSG_LINES
 
 	# Check the size of /var/log/messages
-	MSG_LINES=$(wc -l /var/log/messages | awk '{FS=" ";print $1}')
+	MSG_LINES=$(wc -l /var/log/messages | awk -F " " '{print $1}')
 
 	textarea_open 120 24
 
@@ -2657,7 +2827,7 @@ if [[ -f /etc/modules.conf ]]
 then
 	cat /etc/modules.conf >> $HTML 2>&1
 else
-	line "/etc/modules.conf does not exist on this system."
+	line "/etc/modules.conf is not available on this system."
 fi
 raw_close
 
@@ -2669,7 +2839,7 @@ then
 	textarea_close
 else
 	raw_open
-	line "/etc/blacklist.conf does not exist on this system."
+	line "/etc/blacklist.conf is not available on this system."
 	raw_close
 fi
 
@@ -3817,7 +3987,7 @@ else
 
 	# Use 'ip link list' to make a list of network devices.
 	# We can't just look for 'ethX' anymore!
-	NIC_LIST=$(ip link list | grep -e "[0-9]: " | awk '{FS=" ";print $2}' | sed "s/://g")
+	NIC_LIST=$(ip link list | grep -e "[0-9]: " | awk -F " " '{print $2}' | sed "s/://g")
 
 	# Report on each network device port discovered and placed in NIC_LIST
 	for EACH_NIC in $NIC_LIST
@@ -4031,7 +4201,7 @@ then
 	
 		item_title "item_virshnodecpu"	"Virtualization nodes" "virsh nodecpustats"
 		raw_open
-		if [[ $MY_FAMILY == "redhat" ]] && [[ $DIST_RELEASE == "5" ]]
+		if [[ $DIST_FAMILY == "redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
 		then
 			line "virsh nodecpustats is not available with this distribution and release"
 		else
@@ -4041,7 +4211,7 @@ then
 
 		item_title "item_virshnodemem"	"Virtualization nodes" "virsh nodeinfo"
 		raw_open
-		if [[ $MY_FAMILY == "redhat" ]] && [[ $DIST_RELEASE == "5" ]]
+		if [[ $DIST_FAMILY == "redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
 		then
 			line "virsh nodememstats is not available with this distribution and release"
 		else
@@ -4318,7 +4488,7 @@ then
 		fi
 	else
 		raw_open
-		line "This is not a Xen hypervisor host system."
+		line "This is not a Xen hypervisor <strong>host<strong> system."
 		raw_close
 	fi
 
