@@ -63,7 +63,6 @@ fi
 
 # FQDN on each NIC's IP address. Similar to 'hostname --all-fqdns'
 
-# Report on zypper for SUSE
 # Report on dpkg for Debian
 
 # .json output? nahhhh
@@ -74,6 +73,13 @@ fi
 # Populate github site and figure out how to use
 # Features from sosreport
 # Features from snapshot
+
+# SLES 11 SP3:
+# Determine installed kernels on SuSE where rpm is not available
+# App Armor configuration reporting on SuSE?
+# Report on zypper for SUSE
+
+# nics: Handle more than one IP address - patched for now.. report more
 
 # Report on IO scheduler in use. See arch linux ssd for instructions
 # cat /sys/block/sdX/queue/scheduler
@@ -328,7 +334,12 @@ function nic_list {
 			"UNKNOWN") LINK_STATE="unknown";;
 		esac
 
-		IP_ADDRESS=$(ip addr show $EACH_NIC | grep "inet " | awk -F " " '{print $2}')
+		# 1: 'ip addr show' to show IP address info for specific device
+		# 2: We only need the 'inet' (ipv4) line(s). There may be > 1
+		# 3: We only want the primary to keep things simple, so 'head -1'
+		# 4: Print the second parameter which is our device's IP address
+	
+		IP_ADDRESS=$(ip addr show $EACH_NIC | grep "inet " | head -1 | awk -F " " '{print $2}')
 		IP_ADDRESS=${IP_ADDRESS:-"none"}
 
 		# NOT SURE ABOUT THE GLOBAL CHECK! 2013.1016 maxwell
@@ -516,6 +527,22 @@ FILE_EXISTS="no"
 check_for_program sensors
 AVAILABLE_SENSORS=$FILE_EXISTS
 
+# Suse SLES 11 SP3 reports sensors is present even when the binary
+# is not because it sees an /etc/sensors.conf file.  This causes
+# check for program to return true and an attempt to use sensors later
+# fails.  So if we think we might have it, we'll quickly try it and
+# change to NO if we can't run it.
+if [[ $AVAILABLE_SENSORS ]]
+then
+	sensors > /dev/null 2>&1
+	if (( $? == 0))
+	then
+		AVAILABLE_SENSORS="yes"
+	else
+		AVAILABLE_SENSORS="no"
+	fi
+fi
+
 # This is a special check because the whereis program that
 # function check_for_program uses doesn't find it
 if [[ -f /usr/bin/lsusb.py ]]
@@ -563,7 +590,8 @@ then
 	fi
 fi
 
-# RHEL 6.X: dmesg lacks --notime option
+# These lack 'dmesg --notime':
+# RHEL 6.X, SLES 11 SP3
 # Attempt to perform dmesg using --notime to see if we have this feature
 FEATURE_DMESG_NOTIME="null"
 dmesg --notime >> /dev/null 2>&1
@@ -1295,15 +1323,15 @@ DIST_NAME="null"
 
 # Release version "5", "6", "7"
 # Used to identify and handle quirks associated with a major release cycle
-DIST_RELEASE="null"
+DIST_VERSION_ID="null"
 
 # FUTURE: Release minor version -- We don't use this yet 2013.06.19
 # Used to identify and handle quirks associated with a minor release cycle
-DIST_RELEASE_MINOR="null"
+DIST_VERSION_ID_MINOR="null"
 
 # Release Family: "redhat" = (redhat, oracle, centos)
 # Used to identify and handle quirks with a common set (fedora+centos+redhat)
-# of distributions.  Combine with DIST_RELEASE for granularity
+# of distributions.  Combine with DIST_VERSION_ID for granularity
 DIST_FAMILY="null"
 
 # Used to identify the type of packaging tools used: rpm, dpkg, zypper
@@ -1344,12 +1372,34 @@ then
 	DIST_PRETTY_NAME=$(cat /etc/os-release | grep "^PRETTY_NAME=" | awk -F "=" '{print $2}')
 fi
 
+if [[ $DIST_NAME == "null" ]]
+then
+
+	# No /etc/os-release for 
+	# - SUSE SLES 11 SP3
+
+	if [[ -f /etc/SuSE-release ]]
+	then
+
+		DIST_NAME="Suse"
+		DIST_PRETTY_NAME=$(cat /etc/SuSE-release | head -1)
+
+		DIST_VERSION_ID=$(cat /etc/SuSE-release | grep "^VERSION =")
+		DIST_VERSION_ID=${DIST_VERSION_ID##VERSION = }
+
+		DIST_VERSION_ID_MINOR=$(cat /etc/SuSE-release | grep "^PATCHLEVEL = ")
+		DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##PATCHLEVEL = }
+
+	fi
+
+fi
+
 ###########################################################
 
 if [[ $DIST_NAME == "Fedora" ]]
 then
 	DIST_PACKAGES="rpm"
-	DIST_FAMILY="redhat"
+	DIST_FAMILY="Redhat"
 	DIST_UEFI_DIR="/boot/efi/EFI/Fedora"
 
 	/* This script only officially supports Fedora 18+ */
@@ -1366,7 +1416,7 @@ then
 
 elif [[ $DIST_NAME == "Oracle" ]]
 then
-	DIST_FAMILY="redhat"
+	DIST_FAMILY="Redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Oracle"
 
@@ -1386,7 +1436,7 @@ then
 
 elif [[ $DIST_NAME == "Centos" ]]
 then
-	DIST_FAMILY="redhat"
+	DIST_FAMILY="Redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Centos"
 
@@ -1406,7 +1456,7 @@ then
 
 elif [[ $DIST_NAME == "Redhat" ]]
 then
-	DIST_FAMILY="redhat"
+	DIST_FAMILY="Redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Redhat"
 
@@ -1426,7 +1476,7 @@ then
 
 elif [[ $DIST_NAME == "SuSe" || $DIST_NAME == "Suse" ]]
 then
-	DIST_FAMILY="suse"
+	DIST_FAMILY="Suse"
 	DIST_PACKAGES="zypper"
 	DIST_UEFI_DIR="/boot/efi/efi/SuSE"
 
@@ -1447,7 +1497,7 @@ then
 elif [[ $DIST_NAME == "Ubuntu" ]]
 then
 
-	DIST_FAMILY="debian"
+	DIST_FAMILY="Debian"
 	DIST_PACKAGES="dpkg"
 	DIST_UEFI_DIR="/boot/efi/efi/Ubuntu"
 
@@ -1475,7 +1525,7 @@ then
 
 elif [[ $DIST_NAME == "LinuxMint" || $DIST_NAME == "Linuxmint" ]]
 then
-	DIST_FAMILY="debian"
+	DIST_FAMILY="Debian"
 	DIST_PACKAGES="dpkg"
 
 	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
@@ -1490,7 +1540,7 @@ then
 
 elif [[ $DIST_NAME == "Debian" ]]
 then
-	DIST_FAMILY="debian"
+	DIST_FAMILY="Debian"
 	DIST_PACKAGES="dpkg"
 
 	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
@@ -1580,6 +1630,7 @@ fi
 	echo
 	echo "DIST_NAME $DIST_NAME"
 	echo "DIST_VERSION_ID $DIST_VERSION_ID"
+	echo "DIST_VERSION_ID_MINOR $DIST_VERSION_ID_MINOR"
 	echo "DIST_FAMILY $DIST_FAMILY"
 	echo "DIST_PACKAGES $DIST_PACKAGES"
 	echo "DIST_GRUB_CONF $DIST_GRUB_CONF"
@@ -2457,7 +2508,7 @@ then
 	raw_close
 else
 	raw_open
-	line "Birdseye lacks the functionality to determine ${MY_DIST}'s installed kernels."
+	line "Birdseye needs additional functionality to determine ${DIST_NAME}'s installed kernels, Sorry."
 	raw_close
 fi
 
@@ -3499,7 +3550,7 @@ raw_close
 
 item_title "item_lsinitrd" 		"initrd information" "lsinitrd"
 
-if [[ $DIST_NAME == "suse" ]]
+if [[ $DIST_NAME == "Suse" ]]
 then
 	MY_KERNEL=$(uname -a | cut --delimiter=" " -f 3)
 	MY_INITRD="/boot/initrd-$MY_KERNEL"
@@ -3509,7 +3560,7 @@ if [[ $AVAILABLE_LSINITRD == "yes" ]]
 then
 	# Present the lsinitrd information in an HTML textarea box
 	textarea_open 120 24
-	if [[ $DIST_NAME == "suse" ]]
+	if [[ $DIST_NAME == "Suse" ]]
 	then
 		lsinitrd -l $MY_INITRD >> $HTML 2>&1
 	else
@@ -3518,7 +3569,7 @@ then
 	textarea_close
 
 	# Send the raw output to an ASCII file
-	if [[ $DIST_NAME == "suse" ]]
+	if [[ $DIST_NAME == "Suse" ]]
 	then
 		lsinitrd -l $MY_INITRD >> $FILE_INITRD 2>&1
 	else
@@ -3652,28 +3703,32 @@ raw_close
 
 item_title "item_numashow"		"NUMA Topology" "numactl --show"
 
-raw_open
 if [[ $AVAILABLE_NUMACTL == "yes" ]]
 then
+	raw_open
 	numactl --show >> $HTML 2>&1
-
+	raw_close 
 	helpful_tip "<strong>Tip:</strong> 'numactl --show' describes the NUMA policies for the current process.  It can be useful to see how physical CPUs and memory are organized."
+
 else
+	raw_open
 	line "numactl is not available."
+	raw_close 
 fi
-raw_close 
 
 item_title "item_numahw"			"NUMA Memory Topology" "numactl --hardware"
-raw_open
 if [[ $AVAILABLE_NUMACTL == "yes" ]]
 then
+	raw_open
 	numactl --hardware >> $HTML 2>&1
+	raw_close
 
 	helpful_tip "<p><strong>Tip:</strong> 'numactl --hardware' lists each node in the NUMA domain and produces table showing the cost of memory access from one node to another node."
 else
+	raw_open
 	line "numactl is not available."
+	raw_close
 fi
-raw_close
 
 #############=============-----------------................
 #
@@ -3788,11 +3843,16 @@ then
 	if [[ $LSPCI_LINES -le 15 ]]
 	then
 		raw_open
-		lspci -vv >> $HTML 2>&1 
+
+		# pci output may contain > and < symbols which interfere with
+		# HTML formatted output.  So we'll use sed to convert 
+		# < to &lsaquo; and > to &rsaquo;
+
+		lspci -vv | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
 		raw_close
 	else
 		textarea_open 120 24
-		lspci -vv >> $HTML 2>&1 
+		lspci -vv | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
 		textarea_close
 	fi
 
@@ -4201,7 +4261,7 @@ then
 	
 		item_title "item_virshnodecpu"	"Virtualization nodes" "virsh nodecpustats"
 		raw_open
-		if [[ $DIST_FAMILY == "redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
+		if [[ $DIST_FAMILY == "Redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
 		then
 			line "virsh nodecpustats is not available with this distribution and release"
 		else
@@ -4211,7 +4271,7 @@ then
 
 		item_title "item_virshnodemem"	"Virtualization nodes" "virsh nodeinfo"
 		raw_open
-		if [[ $DIST_FAMILY == "redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
+		if [[ $DIST_FAMILY == "Redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
 		then
 			line "virsh nodememstats is not available with this distribution and release"
 		else
@@ -4488,7 +4548,7 @@ then
 		fi
 	else
 		raw_open
-		line "This is not a Xen hypervisor <strong>host<strong> system."
+		line "This is not a Xen hypervisor <strong>host</strong> system."
 		raw_close
 	fi
 
