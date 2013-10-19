@@ -37,7 +37,7 @@ do
 		# Wider, shows per device traffic summary
 		-t | "--traffic" )
 			shift
-			NIC_SUMMARY_STYLE="ipv4";;
+			NIC_SUMMARY_STYLE="traffic";;
 
 		# Wider still, shows ipv6 addresses 
 		-6 | "--ipv6" )
@@ -57,7 +57,7 @@ case $NIC_SUMMARY_STYLE in
 	"short") 
 		printf "%12s %17s %8s %18s %7s %9s\n" \
 			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" ;;
-	"ipv4") 
+	"traffic") 
 		printf "%12s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
 			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX";;
 	"ipv6") 
@@ -253,8 +253,7 @@ do
 		"short") 
 			printf "%12s %17s %8s %18s %7s %9s\n" \
 						$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $WIRE_SPEED;;
-#$RX_HUMAN $RX_HUMAN_TYPE $TX_HUMAN $TX_HUMAN_TYPE
-		"ipv4") 
+		"traffic") 
 			printf "%12s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
 						$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $WIRE_SPEED $RX_HUMAN $RX_HUMAN_TYPE $TX_HUMAN $TX_HUMAN_TYPE;;
 		"ipv6") 
