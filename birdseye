@@ -47,7 +47,9 @@ fi
 # Fedora 19 ok
 # SLES 11 SP3 ok
 # Ubuntu 13.10 ok
-#
+# Red Hat 6.4 ok
+# Red Hat 5.9 ok
+# Citrix 6.1 ok
 
 # When something isn't present, show a disabled TOC entry for it
 # and don't show it later?? Need to make things predictable without
@@ -79,6 +81,9 @@ fi
 # Populate github site and figure out how to use
 # Features from sosreport
 # Features from snapshot
+
+# Debian:
+# Show init script configuration instead of chkconfig/systemctl
 
 # SLES 11 SP3:
 # Determine installed kernels on SuSE where rpm is not available
@@ -1454,6 +1459,12 @@ then
 	DIST_PRETTY_NAME=$(cat /etc/os-release | grep "^PRETTY_NAME=" | awk -F "=" '{print $2}' | sed "s/\"//g" )
 fi
 
+# Let's shorten this for simplicity later
+if [[ $DIST_NAME == "Debian GNU/Linux" ]]
+then
+	DIST_NAME="Debian"
+fi
+
 if [[ $DIST_NAME == "null" ]]
 then
 
@@ -1476,19 +1487,40 @@ then
 	elif [[ -f /etc/redhat-release ]]
 	then
 
-		DIST_NAME="Redhat"
-		DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
+		# Citrix XenServer is based on an old Red Hat foundation
+		# as a result, they have things like /etc/redhat-release
+		# present but containing a XenServer identification string
+		# so we need to check for XenServer here and handle it.  Messy
+		if [[ $(cat /etc/redhat-release | grep XenServer | wc -l) -gt 0 ]]
+		then
 
-		# Warning: positional, this might change and needs to be
-		# made more flexible.  Search for "." and use that?
-		DIST_VERSION_ID=$(cat /etc/redhat-release | awk -F " " '{ print $7 }')
-		DIST_VERSION_ID_MINOR=$(cat /etc/redhat-release | awk -F " " '{ print $7 }')
+			DIST_NAME="Citrix"
+			DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
 
-		# Convert 6.4 to 6
-		DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+			# Example:
+			# "XenServer release 6.1.0-59235p (xenenterprise)"
+			DIST_VERSION_ID=$(cat /etc/redhat-release)
 
-		# Convert 6.4 to 4
-		DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##*.}
+			# Convert 6.1.0-59235p
+			DIST_VERSION_ID=${DIST_VERSION_ID##XenServer release }
+			DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+
+		else
+
+			DIST_NAME="Redhat"
+			DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
+
+			# Warning: positional, this might change and needs to be
+			# made more flexible.  Search for "." and use that?
+			DIST_VERSION_ID=$(cat /etc/redhat-release | awk -F " " '{ print $7 }')
+			DIST_VERSION_ID_MINOR=$(cat /etc/redhat-release | awk -F " " '{ print $7 }')
+
+			# Convert 6.4 to 6
+			DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+
+			# Convert 6.4 to 4
+			DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##*.}
+		fi
 
 	elif [[ -f /etc/fedora-release ]]
 	then
@@ -1575,6 +1607,25 @@ then
 	elif [[ $DIST_VERSION_ID == "7" ]]
 	then
 		DIST_BOOT_CFG="/boot/grub2"
+		DIST_GRUB_CONF="grub.conf"
+	fi
+
+elif [[ $DIST_NAME == "Citrix" ]]
+then
+	DIST_FAMILY="Redhat"
+	DIST_PACKAGES="rpm"
+	# not tested 2013.1019
+	DIST_UEFI_DIR="/boot/efi/EFI/Citrix"
+	DIST_SYSCONFIG="yes"
+	DIST_SYSCONFIG_NETDIR="/etc/sysconfig/network-scripts"
+
+	if [[ $DIST_VERSION_ID == "5" ]]
+	then
+		DIST_GRUB_CONF="grub.conf"
+		QUIRK_VIRSH_DOMSTATE="no-reason"
+		QUIRK_VIRSH_DESC="no-desc"
+	elif [[ $DIST_VERSION_ID == "6" ]]
+	then
 		DIST_GRUB_CONF="grub.conf"
 	fi
 
@@ -2640,6 +2691,16 @@ if [[ $DIST_PACKAGES == "rpm" ]]
 then
 	raw_open
 	rpm -qa | fgrep "kernel-" | grep -v "devel" | grep -v "header" >> $HTML 2>&1
+	raw_close
+elif [[ $DIST_PACKAGES == "dpkg" ]]
+then
+	raw_open
+	dpkg -l | grep linux-image >> $HTML 2>&1
+	raw_close
+elif [[ $DIST_PACKAGES == "zypper" ]]
+then
+	raw_open
+	line "Birdseye needs to be configured to find zypper kernel packages."
 	raw_close
 else
 	raw_open
