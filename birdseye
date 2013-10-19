@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1018.01"
+VERSION="2013.1018.02"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -22,7 +22,7 @@ else
 	# When this script is called using 'sudo' OR 'su' this records
 	# the name of the non-root user so we can set security to this
 	# user on our output files. Same as 'who am i'
-	SUDO_USER=$(who -m | awk '{print $1}')
+	SUDO_USER=$(who -m | awk '{ print $1 }')
 fi
 
 ###########################################################
@@ -42,6 +42,12 @@ fi
 # several virtual machine guest environments
 # 6) Should be user extensible using plugins
 # 7) Should be well documented and easy to understand
+
+# Tested:
+# Fedora 19 ok
+# SLES 11 SP3 ok
+# Ubuntu 13.10 ok
+#
 
 # When something isn't present, show a disabled TOC entry for it
 # and don't show it later?? Need to make things predictable without
@@ -311,14 +317,18 @@ function nic_list {
 	# 5: macvtap bridges (used with KVM) look like this:
 	#    macvtap0@p10p1
 	#    convert the "@" symbol to ATSYMBOL and then we'll use a bash
-	#    parameter expansion below to remove everything to the right of ATSYMBOL
+	#    parameter expansion below to remove all to the right of ATSYMBOL
 
 	for EACH_NIC in $(ip link list | grep -e "[0-9]: " | awk -F " " '{print $2}' | sed "s/://g" | sed "s/@/ATSYMBOL/" )
 	do
 
+		#echo "DEBUG PRE-EACH-NIC $EACH_NIC"
+
 		# If ATSYMBOL is present, remove everything to right of it so we have
 		# just a simple name like macvtap0
 		EACH_NIC=${EACH_NIC%%ATSYMBOL*}
+
+		#echo "DEBUG POST-EACH-NIC $EACH_NIC"
 
 		# If we're anything but the software-only loopback device, try to find the
 		# hardware MAC address this device
@@ -1425,23 +1435,31 @@ DIST_SYSCONFIG="no"
 # Try to use an /etc/os-release file to identify this release
 if [[ -f /etc/os-release ]]
 then
-	# in /etc/os-release,
-	# find only the line that begins with NAME=
-	# and print the second parameter which is the distribution name
-	DIST_NAME=$(cat /etc/os-release | grep "^NAME=" | awk -F "=" '{print $2}')
+	# 1: Use file /etc/os-release as source
+	# 2: Find the line that starts with NAME=
+	# 3: Return the second parameter of that line
+	# 4: Remove quotes around the value
+	DIST_NAME=$(cat /etc/os-release | grep "^NAME=" | awk -F "=" '{print $2}' | sed "s/\"//g" )
 
-	# in /etc/os-release,
-	# find only the line that begins with NAME=
-	# and print the second parameter which is the distribution name
-	DIST_VERSION_ID=$(cat /etc/os-release | grep "^VERSION_ID=" | awk -F "=" '{print $2}')
-	DIST_PRETTY_NAME=$(cat /etc/os-release | grep "^PRETTY_NAME=" | awk -F "=" '{print $2}')
+	# 1: Use file /etc/os-release as source
+	# 2: Find the line that starts with VERSION_ID=
+	# 3: Return the second parameter of that line
+	# 4: Remove quotes around the value
+	DIST_VERSION_ID=$(cat /etc/os-release | grep "^VERSION_ID=" | awk -F "=" '{print $2}' | sed "s/\"//g" )
+
+	# 1: Use file /etc/os-release as source
+	# 2: Find the line that starts with PRETTY_NAME=
+	# 3: Return the second parameter of that line
+	# 4: Remove quotes around the value
+	DIST_PRETTY_NAME=$(cat /etc/os-release | grep "^PRETTY_NAME=" | awk -F "=" '{print $2}' | sed "s/\"//g" )
 fi
 
 if [[ $DIST_NAME == "null" ]]
 then
 
 	# No /etc/os-release for 
-	# - SUSE SLES 11 SP3
+	# - Suse SLES 11 SP3
+	# - Red Hat 6.4
 
 	if [[ -f /etc/SuSE-release ]]
 	then
@@ -1455,9 +1473,44 @@ then
 		DIST_VERSION_ID_MINOR=$(cat /etc/SuSE-release | grep "^PATCHLEVEL = ")
 		DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##PATCHLEVEL = }
 
+	elif [[ -f /etc/redhat-release ]]
+	then
+
+		DIST_NAME="Redhat"
+		DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
+
+		# Warning: positional, this might change and needs to be
+		# made more flexible.  Search for "." and use that?
+		DIST_VERSION_ID=$(cat /etc/redhat-release | awk -F " " '{ print $7 }')
+		DIST_VERSION_ID_MINOR=$(cat /etc/redhat-release | awk -F " " '{ print $7 }')
+
+		# Convert 6.4 to 6
+		DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+
+		# Convert 6.4 to 4
+		DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##*.}
+
+	elif [[ -f /etc/fedora-release ]]
+	then
+		# This stub is for older fedora releases which may not have
+		# /etc/os-release.  Newer systems won't use this.
+
+		DIST_NAME="Fedora"
+		DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
+
+		# Warning: positional, this might change and needs to be
+		# made more flexible.  Search for "." and use that?
+		DIST_VERSION_ID=$(cat /etc/redhat-release | awk -F " " '{ print $3 }')
+
+		DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+
+		#DIST_VERSION_ID_MINOR is not used in fedora.
 	fi
 
 fi
+
+#echo $DIST_VERSION_ID
+#echo $DIST_VERSION_ID_MINOR
 
 ###########################################################
 
@@ -1467,6 +1520,7 @@ then
 	DIST_FAMILY="Redhat"
 	DIST_UEFI_DIR="/boot/efi/EFI/Fedora"
 	DIST_SYSCONFIG="yes"
+	DIST_SYSCONFIG_NETDIR="/etc/sysconfig/network-scripts"
 
 	# This script only officially supports Fedora 18+ 
 	
@@ -1486,6 +1540,7 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Oracle"
 	DIST_SYSCONFIG="yes"
+	DIST_SYSCONFIG_NETDIR="/etc/sysconfig/network-scripts"
 
 	if [[ $DIST_VERSION_ID == "5" ]]
 	then
@@ -1507,6 +1562,7 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Centos"
 	DIST_SYSCONFIG="yes"
+	DIST_SYSCONFIG_NETDIR="/etc/sysconfig/network-scripts"
 
 	if [[ $DIST_VERSION_ID == "5" ]]
 	then
@@ -1528,6 +1584,7 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Redhat"
 	DIST_SYSCONFIG="yes"
+	DIST_SYSCONFIG_NETDIR="/etc/sysconfig/network-scripts"
 
 	if [[ $DIST_VERSION_ID == "5" ]]
 	then
@@ -1549,18 +1606,19 @@ then
 	DIST_PACKAGES="zypper"
 	DIST_UEFI_DIR="/boot/efi/efi/SuSE"
 	DIST_SYSCONFIG="yes"
+	DIST_SYSCONFIG_NETDIR="/etc/sysconfig/network"
 
 	if [[ $DIST_VERSION_ID == "10" ]]
 	then
-		/* placeholder */
+		# placeholder
 		FUTURE_CODE_HERE="yes"
 	elif [[ $DIST_VERSION_ID == "11" ]]
 	then
-		/* placeholder */
+		# placeholder
 		FUTURE_CODE_HERE="yes"
 	elif [[ $DIST_VERSION_ID == "12" ]]
 	then
-		/* placeholder */
+		# placeholder
 		FUTURE_CODE_HERE="yes"
 	fi
 
@@ -3077,14 +3135,43 @@ cat /etc/resolv.conf >> $HTML 2>&1
 raw_close
 
 item_title "item_hosts"		"Local Hosts" "cat /etc/hosts"
-raw_open
-cat /etc/hosts >> $HTML 2>&1
-raw_close
+# Count the number of lines in output
+HOST_LINES=$(cat /etc/hosts | wc -l)
+# If we have less > 0 lines and < 15 lines use the short form
+if [[ $HOST_LINES -gt 0 && HOST_LINES -le 15 ]]
+then
+	raw_open
+	cat /etc/hosts >> $HTML 2>&1
+	raw_close
+else
+	textarea_open 120 24
+	cat /etc/hosts >> $HTML 2>&1
+	textarea_close
+fi
 
 item_title "item_nsswitch" "Name Service Switch Config" "cat /etc/nsswitch"
-textarea_open 120 24
-cat /etc/nsswitch.conf >> $HTML 2>&1
-textarea_close
+if [[ -f /etc/nsswitch.conf ]]
+then
+	# Count the number of lines in output
+	NSSWITCH_LINES=$(cat /etc/nsswitch.conf | wc -l)
+
+	# If we have less > 0 lines and < 15 lines use the short form
+	if [[ $NSSWITCH_LINES -gt 0 && NSSWITCH_LINES -le 15 ]]
+	then
+		raw_open
+		cat /etc/nsswitch.conf >> $HTML 2>&1
+		raw_close
+	else
+		textarea_open 120 24
+		cat /etc/nsswitch.conf >> $HTML 2>&1
+		textarea_close
+	fi
+else
+	raw_open
+	line "/etc/nsswitch.conf is not available on this system."
+	raw_close
+fi
+
 
 item_title "item_ifcfg" "Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
 
@@ -3098,23 +3185,44 @@ then
 		raw_close
 	else
 		raw_open
-		line "There is no /etc/sysconfig/network available on this system."
+		line "There is no /etc/sysconfig/network file available on this system."
 		raw_close
 	fi
 
-	if [[ $(ls -l /etc/sysconfig/network-scripts/[ib]*cfg* | wc -l) -gt 0 ]]
+	# Do we have a sysconfig network script directory?
+	# like /etc/sysconfig/network-scripts on Red Hat?
+	if [[ -d $DIST_SYSCONFIG_NETDIR ]]
 	then
-		# Look for ifcfg-eth0, ifcfg-p99p9, br0-cfg, brcfg0 etc
-		for EACH_FILE in /etc/sysconfig/network-scripts/[ib]*cfg*
-		do
-			raw_caption "cap_net_cfgs" "cat $EACH_FILE"
+
+		# If we are a Suse system and we have a file called 'config'
+		# in the netconfig dir, it has all sorts of interesting information
+		# so let's report on it
+		if [[ $DIST_FAMILY == "Suse" && -f $DIST_SYSCONFIG_NETDIR/config ]]
+		then
+			raw_caption "cap_suse_netdir_config" "Suse: cat $DIST_SYSCONFIG_NETDIR/config"
+			textarea_open 120 24
+			cat $DIST_SYSCONFIG_NETDIR/config >> $HTML 2>&1
+			textarea_close
+		fi
+
+		if [[ $(ls -l ${DIST_SYSCONFIG_NETDIR}/*cfg-* | wc -l) -gt 0 ]]
+		then
+			# Look for ifcfg-eth0, ifcfg-p99p9, br0-cfg, brcfg0 etc
+			for EACH_FILE in ${DIST_SYSCONFIG_NETDIR}/*cfg-*
+			do
+				raw_caption "cap_net_cfgs" "cat $EACH_FILE"
+				raw_open
+				cat $EACH_FILE >> $HTML 2>&1
+				raw_close
+			done
+		else
 			raw_open
-			cat $EACH_FILE >> $HTML 2>&1
+			line "There are no $DIST_SYSCONFIG_NETDIR/*cfg-* files available on this system."
 			raw_close
-		done
+		fi
 	else
 		raw_open
-		line "There are no /etc/sysconfig/network-scripts/ifcfg-* files available on this system."
+		line "There is no $DIST_SYSCONFIG_NETDIR directory available on this system."
 		raw_close
 	fi
 
@@ -3386,17 +3494,21 @@ then
 elif [[ $DIST_PACKAGES = "dpkg" ]]
 then
 
-		###########################################################
-		# DPKG/APT Repository
+	###########################################################
+	# DPKG/APT Repository
 
 	item_title "item_apt_config"		"Software Repositories (dpkg/apt)" "cat /etc/apt/apt.conf"
 
-	textarea_open 120 24
 	if [[ -f /etc/apt/apt.conf ]]
 	then
+		textarea_open 120 24
 		cat /etc/apt/apt.conf >> $HTML 2>&1
+		textarea_close
+	else
+		raw_open
+		line "There is no /etc/apt/apt.conf available this system."
+		raw_close
 	fi
-	textarea_close
 
 	# Debian/Ubuntu/etc: Report sources.l
 	item_title "item_apt_repos"		"dpkg Repositories" "cat /etc/apt/sources.list"
@@ -3409,6 +3521,10 @@ then
 		line "----------"
 		cat "$EACHFILE" >> $HTML 2>&1
 		textarea_close
+	else
+		raw_open
+		line "There is no /etc/apt/sources.list available this system."
+		raw_close
 	fi
 
 	item_title "item_dpkg_pkgs"	"Debian Packages" "dpkg -l"
@@ -3419,17 +3535,29 @@ then
 elif [[ $DIST_PACKAGES = "zypper" ]]
 then
 
-		###########################################################
-		# SuSE Zypper Repository
+	###########################################################
+	# SuSE Zypper Repository
 
 	item_title "item_zypper_config"		"Software Repositories (SuSE)" "cat /etc/zypp/zypper.conf"
 
-	textarea_open 120 24
+	# Check to see if we have this file.
 	if [[ -f /etc/zypp/zypper.conf ]]
 	then
-		cat /etc/zypp/zypper.conf >> $HTML 2>&1
+		# Count the number of output lines
+		ZIPP_LINES=$(cat /etc/zypp/zypper.conf | wc -l) 
+
+		# If we have > 0 and < 15 then use the short form
+		if [[ $ZIPP_LINES -gt 0 && $ZIPP_LINES -le 15 ]]
+		then
+			raw_open
+			cat /etc/zypp/zypper.conf >> $HTML 2>&1
+			raw_close
+		else
+			textarea_open 120 24
+			cat /etc/zypp/zypper.conf >> $HTML 2>&1
+			textarea_close
+		fi
 	fi
-	textarea_close
 
 	# Report contents of individual repositories configured for use with zypper
 	item_title "item_zypper_repos"		"Software Repositories (SuSE)" "cat /etc/zypp/
@@ -3748,7 +3876,9 @@ then
 
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INITRD target=_file_initrd>separate lsinitrd file.</a>"
 else
-	echo "lsinitrd is not present on this system." >> $HTML 2>&1
+	raw_open
+	line "lsinitrd is not available on this system."
+	raw_close
 fi
 
 #############=============-----------------................
@@ -4011,10 +4141,14 @@ else
 fi
 
 item_title "item_lspcivv"	"PCI Devices Detail" "lspci -vv"
-# LSPCI_LINES is set above, the first time we try to do lspci alone.
-if [[ $LSPCI_LINES -gt 0 ]]
+# Count the number of output lines
+LSPCI_VV_LINES=$(lspci -vv | wc -l)
+
+# If we have more than 0, we need to report them
+if [[ $LSPCI_VV_LINES -gt 0 ]]
 then
-	if [[ $LSPCI_LINES -le 15 ]]
+	# If we have less than 15, use the short form
+	if [[ $LSPCI_VV_LINES -le 15 ]]
 	then
 		raw_open
 
@@ -4219,25 +4353,25 @@ then
 	raw_close
 else
 
-	# Use 'ip link list' to make a list of network devices.
-	# We can't just look for 'ethX' anymore!
-	NIC_LIST=$(ip link list | grep -e "[0-9]: " | awk -F " " '{print $2}' | sed "s/://g")
+	# FIND A LIST OF NETWORK DEVICES:
+	# 1: ip link list - lists all network devices
+	# 2: Use only the first line using a regex that looks for '1:', '99:', etc
+	# 3: From that first line, we only want the device name which is param #2
+	# 4: remove the colon that sits to the right of the device name
+	# 5: macvtap bridges (used with KVM) look like this:
+	#    macvtap0@p10p1
+	#    convert the "@" symbol to ATSYMBOL and then we'll use a bash
+	#    parameter expansion below to remove all to the right of ATSYMBOL
 
-	# Report on each network device port discovered and placed in NIC_LIST
-	for EACH_NIC in $NIC_LIST
+	# Code borrowed from external 'nics' script
+	for EACH_NIC in $(ip link list | grep -e "[0-9]: " | awk -F " " '{print $2}' | sed "s/://g" | sed "s/@/ATSYMBOL/" )
 	do
-		# Do raw_open/raw_close for each NIC so each is presented individually
 
-		#FILE_EXISTS="no"
-		#check_for_program sutl
-		#line "<strong>"
-		#if [[ $FILE_EXISTS == "yes" ]]
-		#then
-		#	sutl nics | grep $EACH_NIC >> $HTML 2>&1
-		#else
-		#	line "Network device: $EACH_NIC"
-		#fi
-		#line "</strong>"
+		# If ATSYMBOL is present, remove everything to right of it so we have
+		# just a simple name like macvtap0
+		EACH_NIC=${EACH_NIC%%ATSYMBOL*}
+
+		# Do raw_open/raw_close for each NIC so each is presented individually
 
 		# We show network device information in both 'ip' and 'ifconfig'
 		# style because users may be familiar with one style and trained
@@ -4754,19 +4888,6 @@ then
 	rm $OUTPUT_DIR.tar.gz
 fi
 
-echo -e "\nTaring up results."
-tar cf $OUTPUT_DIR.tar $OUTPUT_DIR
-
-echo "Compressing tar file."
-gzip -9 $OUTPUT_DIR.tar
-
-FILE_EXISTS="no"
-check_for_program zip
-if [[ $FILE_EXISTS == "yes" ]]
-then
-	zip -qrl $OUTPUT_DIR.zip $OUTPUT_DIR
-fi
-
 # If we ran this script using sudo or su -- anything but a real
 # login as 'root', then change the output directory and files
 # to the non-root username
@@ -4778,7 +4899,9 @@ then
 	then
 		echo "Changing ownership of output directory to $SUDO_USER"
 	fi
+
 	chown $SUDO_USER "${OUTPUT_DIR}" 
+
 	for EACH_FILE in \
 		"${FILE_DMI}" "${FILE_CPU}" "${FILE_MSGS}" "${FILE_SYSLOG}" \
 		"${FILE_DMESG}" "${FILE_DMESG_NOTIME}" "${FILE_INTER}" \
@@ -4793,6 +4916,37 @@ then
 			chown $SUDO_USER "${EACH_FILE}"
 		fi
 	done
+fi
+
+echo -e "\nTaring up results."
+tar cf $OUTPUT_DIR.tar $OUTPUT_DIR
+
+echo "Compressing tar file."
+gzip -9 $OUTPUT_DIR.tar
+
+FILE_EXISTS="no"
+check_for_program zip
+if [[ $FILE_EXISTS == "yes" ]]
+then
+	zip -qrl $OUTPUT_DIR.zip $OUTPUT_DIR
+fi
+
+if [[ $SUDO_USER != "root" ]]
+then
+	if [[ $DEBUG = "yes" ]]
+	then
+		echo "Changing ownership of output directory to $SUDO_USER"
+	fi
+
+	if [[ -f $OUTPUT_DIR.tar.gz ]]
+	then
+		chown $SUDO_USER "${OUTPUT_DIR}.tar.gz" 
+	fi
+
+	if [[ -f $OUTPUT_DIR.zip ]]
+	then
+		chown $SUDO_USER "${OUTPUT_DIR}.zip"
+	fi
 fi
 
 echo -e "Birdseye capture complete: $OUTPUT_DIR.tar.gz\n"
