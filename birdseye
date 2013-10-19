@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1016.01"
+VERSION="2013.1018.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -291,10 +291,10 @@ function nic_list {
 
 	if [[ $STYLE == "ipv4" ]]
 	then
-		printf "%10s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
+		printf "%12s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
 			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX" 
 	else
-		printf "%10s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
+		printf "%12s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
 			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "IP6 ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX" 2>&1
 	fi
 
@@ -433,10 +433,10 @@ function nic_list {
 			#			$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $RX_BYTES $RX_HUMAN $RX_HUMAN_TYPE $TX_BYTES $TX_HUMAN $TX_HUMAN_TYPE
 			# 1-nic 2-mac 3-link 4-ip 5-mtu 6-spd 7-rxhu 8-hutype 9-hu 10-huty
 			#       1    2    3   4    5   6    7   8   9
-			printf "%10s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
+			printf "%12s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
 							$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $WIRE_SPEED $RX_HUMAN $RX_HUMAN_TYPE $TX_HUMAN $TX_HUMAN_TYPE 
 		else
-			printf "%10s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
+			printf "%12s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
 							$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $IP6_ADDRESS $MTU $WIRE_SPEED $RX_HUMAN $RX_HUMAN_TYPE $TX_HUMAN $TX_HUMAN_TYPE 
 		fi
 
@@ -1347,6 +1347,10 @@ DIST_GRUB_CONF="grub.cfg"
 # so we'll have to process this some later.
 DIST_BOOT_CFG="/boot/grub"
 
+# Does this system use sysconfig for common configuration files
+# such as networking interfaces?
+DIST_SYSCONFIG="no"
+
 ###########################################################
 # Identify Distribution and Version using standard /etc/os-release file
 ###########################################################
@@ -1401,8 +1405,9 @@ then
 	DIST_PACKAGES="rpm"
 	DIST_FAMILY="Redhat"
 	DIST_UEFI_DIR="/boot/efi/EFI/Fedora"
+	DIST_SYSCONFIG="yes"
 
-	/* This script only officially supports Fedora 18+ */
+	# This script only officially supports Fedora 18+ 
 	
 	if [[ $DIST_VERSION_ID == "18" ]]
 	then
@@ -1419,6 +1424,7 @@ then
 	DIST_FAMILY="Redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Oracle"
+	DIST_SYSCONFIG="yes"
 
 	if [[ $DIST_VERSION_ID == "5" ]]
 	then
@@ -1439,6 +1445,7 @@ then
 	DIST_FAMILY="Redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Centos"
+	DIST_SYSCONFIG="yes"
 
 	if [[ $DIST_VERSION_ID == "5" ]]
 	then
@@ -1459,6 +1466,7 @@ then
 	DIST_FAMILY="Redhat"
 	DIST_PACKAGES="rpm"
 	DIST_UEFI_DIR="/boot/efi/EFI/Redhat"
+	DIST_SYSCONFIG="yes"
 
 	if [[ $DIST_VERSION_ID == "5" ]]
 	then
@@ -1479,6 +1487,7 @@ then
 	DIST_FAMILY="Suse"
 	DIST_PACKAGES="zypper"
 	DIST_UEFI_DIR="/boot/efi/efi/SuSE"
+	DIST_SYSCONFIG="yes"
 
 	if [[ $DIST_VERSION_ID == "10" ]]
 	then
@@ -1500,6 +1509,7 @@ then
 	DIST_FAMILY="Debian"
 	DIST_PACKAGES="dpkg"
 	DIST_UEFI_DIR="/boot/efi/efi/Ubuntu"
+	DIST_SYSCONFIG="no"
 
 	#MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
@@ -1527,6 +1537,9 @@ elif [[ $DIST_NAME == "LinuxMint" || $DIST_NAME == "Linuxmint" ]]
 then
 	DIST_FAMILY="Debian"
 	DIST_PACKAGES="dpkg"
+	# not tested - no UEFI hardware :( 2013.1018 maxwell
+	DIST_UEFI_DIR="/boot/efi/efi/LinuxMint"
+	DIST_SYSCONFIG="no"
 
 	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
@@ -1542,6 +1555,9 @@ elif [[ $DIST_NAME == "Debian" ]]
 then
 	DIST_FAMILY="Debian"
 	DIST_PACKAGES="dpkg"
+	# not tested - no UEFI hardware :( 2013.1018 maxwell
+	DIST_UEFI_DIR="/boot/efi/efi/LinuxMint"
+	DIST_SYSCONFIG="no"
 
 	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
 
@@ -1625,9 +1641,6 @@ fi
 ###########################################################
 #if [[ $DEBUG == "yes" ]]
 #then
-	echo
-	echo "DIST_ Variables just before report production"
-	echo
 	echo "DIST_NAME $DIST_NAME"
 	echo "DIST_VERSION_ID $DIST_VERSION_ID"
 	echo "DIST_VERSION_ID_MINOR $DIST_VERSION_ID_MINOR"
@@ -2144,6 +2157,8 @@ list "item_nics_list"					"Network Device List" "nics (script)"
 list "item_resolv"						"DNS Resolution" "cat /etc/resolv.conf"
 list "item_hosts"							"Local Hosts" "cat /etc/hosts"
 list "item_nsswitch"					"Name Service Switch Config" "cat /etc/nsswitch.conf"
+list "item_ifcfg"							"Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
+list "item_networks"					"Network Configuration (debian)" "cat /etc/network/interfaces"
 list "item_iproute"						"Network routing table via ip route" "ip route"
 list "item_netstat"						"Network routing table via netstat" "netstat"
 list "item_firewall"					"Firewall rules" "iptables -L"
@@ -2565,28 +2580,39 @@ cat /proc/cmdline >> $HTML 2>&1
 raw_close
 
 item_title "item_bootdir"		"Boot directory" "ls -l /boot"
+# count the number of output lines 
 BOOT_LINES=$(ls -lR /boot | wc -l)
-if [[ $BOOT_LINES -le 15 ]]
+# If we have more > 0 and <= 15 then show it in short format
+if [[ $BOOT_LINES -gt 0 && $BOOT_LINES -le 15 ]]
 then
 	raw_open
 	ls -lR /boot >> $HTML 2>&1
 	raw_close
-else
+elif [[ $BOOT_LINES -gt 15 ]]
+then
 	textarea_open 120 24
 	ls -lR /boot >> $HTML 2>&1
 	textarea_close
+else
+	raw_open
+	line "I can't find a /boot directory on this system!"
+	raw_close
 fi
 
 item_title "item_efidir"		"EFI Boot directory" "ls -l /boot/efi"
+# Check to see if we have a /boot/efi directory - this may be a BIOS system
 if [[ -d /boot/efi ]]
 then
+	# count the number of output lines 
 	EFI_BOOT_LINES=$(ls -lR /boot/efi | wc -l)
+	# If we have <= 15 then show it in short format
 	if [[ $EFI_BOOT_LINES -le 15 ]]
 	then
 		raw_open
 		ls -lR /boot/efi >> $HTML 2>&1
 		raw_close
-	else
+	elif [[ $EFI_BOOT_LINES -gt 15 ]]
+	then
 		textarea_open 120 24
 		ls -lR /boot/efi >> $HTML 2>&1
 		textarea_close
@@ -2685,7 +2711,10 @@ if [[ -f $MY_BOOT_DIR/$DIST_GRUB_CONF ]]
 then
 	paragraph "Reporting on $MY_BOOT_DIR/$DIST_GRUB_CONF"
 
+	# count the number of output lines
 	GRUB_LINES=$(cat $MY_BOOT_DIR/$DIST_GRUB_CONF | wc -l)
+
+	# If we have <= 15 then show it in short format
 	if [[ $GRUB_LINES -le 15 ]]
 	then
 		raw_open
@@ -2702,7 +2731,10 @@ else
 	then
 		paragraph "Reporting on $DIST_UEFI_DIR/$DIST_GRUB_CONF"
 
+		# count the number of output lines
 		GRUB_LINES=$(cat $DIST_UEFI_DIR/$DIST_GRUB_CONF | wc -l)
+
+		# If we have <= 15 then show it in short format
 		if [[ $GRUB_LINES -le 15 ]]
 		then
 			raw_open
@@ -2726,7 +2758,10 @@ if [[ -f $MY_BOOT_DIR/menu.lst ]]
 then
 	paragraph "Reporting on $MY_BOOT_DIR/menu.lst"
 
+	# count the number of output lines 
 	GRUB_LINES=$(cat $MY_BOOT_DIR/menu.lst | wc -l)
+
+	# If we have <= 15 then show it in short format
 	if [[ $GRUB_LINES -le 15 ]]
 	then
 		raw_open
@@ -2744,7 +2779,10 @@ else
 	then
 		paragraph "Reporting on $DIST_UEFI_DIR/menu.lst"
 
+		# count the number of output lines
 		GRUB_LINES=$(cat $DIST_UEFI_DIR/menu.lst | wc -l)
+	
+		# If we have <= 15 then show it in short format
 		if [[ $GRUB_LINES -le 15 ]]
 		then
 			raw_open
@@ -2934,7 +2972,10 @@ item_title "item_hw_sensors"	"Hardware Sensor Readings" "sensors"
 line "The sensor readings shown here are accurate as of the time of this Birdseye report and may not reflect the readings at an earlier time of importance."
 if [[ $AVAILABLE_SENSORS == "yes" ]]
 then
+	# count the number of output lines
 	SENSORS_LINES=$(sensors | wc -l)
+
+	# If we have <= 15 then show it in short format
 	if [[ $SENSORS_LINES -le 15 ]]
 	then
 		raw_open
@@ -2985,6 +3026,71 @@ item_title "item_nsswitch" "Name Service Switch Config" "cat /etc/nsswitch"
 textarea_open 120 24
 cat /etc/nsswitch.conf >> $HTML 2>&1
 textarea_close
+
+item_title "item_ifcfg" "Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
+
+if [[ $DIST_SYSCONFIG == "yes" ]]
+then
+	if [[ -f /etc/sysconfig/network ]]
+	then
+		raw_caption "cap_sysconfig_network" "cat /etc/sysconfig/network"
+		raw_open
+		cat /etc/sysconfig/network >> $HTML 2>&1
+		raw_close
+	else
+		raw_open
+		line "There is no /etc/sysconfig/network available on this system."
+		raw_close
+	fi
+
+	if [[ $(ls -l /etc/sysconfig/network-scripts/[ib]*cfg* | wc -l) -gt 0 ]]
+	then
+		# Look for ifcfg-eth0, ifcfg-p99p9, br0-cfg, brcfg0 etc
+		for EACH_FILE in /etc/sysconfig/network-scripts/[ib]*cfg*
+		do
+			raw_caption "cap_net_cfgs" "cat $EACH_FILE"
+			raw_open
+			cat $EACH_FILE >> $HTML 2>&1
+			raw_close
+		done
+	else
+		raw_open
+		line "There are no /etc/sysconfig/network-scripts/ifcfg-* files available on this system."
+		raw_close
+	fi
+
+else
+	raw_open
+	line "This information is not available on a non-sysconfig distribution."
+	raw_close	
+fi #endif - report on a sysconfig system.
+
+item_title "item_networks" "Network Configuration (debian)" "cat /etc/network/interfaces"
+if [[ $DIST_SYSCONFIG == "no" ]]
+then
+	if [[ -f /etc/network/interfaces ]]
+	then
+		INTERFACES_LINES=$(cat /etc/network/interfaces | wc -l)
+		if [[ $INTERFACES_LINES -le 15 ]]
+		then
+			raw_open
+			cat /etc/network/interfaces >> $HTML 2>&1
+			raw_close
+		else
+			textarea_open 120 24
+			cat /etc/network/interfaces >> $HTML 2>&1
+			textarea_close
+		fi
+	else
+		raw_open
+		line "There is no /etc/network/interfaces file available on this system."
+		raw_close
+	fi
+else
+	raw_open
+	line "This information is not available on a sysconfig distribution."
+	raw_close	
+fi # endif - report on a debian (non sysconfig) system
 
 item_title "item_iproute"		"Network routing table via ip route" "ip route"
 raw_open
@@ -3294,14 +3400,19 @@ fi
 section "section_serial" "Serial device configuration"
 
 item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep tty"
-raw_open
 # standard serial ports - try to ignore non-serial console tty devices
 # This should catch ttyS01 as well as ttyUSB01 and similar
 if [[ $(dmesg | grep "tty" | grep -v "tty[0123456789]" | wc -l) -gt 0 ]]
 then
+	line "Logs related to serial ports have been seen in the past but those ports may not <strong>currently</strong> be available."
+	raw_open
 	dmesg | grep "tty" | grep -v "tty[0123456789]" >> $HTML 2>&1
+	raw_close
+else
+	raw_open
+	line "I can't find any information about serial ports in the dmesg logs."
+	raw_close
 fi
-raw_close
 
 item_title "item_serialproc"	"Serial devices in /proc" "cat /proc/tty/driver/*"
 line
@@ -3819,17 +3930,21 @@ else
 fi
 
 item_title "item_lspci"			"PCI devices" "lspci"
+# count the number of lines that will appear as output
 LSPCI_LINES=$(lspci | wc -l)
+# If we have more > 0 and <= 15 then show it in short format
 if [[ $LSPCI_LINES -gt 0 && $LSPCI_LINES -le 15 ]]
 then
 	raw_open
 	lspci >> $HTML 2>&1 
 	raw_close
-elif [[ $LSPCI_LINES -gt 0 && $LSPCI_LINES -le 15 ]]
+# If we have more > 15 then show it in long format
+elif [[ $LSPCI_LINES -gt 15 ]]
 then
 	textarea_open 120 24
 	lspci >> $HTML 2>&1 
 	textarea_close
+# If we have 0 then report this to the user
 else
 	raw_open
 	line "This system doesn't list any PCI devices, is it a virtual machine?"
