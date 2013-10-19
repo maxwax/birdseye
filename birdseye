@@ -2544,23 +2544,26 @@ section "section_dmesg" "Boot messages"
 
 item_title "item_dmesg_notime"		"Linux boot messages without timestamps" "dmesg --notime"
 
-textarea_open 120 24
 if [[ $FEATURE_DMESG_NOTIME == "yes" ]]
 then
+	textarea_open 120 24
 	dmesg --notime >> $HTML 2>&1
+	textarea_close
+
 	dmesg --notime >> $FILE_DMESG_NOTIME
 else
 	# Show dmesg output using default output information for this dist.
-	dmesg >> $HTML 2>&1
+	raw_open
+	line "'dmesg --notime' is not available on this system."
+	raw_close
+
 	dmesg >> $FILE_DMESG_NOTIME
 
 	# If we can determine who shows timestamps by default, then 
 	# we can cut them out manually here
 	#	dmesg | cut -c15-254 >> $HTML 2>&1
 	#	dmesg | cut -c15-254 >> $FILE_DMESG_NOTIME
-
 fi
-textarea_close
 
 item_title "item_dmesg_time"		"Linux boot messages with timestamps" "dmesg"
 textarea_open 120 24
