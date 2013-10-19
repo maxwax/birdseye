@@ -22,7 +22,7 @@ function usage {
 }
 
 # default style is 'short'
-STYLE="short"
+NIC_SUMMARY_STYLE="short"
 
 # Process command line arguments
 while [ "$1" != "" ]
@@ -32,17 +32,17 @@ do
 		# Default, output limited to < 80 characters wide
 		-s | "--short" )
 			shift
-			STYLE="short";;
+			NIC_SUMMARY_STYLE="short";;
 
 		# Wider, shows per device traffic summary
 		-t | "--traffic" )
 			shift
-			STYLE="ipv4";;
+			NIC_SUMMARY_STYLE="ipv4";;
 
 		# Wider still, shows ipv6 addresses 
 		-6 | "--ipv6" )
 			shift
-			STYLE="ipv6";;
+			NIC_SUMMARY_STYLE="ipv6";;
 
 		# I don't know what I want! Help me!
 		-h | --help | --syntax | *)
@@ -53,7 +53,7 @@ do
 done
 
 # Print the header for our summary table
-case $STYLE in 
+case $NIC_SUMMARY_STYLE in 
 	"short") 
 		printf "%12s %17s %8s %18s %7s %9s\n" \
 			"INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" ;;
@@ -248,7 +248,8 @@ do
 		WIRE_SPEED=${WIRE_SPEED:-"-"}
 	fi
 
-	case $STYLE in 
+	# Report this network device's details to the user
+	case $NIC_SUMMARY_STYLE in 
 		"short") 
 			printf "%12s %17s %8s %18s %7s %9s\n" \
 						$EACH_NIC $MAC_ADDRESS $LINK_STATE $IP_ADDRESS $MTU $WIRE_SPEED;;
