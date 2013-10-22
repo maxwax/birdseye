@@ -4621,14 +4621,46 @@ then
 		fi
 		raw_close
 
+		# virsh may be installed but with no hypervisor running, all our 
+		# attempts to use it will result in errors.  We don't want to give the
+		# user raw, unprocessed errors repeatedly, so we'll check to see if it
+		# works here, report the error in detail with the first virsh call
+		# then minimize the error reporting on subsequent virsh data points
+		# Assume no
+		VIRSH_WORKS="no"
+
+		virsh version > /dev/null 2>&1
+	
+		# Check for error, if none, it works.
+		if [[ $? -eq 0 ]]
+		then
+			VIRSH_WORKS="yes"
+		fi
+
 		item_title "item_virshvers"	"Virtualization version" "virsh version"
 		raw_open
-		virsh version >> $HTML 2>&1
+		if [[ $VIRSH_WORKS == "yes" ]]
+		then
+			virsh version >> $HTML 2>&1
+		else
+			# Output this line to let the user know we're aware virsh isn't working
+			line "virsh operations are not available on this system."
+			line
+			line "virsh version output:"
+			# Now call virsh again and let it report the error to the user.
+			virsh version >> $HTML 2>&1
+		fi
 		raw_close
 	
 		item_title "item_virshnodeinfo"	"Virtualization nodes" "virsh nodeinfo"
 		raw_open
-		virsh nodeinfo >> $HTML 2>&1
+		if [[ $VIRSH_WORKS == "yes" ]]
+		then
+			virsh nodeinfo >> $HTML 2>&1
+		else
+			# Output this line to let the user know we're aware virsh isn't working
+			line "virsh operations are not available on this system."
+		fi
 		raw_close
 	
 		item_title "item_virshnodecpu"	"Virtualization nodes" "virsh nodecpustats"
@@ -4637,66 +4669,112 @@ then
 		then
 			line "virsh nodecpustats is not available with this distribution and release"
 		else
-			virsh nodecpustats >> $HTML 2>&1
+			if [[ $VIRSH_WORKS == "yes" ]]
+			then
+				virsh nodecpustats >> $HTML 2>&1
+			else
+				# Output this line to let the user know we're aware virsh isn't working
+				line "virsh operations are not available on this system."
+			fi
 		fi
 		raw_close
 
 		item_title "item_virshnodemem"	"Virtualization nodes" "virsh nodeinfo"
-		raw_open
 		if [[ $DIST_FAMILY == "Redhat" ]] && [[ $DIST_VERSION_ID == "5" ]]
 		then
 			line "virsh nodememstats is not available with this distribution and release"
 		else
-			virsh nodememstats >> $HTML 2>&1 
+			if [[ $VIRSH_WORKS == "yes" ]]
+			then
+				raw_open
+				virsh nodememstats >> $HTML 2>&1 
+				raw_close
+			else
+				# Output this line to let the user know we're aware virsh isn't working
+				raw_open
+				line "virsh operations are not available on this system."
+				raw_close
+			fi
 		fi
-		raw_close
 
 		item_title "item_virshnodedevlist"	"Virtualization nodes devices" "virsh nodedev-list"
-		textarea_open 120 24
-		virsh nodedev-list>> $HTML 2>&1
-		textarea_close
-
-		item_title "item_virshnodedevxml"	"Virtualization nodes devices xml" "virsh nodedev-dumpxml"
-		textarea_open 120 24
-		for EACHDEV	in $(virsh nodedev-list)
-		do	
-			virsh nodedev-dumpxml $EACHDEV >> $HTML 2>&1
-		done
-		textarea_close
-
-		item_title "item_virsh_iflist" "Virtualization Interface List" "virsh iface-list"
-		VIRSH_IFACE_COUNT=$(virsh iface-list | tail -n +4 | wc -l)
-		if [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -le 15 ]]
-		then
-			raw_open
-			virsh iface-list >> $HTML 2>&1
-			raw_close
-		elif [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -gt 15 ]]
+		if [[ $VIRSH_WORKS == "yes" ]]
 		then
 			textarea_open 120 24
-			virsh iface-list >> $HTML 2>&1
+			virsh nodedev-list>> $HTML 2>&1
 			textarea_close
 		else
+			# Output this line to let the user know we're aware virsh isn't working
 			raw_open
-			line "There are no interfaces defined for this system."
+			line "virsh operations are not available on this system."
+			raw_close
+		fi
+
+		item_title "item_virshnodedevxml"	"Virtualization nodes devices xml" "virsh nodedev-dumpxml"
+		if [[ $VIRSH_WORKS == "yes" ]]
+		then
+			for EACHDEV	in $(virsh nodedev-list)
+			do	
+				textarea_open 120 24
+				virsh nodedev-dumpxml $EACHDEV >> $HTML 2>&1
+				textarea_close
+			done
+		else
+			# Output this line to let the user know we're aware virsh isn't working
+			raw_open
+			line "virsh operations are not available on this system."
+			raw_close
+		fi
+
+		item_title "item_virsh_iflist" "Virtualization Interface List" "virsh iface-list"
+		if [[ $VIRSH_WORKS == "yes" ]]
+		then
+			VIRSH_IFACE_COUNT=$(virsh iface-list | tail -n +4 | wc -l)
+			if [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -le 15 ]]
+			then
+				raw_open
+				virsh iface-list >> $HTML 2>&1
+				raw_close
+			elif [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -gt 15 ]]
+			then
+				textarea_open 120 24
+					virsh iface-list >> $HTML 2>&1
+				textarea_close
+			else
+				raw_open
+				line "There are no interfaces defined for this system."
+				raw_close
+			fi
+		else
+			# Output this line to let the user know we're aware virsh isn't working
+			raw_open
+			line "virsh operations are not available on this system."
 			raw_close
 		fi
 
 		item_title "item_virsh_netlist" "Virtualization Network List" "virsh net-list"
-		VIRSH_NETLIST_COUNT=$(virsh net-list | tail -n +4 | wc -l)
-		if [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -le 15 ]]
+		if [[ $VIRSH_WORKS == "yes" ]]
 		then
-			raw_open
-			virsh net-list >> $HTML 2>&1
-			raw_close
-		elif [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -gt 15 ]]
-		then
-			textarea_open 120 24
-			virsh net-list >> $HTML 2>&1
-			textarea_close
+			VIRSH_NETLIST_COUNT=$(virsh net-list | tail -n +4 | wc -l)
+			if [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -le 15 ]]
+			then
+				raw_open
+				virsh net-list >> $HTML 2>&1
+				raw_close
+			elif [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -gt 15 ]]
+			then
+				textarea_open 120 24
+				virsh net-list >> $HTML 2>&1
+				textarea_close
+			else
+				raw_open
+				line "There are no networks defined for this system."
+				raw_close
+			fi
 		else
+			# Output this line to let the user know we're aware virsh isn't working
 			raw_open
-			line "There are no networks defined for this system."
+			line "virsh operations are not available on this system."
 			raw_close
 		fi
 
@@ -4713,59 +4791,99 @@ else
 	line
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Virtual Machines
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_vms" "Virtual Machines"
 
 if [[ $DEF_SHOW_VIRT == "yes" ]]
 then
 
-	if [[ $AVAILABLE_VIRSH == "yes" ]]
+	item_title "item_vmlist"	"Virtual Machines Defined" "virsh list --all"
+	if [[ $AVAILABLE_VIRSH == "yes" && $VIRSH_WORKS == "yes" ]]
 	then
-		item_title "item_vmlist"	"Virtual Machines Defined" "virsh list --all"
 		# Even on a system with no VMs, a header will be produced by virsh
 		# So attempt to list all VMs by starting with line four of the output
 		VIRSH_VM_COUNT=$(virsh list --all | tail -n +4 | wc -l)
 		if [[ $VIRSH_VM_COUNT -gt 0 && $VIRSH_VM_COUNT -le 15 ]]
 		then
 			raw_open
-			virsh list --all >> $HTML 2>&1
+			if [[ $VIRSH_WORKS == "yes" ]]
+			then
+				virsh list --all >> $HTML 2>&1
+			else
+				# Output this line to let the user know we're aware virsh isn't working
+				line "virsh operations are not available on this system."
+			fi
 			raw_close
 		elif [[ $VIRSH_VM_COUNT -gt 0 && $VIRSH_VM_COUNT -gt 15 ]]
 		then
 			textarea_open 120 24
-			virsh list --all >> $HTML 2>&1
+			if [[ $VIRSH_WORKS == "yes" ]]
+			then
+				virsh list --all >> $HTML 2>&1
+			else
+				# Output this line to let the user know we're aware virsh isn't working
+				line "virsh operations are not available on this system."
+			fi
 			textarea_close
 		else
 			raw_open
 			line "There are no virtual machines defined for this system."
 			raw_close
 		fi
+	else
+		# Output this line to let the user know we're aware virsh isn't working
+		raw_open
+		line "virsh operations are not available on this system."
+		raw_close
+	fi
 
-		item_title "item_virsh_pool_list" "Virtualization Storage Pool List" "virsh pool-list"
+	item_title "item_virsh_pool_list" "Virtualization Storage Pool List" "virsh pool-list"
+	if [[ $AVAILABLE_VIRSH == "yes" && $VIRSH_WORKS == "yes" ]]
+	then
 
 		VIRSH_POOL_COUNT=$(virsh pool-list | tail -n +4| wc -l)
 		if [[ $VIRSH_POOL_COUNT -gt 0 && $VIRSH_POOL_COUNT -le 15 ]]
 		then
 			raw_open
-			virsh pool-list >> $HTML 2>&1
+			if [[ $VIRSH_WORKS == "yes" ]]
+			then
+				virsh pool-list >> $HTML 2>&1
+			else
+				# Output this line to let the user know we're aware virsh isn't working
+				line "virsh operations are not available on this system."
+			fi
 			raw_close
 		elif [[ $VIRSH_POOL_COUNT -gt 0 && $VIRSH_POOL_COUNT -gt 15 ]]
 		then
 			textarea_open 120 24
-			virsh pool-list >> $HTML 2>&1
+			if [[ $VIRSH_WORKS == "yes" ]]
+			then
+				virsh pool-list >> $HTML 2>&1
+			else
+				# Output this line to let the user know we're aware virsh isn't working
+				line "virsh operations are not available on this system."
+			fi
 			textarea_close
 		else
 			raw_open
 			line "There are no pool objects defined for this system."
 			raw_close
 		fi
+	else
+		# Output this line to let the user know we're aware virsh isn't working
+		raw_open
+		line "virsh operations are not available on this system."
+		raw_close
+	fi
 
-		item_title "item_virsh_pool_info" "Virtualization Storage Pool Info" "virsh pool-info"
+	item_title "item_virsh_pool_info" "Virtualization Storage Pool Info" "virsh pool-info"
+	if [[ $AVAILABLE_VIRSH == "yes" && $VIRSH_WORKS == "yes" ]]
+	then
 		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
 		then
 			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }')
@@ -4780,8 +4898,16 @@ then
 			line "There are no pool objects defined for this system."
 			raw_close
 		fi
+	else
+		# Output this line to let the user know we're aware virsh isn't working
+		raw_open
+		line "virsh operations are not available on this system."
+		raw_close
+	fi
 
-		item_title "item_virsh_vol_list" "Virtualization Storage Volume List" "virsh vol-list"
+	item_title "item_virsh_vol_list" "Virtualization Storage Volume List" "virsh vol-list"
+	if [[ $AVAILABLE_VIRSH == "yes" && $VIRSH_WORKS == "yes" ]]
+	then
 		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
 		then
 			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
@@ -4796,8 +4922,16 @@ then
 			line "There are no pool objects defined for this system."
 			raw_close
 		fi
+	else
+		# Output this line to let the user know we're aware virsh isn't working
+		raw_open
+		line "virsh operations are not available on this system."
+		raw_close
+	fi
 
-		item_title "item_virsh_vol_info" "Virtualization Storage Volume Info" "virsh vol-info"
+	item_title "item_virsh_vol_info" "Virtualization Storage Volume Info" "virsh vol-info"
+	if [[ $AVAILABLE_VIRSH == "yes" && $VIRSH_WORKS == "yes" ]]
+	then
 		if [[ $VIRSH_POOL_COUNT -gt 0 ]]
 		then
 			for EACH_POOL in $(virsh pool-list | tail -n +3 | awk '{ FS = " "; print $1 }' | sed 's/ *$//')
@@ -4816,8 +4950,16 @@ then
 			line "There are no pool objects defined for this system."
 			raw_close
 		fi
+	else
+		# Output this line to let the user know we're aware virsh isn't working
+		raw_open
+		line "virsh operations are not available on this system."
+		raw_close
+	fi
 
-		item_title "item_vm_details" "Virtual Machine Details" "--"
+	item_title "item_vm_details" "Virtual Machine Details" "--"
+	if [[ $AVAILABLE_VIRSH == "yes" && $VIRSH_WORKS == "yes" ]]
+	then
 		if [[ $VIRSH_VM_COUNT -gt 0 ]]
 		then
 			for EACH_VM in $(virsh list --all | tail -n +3 | awk '{ FS = " "; print $2 }' | sed 's/ *$//')
@@ -4876,12 +5018,18 @@ then
 			line "There are no virtual machines defined for this system."
 			raw_close
 		fi
-
-		line
-		
 	else
+		# Output this line to let the user know we're aware virsh isn't working
 		raw_open
-		line "virsh is not available in this environment."
+
+		if [[ $AVAILABLE_VIRSH == "no" ]]
+		then
+			# We don't have the virsh command
+			line "virsh is not available on this system."
+		else
+			# We have the virsh command but we don't have libvirt working
+			line "virsh operations are not available on this system."
+		fi
 		raw_close
 	fi
 
