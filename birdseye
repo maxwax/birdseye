@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1018.02"
+VERSION="2013.1022.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -25,11 +25,11 @@ else
 	SUDO_USER=$(who -m | awk '{ print $1 }')
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # TODO LIST
 #
-###########################################################
+#----------------------------------------------------------------------------
 # Design goals:
 # 1) Single file shell script that can be copied to a target system
 # and easily capture nearly all useful information
@@ -50,6 +50,8 @@ fi
 # Red Hat 6.4 ok
 # Red Hat 5.9 ok
 # Citrix 6.1 ok
+# Amazon AWS - Amazon Linux ok
+# Rackspace Cloud - CentOS ok
 
 # When something isn't present, show a disabled TOC entry for it
 # and don't show it later?? Need to make things predictable without
@@ -113,11 +115,11 @@ fi
 
 # Testing: Fedora 19/RHEL7 do not have lsb_release
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Functions 
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # Output a string of text to the html file
 # with no line break so multiple strings can be placed on one line
@@ -245,6 +247,12 @@ function unordered_list_close {
 
 # Output a simple unordered list tag <ul> with optional class info
 function raw_open {
+
+	# WARNING
+	# Output using <pre> such as HTML that contains > and < characters
+	# needs to be converted to HTML values using sed like this:
+	#	lspci -vv | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
+
 	echo -e "<pre class=\"programlisting\">" >> $HTML
 }
 
@@ -262,6 +270,49 @@ function textarea_open {
 # "</p> afterwards adds a little extra space before the next line
 function textarea_close {
 	echo -e "</textarea></p>" >> $HTML
+}
+
+# When we have raw text to output, call this function and let it
+# choose between raw_open for short output and textarea_open for long output
+function text_open {
+
+	OUTPUT_LINES=${1:-0}
+	VIEWPORT_HORIZONTAL_SIZE=${2:-"120"}
+	VIEWPORT_VERTICAL_SIZE=${3:-"24"}
+
+	# For short (<= 15) lines of output, use raw_open to keep things
+	# short and simple.
+	# For long (> 15) lines of output, use textarea so the user can scroll
+	# and resize the output window
+	if [[ $OUTPUT_LINES -le 15 ]]
+	then
+		raw_open
+		_LAST_TEXT_OPEN="raw_open"
+	else
+		textarea_open $VIEWPORT_HORIZONTAL_SIZE $VIEWPORT_VERTICAL_SIZE
+		_LAST_TEXT_OPEN="textarea_open"
+	fi
+}
+
+# Close a raw output text box that was opened using text_open
+# The box opened is either 'raw_open' or 'textarea_open' and was recorded
+# by the text_open function into the global LAST_TEXT_OPEN variable
+# Use the value of that variable to perform either 'raw_close' or
+# 'textarea_close' then rest the _LAST_TEXT_OPEN variable
+function text_close {
+
+	if [[ $_LAST_TEXT_OPEN == "raw_open" ]]
+	then
+		raw_close
+		_LAST_TEXT_OPEN="closed"
+	elif [[ $_LAST_TEXT_OPEN == "textarea_open" ]]
+	then
+		textarea_close
+		_LAST_TEXT_OPEN="closed"
+	else
+		_LAST_TEXT_OPEN="unknown-error"
+	fi
+
 }
 
 # Output a simple unordered list tag <ul> with optional class info
@@ -520,11 +571,11 @@ function nic_list {
 
 }
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Check for Programs Once
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # Documentation: check_for_program function (above)
 # 1. Set FILE_EXISTS to no
@@ -623,16 +674,16 @@ fi
 # function check_for_program uses doesn't find it
 if [[ -f /usr/bin/lsusb.py ]]
 then
-	AVAILABLE_LSUSB="yes"
+	AVAILABLE_LSUSBPY="yes"
 else
-	AVAILABLE_LSUSB="no"
+	AVAILABLE_LSUSBPY="no"
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Check to see if programs work.  Failure often means VMs
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # If we have dmidecode present, let's try to use it.
 # If it fails, we're probably in a virtual machine with no real
@@ -641,7 +692,7 @@ fi
 # 'No SMBIOS nor DMI entry point found, sorry.'
 # So we'll check for part of that and see how it goes - Maxwell
 DMIDECODE_WORKS="no"
-if [[ $AVAILBLE_DMIDECODE == "yes" ]]
+if [[ $AVAILABLE_DMIDECODE == "yes" ]]
 then
 	if [[ $(dmidecode | grep "No SMBIOS nor DMI" | wc -l) -gt 0 ]]
 	then
@@ -656,7 +707,7 @@ fi
 # So we'll check for that and avoid USB stuff if we find it.
 # Hard to think of any non-virtual machine that doesn't have USB hw
 LSUSB_WORKS="no"
-if [[ $AVAILBLE_LSUSB == "yes" ]]
+if [[ $AVAILABLE_LSUSB == "yes" ]]
 then
 	if [[ $(lsusb | grep "unable to initialize libusb" | wc -l) -gt 0 ]]
 	then
@@ -693,11 +744,11 @@ else
 	FEATURE_DMESG_CTIME="no"
 fi
 
-########################################################################
+#----------------------------------------------------------------------------
 #
 # Default Variable Handling
 #
-########################################################################
+#----------------------------------------------------------------------------
 
 # BIRDSEYE_ variables listed here are set to default values
 # If a config file is found, any or all of these values may be
@@ -708,7 +759,7 @@ export BIRDSEYE_TAG=""
 export BIRDSEYE_NAME=""
 export BIRDSEYE_EMAIL=""
 export BIRDSEYE_GROUP=""
-export BIRDSEYE_ISSUE=""
+export BIRDSEYE_FOCUS=""
 export BIRDSEYE_CFG_NOTES=""
 
 export BIRDSEYE_FILENAME_YEAR="yes"
@@ -742,7 +793,7 @@ then
 	echo "Name  $BIRDSEYE_NAME"
 	echo "Email $BIRDSEYE_EMAIL"
 	echo "Group $BIRDSEYE_GROUP"
-	echo "Issue $BIRDSEYE_ISSUE"
+	echo "Issue $BIRDSEYE_FOCUS"
 	echo "Notes $BIRDSEYE_CFG_NOTES"
 	echo
 fi
@@ -758,7 +809,7 @@ DEF_TAG=${BIRDSEYE_TAG:-"birdseye"}
 DEF_NAME=${BIRDSEYE_NAME:-"Not specified"}
 DEF_EMAIL=${BIRDSEYE_EMAIL:-"Not specified"}
 DEF_GROUP=${BIRDSEYE_GROUP:-"Not specified"}
-DEF_ISSUE=${BIRDSEYE_ISSUE:-"Not specified"}
+DEF_FOCUS=${BIRDSEYE_FOCUS:-"Not specified"}
 DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"Not specified"}
 
 DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
@@ -791,11 +842,11 @@ DEF_SHOW_VIRT=$BIRDSEYE_SHOW_VIRT
 # Use Farenheit instead of the default Celsius readings for sensors?
 USE_FARENHEIT=" -f "
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Command Line Syntax
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # Display syntax
 function usage {
@@ -836,11 +887,11 @@ function usage {
 	echo
 }
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Command Line Options Processing
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 while [ "$1" != "" ]
 do
@@ -934,7 +985,7 @@ do
 		# command line parameter: specify the issue being investigated
 		-i | --issue )
 			shift
-			DEF_ISSUE=$1;;
+			DEF_FOCUS=$1;;
 
 		# command line parameter: specify notes on the hw configuration
 		--hwnotes )
@@ -973,11 +1024,11 @@ do
 	shift
 done
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Debugging: Report DEF_ values here before more processing
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # If the DEBUG option was set, let's report some basic values here.
 if [[ $DEBUG == "yes" ]]
@@ -988,7 +1039,7 @@ then
 	echo "DEF_NAME $DEF_NAME"
 	echo "DEF_EMAIL $DEF_EMAIL"
 	echo "DEF_GROUP $DEF_GROUP"
-	echo "DEF_ISSUE $DEF_ISSUE"
+	echo "DEF_FOCUS $DEF_FOCUS"
 	echo "DEF_CFG_NOTES $DEF_CFG_NOTES"
 	echo "DEF_FQDN $DEF_FQDN"
 	echo "DEF_OOB $DEF_OOB"
@@ -1000,11 +1051,11 @@ then
 	echo
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Interactive Questions for Report Header
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 if [[ $PROMPT_USER == "no" ]]
 then
@@ -1013,7 +1064,7 @@ then
 	MY_NAME=${DEF_NAME:-"null"}
 	MY_EMAIL=${DEF_EMAIL:-"null"}
 	MY_GROUP=${DEF_GROUP:-"null"}
-	MY_ISSUE=${DEF_ISSUE:-"null"}
+	MY_FOCUS=${DEF_FOCUS:-"null"}
 	MY_FQDN=${DEF_FQDN:-"null"}
 	MY_OOB=${DEF_OOB:-"null"}
 	MY_CFG_NOTES=${DEF_CFG_NOTES:-"null"}
@@ -1107,23 +1158,23 @@ else
 	fi
 
 	####################
-	echo -e "A simple description for the issue being reported [$DEF_ISSUE] ?"
-	read -p "->" MY_ISSUE
+	echo -e "A simple description for the issue being reported [$DEF_FOCUS] ?"
+	read -p "->" MY_FOCUS
 
 	# Keep a valid, non-null user supplied value or set it to "null"
-	MY_ISSUE="${MY_ISSUE:-"null"}"
+	MY_FOCUS="${MY_FOCUS:-"null"}"
 
 	# If the user value is not "null" and not "" then process it
 	# otherwise, set it to the DEF_TAG value set earlier in the script
-	if [ "$MY_ISSUE" != "null" ]
+	if [ "$MY_FOCUS" != "null" ]
 	then
 		# redundant - this block is a template for future processing 
 
 		# quote required - spaces will be included!
-		MY_ISSUE="$MY_ISSUE"
+		MY_FOCUS="$MY_FOCUS"
 	else	
 		# quote required - spaces will be included!
-		MY_ISSUE=$DEF_ISSUE
+		MY_FOCUS=$DEF_FOCUS
 	fi
 
 	####################
@@ -1182,11 +1233,11 @@ else
 
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Clean Up Interactive Answers
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # If we don't have http on the front of the OOB FQDN, add it.
 # Without http:// clicking in this link takes users to a file
@@ -1195,11 +1246,11 @@ then
 	MY_OOB="http://$MY_OOB/"
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Debugging: Report Working "MY_" Variables here
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 if [[ $DEBUG == "yes" ]]
 then
@@ -1209,18 +1260,18 @@ then
 	echo "MY_NAME $MY_NAME"
 	echo "MY_EMAIL $MY_EMAIL"
 	echo "MY_GROUP $MY_GROUP"
-	echo "MY_ISSUE $MY_ISSUE"
+	echo "MY_FOCUS $MY_FOCUS"
 	echo "MY_CFG_NOTES $MY_CFG_NOTES"
 	echo "MY_FQDN $MY_FQDN"
 	echo "MY_OOB $MY_OOB"
 	echo
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Construct output filename using command line options
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # fast, FQDN?
 MY_HOST=$HOSTNAME
@@ -1327,11 +1378,11 @@ FILE_INTER="$OUTPUT_DIR/interrupts.$FILENAME_DATA.txt"
 FILE_PCI="$OUTPUT_DIR/lspci.$FILENAME_DATA.txt"
 FILE_INITRD="$OUTPUT_DIR/initrd.$FILENAME_DATA.txt"
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Traps for CONTROL-C interruption by user
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 function trap_cleanup {
 
@@ -1357,14 +1408,14 @@ function trap_cleanup {
 
 trap 'trap_cleanup; exit 255' SIGINT SIGQUIT SIGTERM
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Empty the contents of each file before writing new data
 #
 # Originally this was used to place a header on each file
 # Emptying files now allows ALL future work to be a simple
 # append output to each file
-###########################################################
+#----------------------------------------------------------------------------
 
 for EACH_FILE in \
 	$HTML $FILE_DMI $FILE_CPU $FILE_MSGS $FILE_DMESG $FILE_DMESG_NOTIME \
@@ -1373,25 +1424,36 @@ do
 	echo -n > $EACH_FILE
 done
 
-###########################################################
+#----------------------------------------------------------------------------
 # QUIRKS
 #
 # 1) Set defaults here
 # 2) Adjust them for the distribution running
 # 3) Use them later when trying to execute commands
-###########################################################
+#----------------------------------------------------------------------------
 
 QUIRK_LSCPU="null"
 QUIRK_VIRSH_DOMSTATE="null"
 QUIRK_VIRSH_DESC="null"
 
-###########################################################
+#----------------------------------------------------------------------------
+#
+# GLOBAL VARS (GENERAL)
+#
+#----------------------------------------------------------------------------
+
+# Used by the functions text_open and text_close
+# Set by text_open to record the type of raw output text box opened
+# Used by text_close to perform the matching close operation
+_LAST_TEXT_OPEN="none"
+
+#----------------------------------------------------------------------------
 #
 # Identify our distribution and version
 #
 # Set values that make a Distribution+Version unique here
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # Distribution: fedora, redhat, oracle, centos, suse, ubuntu, debian
 # Used to identify the distribution
@@ -1427,9 +1489,11 @@ DIST_BOOT_CFG="/boot/grub"
 # such as networking interfaces?
 DIST_SYSCONFIG="no"
 
-###########################################################
+#----------------------------------------------------------------------------
+# 
 # Identify Distribution and Version using standard /etc/os-release file
-###########################################################
+#
+#----------------------------------------------------------------------------
 
 # Fedora contains fedora-release and redhat-release
 # Oracle main contain oracle-release and redhat-release as well
@@ -1465,12 +1529,19 @@ then
 	DIST_NAME="Debian"
 fi
 
+#----------------------------------------------------------------------------
+# 
+# Identify Distribution and Version using methods OTHER THAN /etc/os-release
+#
+#----------------------------------------------------------------------------
+
 if [[ $DIST_NAME == "null" ]]
 then
 
 	# No /etc/os-release for 
 	# - Suse SLES 11 SP3
 	# - Red Hat 6.4
+	# - Amazon AWS Linux AMI 2013.09
 
 	if [[ -f /etc/SuSE-release ]]
 	then
@@ -1484,6 +1555,21 @@ then
 		DIST_VERSION_ID_MINOR=$(cat /etc/SuSE-release | grep "^PATCHLEVEL = ")
 		DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##PATCHLEVEL = }
 
+	elif [[ -f /etc/fedora-release ]]
+	then
+		# This stub is for older fedora releases which may not have
+		# /etc/os-release.  Newer systems won't use this.
+
+		DIST_NAME="Fedora"
+		DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
+
+		# Warning: positional, this might change and needs to be
+		# made more flexible.  Search for "." and use that?
+		DIST_VERSION_ID=$(cat /etc/redhat-release | awk -F " " '{ print $3 }')
+
+		DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+
+		#DIST_VERSION_ID_MINOR is not used in fedora.
 	elif [[ -f /etc/redhat-release ]]
 	then
 
@@ -1521,30 +1607,39 @@ then
 			# Convert 6.4 to 4
 			DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##*.}
 		fi
-
-	elif [[ -f /etc/fedora-release ]]
+	elif [[ -f /etc/image-id ]]
 	then
-		# This stub is for older fedora releases which may not have
-		# /etc/os-release.  Newer systems won't use this.
 
-		DIST_NAME="Fedora"
-		DIST_PRETTY_NAME=$(cat /etc/redhat-release | head -1)
+		if [[ $(grep -F "recipe_name=\"amzn ami\"" /etc/image-id | wc -l) -gt 0 ]]
+		then
 
-		# Warning: positional, this might change and needs to be
-		# made more flexible.  Search for "." and use that?
-		DIST_VERSION_ID=$(cat /etc/redhat-release | awk -F " " '{ print $3 }')
+			DIST_NAME="AmazonAWSLinux"
+			DIST_PRETTY_NAME=$(cat /etc/system-release | head -1)
 
-		DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+			# Warning: positional, this might change and needs to be
+			# made more flexible.  Search for "." and use that?
+			DIST_VERSION_ID=$(grep -F "image_version=" /etc/image-id | awk -F "=" '{print $2}' | sed "s/\"//g")
+			DIST_VERSION_ID_MINOR=$(grep -F "image_version=" /etc/image-id | awk -F "=" '{print $2}' | sed "s/\"//g")
 
-		#DIST_VERSION_ID_MINOR is not used in fedora.
-	fi
+			# Convert 2013.09 to 2013
+			#DIST_VERSION_ID=${DIST_VERSION_ID%%.*}
+
+			# Convert 2013.09 to 09
+			DIST_VERSION_ID_MINOR=${DIST_VERSION_ID_MINOR##*.}
+		fi
+
+	fi # endif - checking for /etc/<dist-release> files when os-release fails
 
 fi
 
-#echo $DIST_VERSION_ID
-#echo $DIST_VERSION_ID_MINOR
+if [[ $DEBUG == "yes" ]]
+then
+	echo "DEBUG After os-release/system-release/image-id"
+	echo "DEBUG DIST_VERSION_ID $DIST_VERSION_ID"
+	echo "DEBUG DIST_VERSION_ID_MINOR $DIST_VERSION_ID_MINOR"
+fi
 
-###########################################################
+#----------------------------------------------------------------------------
 
 if [[ $DIST_NAME == "Fedora" ]]
 then
@@ -1681,8 +1776,6 @@ then
 	DIST_UEFI_DIR="/boot/efi/efi/Ubuntu"
 	DIST_SYSCONFIG="no"
 
-	#MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
-
 	if [[ $DIST_VERSION_ID == "13.10" || $DIST_VERSION_ID == "13.04" ]]
 	then
 		QUIRK_LSCPU="noext"
@@ -1711,8 +1804,6 @@ then
 	DIST_UEFI_DIR="/boot/efi/efi/LinuxMint"
 	DIST_SYSCONFIG="no"
 
-	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
-
 	if [[ $DIST_VERSION_ID == "15" ]]
 	then
 		QUIRK_LSCPU="noext"
@@ -1729,8 +1820,6 @@ then
 	DIST_UEFI_DIR="/boot/efi/efi/LinuxMint"
 	DIST_SYSCONFIG="no"
 
-	MY_VERSION=$(lsb_release -r | awk '{ FS = "\t" ; print $2 } ')
-
 	if [[ $DIST_VERSION_ID == "7" ]]
 	then
 		QUIRK_LSCPU="noext"
@@ -1739,13 +1828,22 @@ then
 		QUIRK_LSCPU="noext"
 	fi
 
+elif [[ $DIST_NAME == "AmazonAWSLinux" ]]
+then
+	DIST_FAMILY="Redhat"
+	DIST_PACKAGES="rpm"
+	# not tested - no UEFI VM :( 2013.1022 maxwell
+	# not expected to work either, just a place holder
+	DIST_UEFI_DIR="/boot/efi/efi/AmazonAWS"
+	DIST_SYSCONFIG="no"
+
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Virtualization Discovery
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 # We default to 'no' until we confirm in some way that we are a Xen Host
 # IOW, we're not set to 'null'
@@ -1804,13 +1902,13 @@ then
 	echo "VM Guest Identification: VM_GUEST $VM_GUEST"
 fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Debugging: Report Distribution and Version Results
 #
-###########################################################
-#if [[ $DEBUG == "yes" ]]
-#then
+#----------------------------------------------------------------------------
+if [[ $DEBUG == "yes" ]]
+then
 	echo "DIST_NAME $DIST_NAME"
 	echo "DIST_VERSION_ID $DIST_VERSION_ID"
 	echo "DIST_VERSION_ID_MINOR $DIST_VERSION_ID_MINOR"
@@ -1823,21 +1921,21 @@ fi
 	echo "QUIRK_VIRSH_DOMSTATE $QUIRK_VIRSH_DOMSTATE"
 	echo "QUIRK_VIRSH_DESC $QUIRK_VIRSH_DESC"
 	echo
-#fi
+fi
 
-###########################################################
+#----------------------------------------------------------------------------
 #
 # Let's GO: Produce the HTML Report
 #
-###########################################################
+#----------------------------------------------------------------------------
 
 line "<!doctype html>\n<html>\n<head>\n<title>Birdseye Report for $MY_HOST</title>"
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # CSS STYLE SHEET for presentation
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 # future option, not tested yet
 if [[ $DEF_CSS_FILE != "null" ]] && [ -f "$DEF_CSS_FILE" ]
@@ -2137,11 +2235,11 @@ fi # if/then/else handling ends for CSS external file & inline style
 
 line "</head>"
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Report Header
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 line "<body>"
 
@@ -2149,18 +2247,18 @@ line "<h1><a name=\"Top\"><a href=http://www.maxwellspangler.com/linux/birdseye/
 
 paragraph "Produced on $(date "+%A, %B %d %Y at %H:%m") by $MY_NAME ( $MY_EMAIL ) of $MY_GROUP"
 
-if [[ $MY_ISSUE != "null" ]]
+if [[ $MY_FOCUS != "null" ]]
 then
-	paragraph "Issue <strong>$MY_ISSUE</strong>" 
+	paragraph "Focus of this report <strong>$MY_FOCUS</strong>" 
 else
-	paragraph "Issue $MY_ISSUE" 
+	paragraph "Focus of this report $MY_FOCUS" 
 fi
 
 if [[ $MY_CFG_NOTES != "null" ]]
 then
-	paragraph "Configuration Notes <strong>$MY_CFG_NOTES</strong>" 
+	paragraph "Notes about this configuration <strong>$MY_CFG_NOTES</strong>" 
 else
-	paragraph "Configuration Notes $MY_CFG_NOTES" 
+	paragraph "Notes about this configuration $MY_CFG_NOTES" 
 fi
 
 paragraph "Capture File $OUTPUT_DIR"
@@ -2179,11 +2277,11 @@ fi
 
 line "<hr>"
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Master Table of Contents TOC
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 line "<h2><a name=\"toc\">Table of Contents - Master</a></h2>" 
 
@@ -2232,11 +2330,11 @@ toc_master "#toc_vms" "Virtual Machines"
 line "</div>"
 line "<hr>"
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Detailed Table of Contents
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 line "<h2><a name=\"toc\">Table of Contents - Detail</a></h2>" 
 
@@ -2250,6 +2348,7 @@ list "item_uname"							"System identification" "uname -a"
 list "item_issue"							"Distribution, Version" "/etc/issue"
 list "item_lsb"								"Distribution, Release" "lsb_release"
 list "item_osrelease"					"Distribution, Release" "cat /etc/os-release"
+list "item_imageid"						"Distribution, Release" "cat /etc/image-id"
 list "item_kerneltaint"				"Distribution, Release" "lsb_release"
 list "item_kernelvers"				"Kernel Version & GCC Compile Version" "cat /proc/version"
 unordered_list_close
@@ -2522,11 +2621,11 @@ line "<hr>"
 
 echo "Table of Contents constructed"
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Linux Summary - The Basics: System Name, Date/time, Distribution
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_linux_summary" "Linux Summary"
 
@@ -2566,7 +2665,7 @@ if [[ $AVAILABLE_LSB_RELEASE == "yes" ]]
 then
 	lsb_release -d >> $HTML 2>&1
 else
-	line "'The lsb_release' command is not available on this system."
+	line "The 'lsb_release' command is not available on this system."
 fi
 raw_close
 
@@ -2580,16 +2679,26 @@ else
 fi
 raw_close
 
+item_title "item_imageid"	"Distribution, Image ID" "cat /etc/image-id"
+raw_open
+if [[ -f /etc/image-id ]]
+then
+	cat /etc/image-id >> $HTML 2>&1
+else
+	line "The /etc/image-id file is not available on this system."
+fi
+raw_close
+
 item_title "item_kernelvers"			"Kernel Version & GCC Compile Version" "cat /proc/version"
 raw_open
 cat /proc/version >> $HTML 2>&1
 raw_close
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Log Files
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_dmesg" "Boot messages"
 
@@ -2678,11 +2787,11 @@ then
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_SYSLOG target=_file_msgs>separate syslog file.</a>"
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Kernel Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_kernelcfg" "Kernel Configuration"
 
@@ -2747,11 +2856,11 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Boot Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_bootcfg" "Boot Configuration"
 
@@ -2761,19 +2870,16 @@ cat /proc/cmdline >> $HTML 2>&1
 raw_close
 
 item_title "item_bootdir"		"Boot directory" "ls -l /boot"
-# count the number of output lines 
-BOOT_LINES=$(ls -lR /boot | wc -l)
-# If we have more > 0 and <= 15 then show it in short format
-if [[ $BOOT_LINES -gt 0 && $BOOT_LINES -le 15 ]]
+# Check for this directory; Not sure why we wouldn't have it but..
+if [[ -d /boot ]]
 then
-	raw_open
+	# count the number of output lines 
+	BOOT_LINES=$(ls -lR /boot | wc -l)
+
+	# If we have more > 0 and <= 15 then show it in short format
+	text_open $BOOT_LINES 120 24
 	ls -lR /boot >> $HTML 2>&1
-	raw_close
-elif [[ $BOOT_LINES -gt 15 ]]
-then
-	textarea_open 120 24
-	ls -lR /boot >> $HTML 2>&1
-	textarea_close
+	text_close
 else
 	raw_open
 	line "I can't find a /boot directory on this system!"
@@ -2786,18 +2892,10 @@ if [[ -d /boot/efi ]]
 then
 	# count the number of output lines 
 	EFI_BOOT_LINES=$(ls -lR /boot/efi | wc -l)
-	# If we have <= 15 then show it in short format
-	if [[ $EFI_BOOT_LINES -le 15 ]]
-	then
-		raw_open
-		ls -lR /boot/efi >> $HTML 2>&1
-		raw_close
-	elif [[ $EFI_BOOT_LINES -gt 15 ]]
-	then
-		textarea_open 120 24
-		ls -lR /boot/efi >> $HTML 2>&1
-		textarea_close
-	fi
+
+	text_open $EFI_BOOT_LINES 120 24
+	ls -lR /boot/efi >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "There is no /boot/efi directory on this system."
@@ -2895,17 +2993,9 @@ then
 	# count the number of output lines
 	GRUB_LINES=$(cat $MY_BOOT_DIR/$DIST_GRUB_CONF | wc -l)
 
-	# If we have <= 15 then show it in short format
-	if [[ $GRUB_LINES -le 15 ]]
-	then
-		raw_open
-		cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $GRUB_LINES 120 24
+	cat $MY_BOOT_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+	text_close
 else
 
 	if [[ $EFI_BOOT == "yes" ]] && [[ -f $DIST_UEFI_DIR/$DIST_GRUB_CONF ]]
@@ -2915,21 +3005,13 @@ else
 		# count the number of output lines
 		GRUB_LINES=$(cat $DIST_UEFI_DIR/$DIST_GRUB_CONF | wc -l)
 
-		# If we have <= 15 then show it in short format
-		if [[ $GRUB_LINES -le 15 ]]
-		then
-			raw_open
-			cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
-			raw_close
-		else
-			textarea_open 120 24
-			cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
-			textarea_close
-		fi
+		text_open $GRUB_LINES 120 24
+		cat $DIST_UEFI_DIR/$DIST_GRUB_CONF >> $HTML 2>&1
+		text_close
 
 	else
 		raw_open
-		line "I can't find $DIST_GRUB_CONF in the expected places."
+		line "$DIST_GRUB_CONF is not available in the expected places."
 		raw_close
 	fi
 fi
@@ -2942,17 +3024,9 @@ then
 	# count the number of output lines 
 	GRUB_LINES=$(cat $MY_BOOT_DIR/menu.lst | wc -l)
 
-	# If we have <= 15 then show it in short format
-	if [[ $GRUB_LINES -le 15 ]]
-	then
-		raw_open
-		cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $GRUB_LINES 120 24
+	cat $MY_BOOT_DIR/menu.lst >> $HTML 2>&1
+	text_close
 
 else
 
@@ -2963,21 +3037,13 @@ else
 		# count the number of output lines
 		GRUB_LINES=$(cat $DIST_UEFI_DIR/menu.lst | wc -l)
 	
-		# If we have <= 15 then show it in short format
-		if [[ $GRUB_LINES -le 15 ]]
-		then
-			raw_open
-			cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
-			raw_close
-		else
-			textarea_open 120 24
-			cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
-			textarea_close
-		fi
+		text_open $GRUB_LINES 120 24
+		cat $DIST_UEFI_DIR/menu.lst >> $HTML 2>&1
+		text_close
 
 	else
 		raw_open
-		line "I can't find menu.lst in the expected places."
+		line "'menu.lst' is not avaialble in the expected places."
 		raw_close
 	fi
 
@@ -2990,7 +3056,7 @@ then
 	paragraph "Reporting on $MY_BOOT_DIR/device.map"
 	cat $MY_BOOT_DIR/device.map >> $HTML 2>&1
 else
-	line "I can't find $MY_BOOT_DIR/device.map in the expected places."
+	line "$MY_BOOT_DIR/device.map is not available."
 fi
 raw_close
 
@@ -3051,11 +3117,11 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Security Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 section "section_security" "Security Configuration"
 
 item_title "item_selinux"		"SELinux Configuration" "cat /etc/selinux/config"
@@ -3078,11 +3144,11 @@ else
 	fi
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Kernel Modules
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_modules" "Kernel Modules"
 
@@ -3127,11 +3193,11 @@ textarea_open 120 24
 cat /lib/modules/$(uname -r)/modules.dep >> $HTML 2>&1
 textarea_close
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Network Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_processes" "Processes Running"
 
@@ -3141,11 +3207,11 @@ textarea_open 120 24
 ps axf >> $HTML 2>&1
 textarea_close
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Hardware Sensors
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_hw_sensors" "Hardware Sensors"
 
@@ -3156,28 +3222,20 @@ then
 	# count the number of output lines
 	SENSORS_LINES=$(sensors | wc -l)
 
-	# If we have <= 15 then show it in short format
-	if [[ $SENSORS_LINES -le 15 ]]
-	then
-		raw_open
-		sensors $USE_FARENHEIT >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		sensors $USE_FARENHEIT >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $SENSORS_LINES 120 24
+	sensors $USE_FARENHEIT >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "The lm_sensors package's 'sensors' program is not available on this system."
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Network Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_network_cfg" "Network Configuration"
 
@@ -3201,17 +3259,10 @@ raw_close
 item_title "item_hosts"		"Local Hosts" "cat /etc/hosts"
 # Count the number of lines in output
 HOST_LINES=$(cat /etc/hosts | wc -l)
-# If we have less > 0 lines and < 15 lines use the short form
-if [[ $HOST_LINES -gt 0 && HOST_LINES -le 15 ]]
-then
-	raw_open
-	cat /etc/hosts >> $HTML 2>&1
-	raw_close
-else
-	textarea_open 120 24
-	cat /etc/hosts >> $HTML 2>&1
-	textarea_close
-fi
+
+text_open $HOST_LINES 120 24
+cat /etc/hosts >> $HTML 2>&1
+text_close
 
 item_title "item_nsswitch" "Name Service Switch Config" "cat /etc/nsswitch"
 if [[ -f /etc/nsswitch.conf ]]
@@ -3219,17 +3270,9 @@ then
 	# Count the number of lines in output
 	NSSWITCH_LINES=$(cat /etc/nsswitch.conf | wc -l)
 
-	# If we have less > 0 lines and < 15 lines use the short form
-	if [[ $NSSWITCH_LINES -gt 0 && NSSWITCH_LINES -le 15 ]]
-	then
-		raw_open
-		cat /etc/nsswitch.conf >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		cat /etc/nsswitch.conf >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $NSSWITCH_LINES 120 24
+	cat /etc/nsswitch.conf >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "/etc/nsswitch.conf is not available on this system."
@@ -3302,16 +3345,9 @@ then
 	if [[ -f /etc/network/interfaces ]]
 	then
 		INTERFACES_LINES=$(cat /etc/network/interfaces | wc -l)
-		if [[ $INTERFACES_LINES -le 15 ]]
-		then
-			raw_open
-			cat /etc/network/interfaces >> $HTML 2>&1
-			raw_close
-		else
-			textarea_open 120 24
-			cat /etc/network/interfaces >> $HTML 2>&1
-			textarea_close
-		fi
+		text_open $INTERFACES_LINES 120 24
+		cat /etc/network/interfaces >> $HTML 2>&1
+		text_close
 	else
 		raw_open
 		line "There is no /etc/network/interfaces file available on this system."
@@ -3350,23 +3386,16 @@ then
 	line "This is a public report and no firewall information is included."
 else
 	IPTABLES_LINES=$(iptables -L | wc -l)
-	if [[ $IPTABLES_LINES -le 15 ]]
-	then
-		raw_open
-		iptables -L >> $HTML 2>&1
-	 	raw_close
-	else
-		textarea_open 120 24
-		iptables -L >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $IPTABLES_LINES 120 24
+	iptables -L >> $HTML 2>&1
+	text_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Storage Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_storage_cfg" "Storage Configuration"
 
@@ -3374,20 +3403,11 @@ item_title "item_fsblk"		"File System Block Devices" "lsblk -fi"
 if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
 	FSBLOCK_LINES=$(lsblk -fi | wc -l)
-	if [[ $FSBLOCK_LINES -le 15 ]]
-	then
-		raw_open
-		# -i option uses ASCII characters for tree relationships +--^ etc
-		# -f show filesystem information
-		lsblk -fi >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 160 24
-		# -i option uses ASCII characters for tree relationships +--^ etc
-		# -f show filesystem information
-		lsblk -fi >> $HTML 2>&1
-		textarea_close	
-	fi
+	text_open $FSBLOCK_LINES 160 24
+	# -i option uses ASCII characters for tree relationships +--^ etc
+	# -f show filesystem information
+	lsblk -fi >> $HTML 2>&1
+	text_close	
 fi
 
 item_title "item_fstab" "Filesystem mount table" "fstab"
@@ -3397,16 +3417,9 @@ raw_close
 
 item_title "item_mount"		"Mounted filesystems" "mount"
 MOUNT_LINES=$(mount | wc -l)
-if [[ $MOUNT_LINES -le 15 ]]
-then
-	raw_open
-	mount >> $HTML 2>&1
-	raw_close
-else
-	textarea_open 140 24
-	mount >> $HTML 2>&1
-	textarea_close
-fi
+text_open $MOUNT_LINES 140 24
+mount >> $HTML 2>&1
+text_close
 
 # Enable by default" (most RHEL and Fedora use LVM)
 SHOW_LVM="yes"
@@ -3482,11 +3495,11 @@ else
 fi
 raw_close
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Services Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_services" "Services Configuration"
 item_title "item_chkconfig"	"Chkconfig" "chkconfig"
@@ -3513,18 +3526,18 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Repositories and Installed Packages
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_packages" "Repositories and Software Packages"
 
 if [[ $DIST_PACKAGES = "rpm" ]]
 then
 
-	###########################################################
+	#----------------------------------------------------------------------------
 	# RPM/YUM Repositories
 
 	item_title "item_rpm_config"		"Software Repositories (rpm/yum)" "cat /etc/yum.conf"
@@ -3558,7 +3571,7 @@ then
 elif [[ $DIST_PACKAGES = "dpkg" ]]
 then
 
-	###########################################################
+	#----------------------------------------------------------------------------
 	# DPKG/APT Repository
 
 	item_title "item_apt_config"		"Software Repositories (dpkg/apt)" "cat /etc/apt/apt.conf"
@@ -3599,7 +3612,7 @@ then
 elif [[ $DIST_PACKAGES = "zypper" ]]
 then
 
-	###########################################################
+	#----------------------------------------------------------------------------
 	# SuSE Zypper Repository
 
 	item_title "item_zypper_config"		"Software Repositories (SuSE)" "cat /etc/zypp/zypper.conf"
@@ -3611,16 +3624,9 @@ then
 		ZIPP_LINES=$(cat /etc/zypp/zypper.conf | wc -l) 
 
 		# If we have > 0 and < 15 then use the short form
-		if [[ $ZIPP_LINES -gt 0 && $ZIPP_LINES -le 15 ]]
-		then
-			raw_open
-			cat /etc/zypp/zypper.conf >> $HTML 2>&1
-			raw_close
-		else
-			textarea_open 120 24
-			cat /etc/zypp/zypper.conf >> $HTML 2>&1
-			textarea_close
-		fi
+		text_open $ZIPP_LINES 120 24
+		cat /etc/zypp/zypper.conf >> $HTML 2>&1
+		text_close
 	fi
 
 	# Report contents of individual repositories configured for use with zypper
@@ -3642,11 +3648,11 @@ repos.d/*"
 	textarea_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # udev Configuration
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_serial" "Serial device configuration"
 
@@ -3661,7 +3667,7 @@ then
 	raw_close
 else
 	raw_open
-	line "I can't find any information about serial ports in the dmesg logs."
+	line "Information about serial ports is not available in the dmesg logs."
 	raw_close
 fi
 
@@ -3756,11 +3762,11 @@ then
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # X-Windows Graphics
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_xwindows" "X-Windows"
 
@@ -3847,11 +3853,11 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Hardware Summary - 
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_hw_summary" "Hardware Summary"
 
@@ -3945,11 +3951,11 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Processor/CPU Details
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_processor" "Processor Information"
 
@@ -4094,11 +4100,11 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Interrupt Details
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_inter" "Interrupts" "cat /proc/interrupts"
 textarea_open 120 24
@@ -4109,11 +4115,11 @@ helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_IN
 
 cat /proc/interrupts >> $FILE_INTER
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # PCI Expansion Bus & Card Details
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_pci" "Expansion Cards"
  
@@ -4132,76 +4138,44 @@ section "section_pci" "Expansion Cards"
 
 item_title "item_iomem"			"Peripheral IO memory" "cat /proc/iomem"
 IOMEM_LINES=$(cat /proc/iomem | wc -l)
-if [[ $IOMEM_LINES -le 15 ]]
-then
-	raw_open
-	cat /proc/iomem >> $HTML 2>&1 
-	raw_close
-else
-	textarea_open 120 24
-	cat /proc/iomem >> $HTML 2>&1 
-	textarea_close
-fi
+text_open $IOMEM_LINES 120 24
+cat /proc/iomem >> $HTML 2>&1 
+text_close
 
 item_title "item_ioports"		"Peripheral IO ports" "cat /proc/ioports"
 IOPORT_LINES=$(cat /proc/ioports | wc -l)
-if [[ $IOPORT_LINES -le 15 ]]
-then
-	raw_open
-	cat /proc/ioports >> $HTML 2>&1 
-	raw_close
-else
-	textarea_open 120 24
-	cat /proc/ioports >> $HTML 2>&1 
-	textarea_close
-fi
+text_open $IOPORT_LINES 120 24
+cat /proc/ioports >> $HTML 2>&1 
+text_close
 
 item_title "item_dma"		"Peripheral DMA" "cat /proc/dma"
 # Show a short raw box if we only have a few lines, textarea if many
-if [[ $(cat /proc/dma | wc -l) -le 15 ]]
-then
-	raw_open
-	cat /proc/dma >> $HTML 2>&1
-	raw_close
-else
-	textarea_open 120 24
-	cat /proc/dma >> $HTML 2>&1
-	textarea_close
-fi
+DMA_LINES=$(cat /proc/dma | wc -l)
+text_open $DMA_LINES 120 24
+cat /proc/dma >> $HTML 2>&1
+text_close
 
 item_title "item_devices" 		"Devices" "cat /proc/devices"
 # Show a short raw box if we only have a few lines, textarea if many
-if [[ $(cat /proc/devices | wc -l) -le 15 ]]
-then
-	raw_open
-	cat /proc/devices >> $HTML 2>&1
-	raw_close
-else
-	textarea_open 120 24
-	cat /proc/devices >> $HTML 2>&1
-	textarea_close
-fi
+DEVICE_LINES=$(cat /proc/devices | wc -l)
+text_open $DEVICE_LINES 120 24
+cat /proc/devices >> $HTML 2>&1
+text_close
 
 item_title "item_lspci"			"PCI devices" "lspci"
 # count the number of lines that will appear as output
 LSPCI_LINES=$(lspci | wc -l)
-# If we have more > 0 and <= 15 then show it in short format
-if [[ $LSPCI_LINES -gt 0 && $LSPCI_LINES -le 15 ]]
+
+if [[ $LSPCI_LINES -eq 0 ]]
 then
-	raw_open
-	lspci >> $HTML 2>&1 
-	raw_close
-# If we have more > 15 then show it in long format
-elif [[ $LSPCI_LINES -gt 15 ]]
-then
-	textarea_open 120 24
-	lspci >> $HTML 2>&1 
-	textarea_close
-# If we have 0 then report this to the user
-else
+	# If we have 0 then report this to the user
 	raw_open
 	line "This system doesn't list any PCI devices, is it a virtual machine?"
 	raw_close
+else
+	text_open $LSPCI_LINES 120 24
+	lspci >> $HTML 2>&1 
+	text_close
 fi
 
 item_title "item_lspcivv"	"PCI Devices Detail" "lspci -vv"
@@ -4211,22 +4185,13 @@ LSPCI_VV_LINES=$(lspci -vv | wc -l)
 # If we have more than 0, we need to report them
 if [[ $LSPCI_VV_LINES -gt 0 ]]
 then
-	# If we have less than 15, use the short form
-	if [[ $LSPCI_VV_LINES -le 15 ]]
-	then
-		raw_open
+	# pci output may contain > and < symbols which interfere with
+	# HTML formatted output.  So we'll use sed to convert 
+	# < to &lsaquo; and > to &rsaquo;
 
-		# pci output may contain > and < symbols which interfere with
-		# HTML formatted output.  So we'll use sed to convert 
-		# < to &lsaquo; and > to &rsaquo;
-
-		lspci -vv | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
-		raw_close
-	else
-		textarea_open 120 24
-		lspci -vv | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
-		textarea_close
-	fi
+	text_open $LSPCI_VV_LINES 	120 24
+	lspci -vv | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
+	text_close
 
 	# Record this information into the raw file
 	lspci -vv >> $FILE_PCI 2>&1
@@ -4243,11 +4208,11 @@ else
 	echo "This system doesn't list any PCI devices, is it a virtual machine?">> $FILE_PCI 2>&1
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # USB System Details
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_usb" "USB System"
 
@@ -4257,16 +4222,9 @@ then
 	# Setting LSUSB_LINES here is important, we use it to determine
 	# how long the output of lsusb.py is later
 	LSUSB_LINES=$(lsusb | wc -l)
-	if [[ $LSUSB_LINES -le 15 ]]
-	then
-		raw_open
-		lsusb >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		lsusb >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $LSUSB_LINES 120 24
+	lsusb >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "The USB system doesn't appear to work. Is this a virtual machine?"
@@ -4277,16 +4235,13 @@ item_title "item_lsusbpy"		"USB Devices Speed & Power" "lsusb.py"
 if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
 then
 
-	# Because lsusb.py requres invoking Python and a fair amount of CPU
-	# cycles compared to most of the small, lean compiled C binaries
-	# used in Birdseye, we're not going to first check for the size
-	# of 
-
 	if [[ $AVAILABLE_LSUSBPY == "yes" ]]
 	then
-		textarea_open 120 24
-		/usr/bin/lsusb.py >> $HTML 2>&1
-		textarea_close
+
+		LSUSBPY_LINES=$(lsusb.py | wc -l)
+		text_open $LSUSBPY_LINES 120 24
+		/usr/bin/lsusb.py -I >> $HTML 2>&1
+		text_close
 	else
 		raw_open
 		line "/usr/bin/lsusb.py is not available."
@@ -4301,16 +4256,10 @@ fi
 item_title "item_lsusbv"			"USB Devices Detail" "lsusb -v"
 if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
 then
-	if [[ $(lsusb -v | wc -l) -le 15 ]]
-	then
-		raw_open
-		lsusb -v >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		lsusb -v >> $HTML 2>&1
-		textarea_close
-	fi
+	LSUSB_V_LINES=$(lsusb -v | wc -l)
+	text_open $LSUSB_V_LINES 120 24
+	lsusb -v >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "The USB system doesn't appear to work. Is this a virtual machine?"
@@ -4322,32 +4271,25 @@ if [[ $AVAILABLE_LSUSB == "yes" && $LSUSB_WORKS == "yes" ]]
 then
 	# redirect stderr to stdout as some information is sent 
 	# to stderr too, not sure why.
-	if [[ $(lsusb -t | wc -l) -le 15 ]]
-	then
-		raw_open
-		lsusb -t >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		lsusb -t >> $HTML 2>&1
-		textarea_close
-	fi
+	LSUSB_T_LINES=$(lsusb -t | wc -l)
+	text_open $LSUSB_T_LINES 120 24
+	lsusb -t >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "The USB system doesn't appear to work. Is this a virtual machine?"
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # System Board Details with dmidecode
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_dmidecode" "System Board Information"
 
 item_title "item_dmidecode" "System Board information" "dmidecode"
-
 if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	textarea_open 120 24
@@ -4365,11 +4307,11 @@ then
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Network Devices
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_network_devices" "Network Devices"
 
@@ -4484,11 +4426,11 @@ else
 
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Storage Resources
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_storage" "Storage Devices"
 
@@ -4509,18 +4451,10 @@ if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
 	# This is done earlier, but we'll repeat it for safety here.
 	FSBLOCK_LINES=$(lsblk -fi | wc -l)
-	if [[ $FSBLOCK_LINES -le 15 ]]
-	then
-		raw_open
-		# -i option uses ASCII characters for tree relationships +--^ etc
-		lsblk -i >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 160 24
-		# -i option uses ASCII characters for tree relationships +--^ etc
-		lsblk -i >> $HTML 2>&1
-		textarea_close	
-	fi
+	text_open $FSBLOCK_LINES 160 24
+	# -i option uses ASCII characters for tree relationships +--^ etc
+	lsblk -i >> $HTML 2>&1
+	text_close	
 fi
 
 item_title "item_lsscsi" "SCSI Information" "lsscsi"
@@ -4529,16 +4463,9 @@ then
 	LSSCSI_LINES=$(lsscsi | wc -l)
 	if [[ $LSSCSI_LINES -gt 0 ]]
 	then
-		if [[ $LSSCSI_LINES -le 15 ]]
-		then
-			raw_open
-			lsscsi >> $HTML 2>&1
-			raw_close
-		else
-			textarea_open 120 24
-			lsscsi >> $HTML 2>&1
-			textarea_close
-		fi
+		text_open $LSSCSI_LINES 120 24
+		lsscsi >> $HTML 2>&1
+		text_close
 	else
 		raw_open
 		line "There are no SCSI devices on your system. Maybe this is a virtual machine?"
@@ -4554,27 +4481,20 @@ item_title "item_procscsi" "SCSI Information via proc" "cat /proc/scsi/scsi"
 PROC_SCSI_LINES=$(cat /proc/scsi/scsi | grep -v "Attached" | wc -l)
 if [[ $PROC_SCSI_LINES -gt 0 ]]
 then
-	if [[ $PROC_SCSI_LINES -le 15 ]]
-	then
-		raw_open
-		cat /proc/scsi/scsi >> $HTML 2>&1
-		raw_close
-	else
-		textarea_open 120 24
-		cat /proc/scsi/scsi >> $HTML 2>&1
-		textarea_close
-	fi
+	text_open $PROC_SCSI_LINES 120 24
+	cat /proc/scsi/scsi >> $HTML 2>&1
+	text_close
 else
 	raw_open
 	line "There are no SCSI devices being reported on this system. Is it a virtual machine?"
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Peripherals - General, Not Included Elsewhere
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_periphs" "Peripherals"
 
@@ -4591,11 +4511,11 @@ else
 	raw_close
 fi
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # Virtualization
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_virt" "Virtualization"
 
@@ -4713,11 +4633,12 @@ then
 		item_title "item_virshnodedevxml"	"Virtualization nodes devices xml" "virsh nodedev-dumpxml"
 		if [[ $VIRSH_WORKS == "yes" ]]
 		then
-			for EACHDEV	in $(virsh nodedev-list)
+			for EACH_DEV in $(virsh nodedev-list)
 			do	
-				textarea_open 120 24
-				virsh nodedev-dumpxml $EACHDEV >> $HTML 2>&1
-				textarea_close
+				raw_caption "caption_nodedev_dumpxml" "# virsh nodedev-dumpxml $EACH_DEV"
+				raw_open
+				virsh nodedev-dumpxml $EACH_DEV | sed "s/>/\&rsaquo;/g" | sed "s/</\&lsaquo;/g" >> $HTML 2>&1 
+				raw_close
 			done
 		else
 			# Output this line to let the user know we're aware virsh isn't working
@@ -4730,20 +4651,15 @@ then
 		if [[ $VIRSH_WORKS == "yes" ]]
 		then
 			VIRSH_IFACE_COUNT=$(virsh iface-list | tail -n +4 | wc -l)
-			if [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -le 15 ]]
+			if [[ $VIRSH_IFACE_COUNT -eq 0 ]]
 			then
-				raw_open
-				virsh iface-list >> $HTML 2>&1
-				raw_close
-			elif [[ $VIRSH_IFACE_COUNT -gt 0 && $VIRSH_IFACE_COUNT -gt 15 ]]
-			then
-				textarea_open 120 24
-					virsh iface-list >> $HTML 2>&1
-				textarea_close
-			else
 				raw_open
 				line "There are no interfaces defined for this system."
 				raw_close
+			else
+				text_open $VIRSH_IFACE_COUNT 120 24
+				virsh iface-list >> $HTML 2>&1
+				text_close
 			fi
 		else
 			# Output this line to let the user know we're aware virsh isn't working
@@ -4756,20 +4672,15 @@ then
 		if [[ $VIRSH_WORKS == "yes" ]]
 		then
 			VIRSH_NETLIST_COUNT=$(virsh net-list | tail -n +4 | wc -l)
-			if [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -le 15 ]]
+			if [[ $VIRSH_NETLIST_COUNT -eq 0 ]]
 			then
-				raw_open
-				virsh net-list >> $HTML 2>&1
-				raw_close
-			elif [[ $VIRSH_NETLIST_COUNT -gt 0 && $VIRSH_NETLIST_COUNT -gt 15 ]]
-			then
-				textarea_open 120 24
-				virsh net-list >> $HTML 2>&1
-				textarea_close
-			else
 				raw_open
 				line "There are no networks defined for this system."
 				raw_close
+			else
+				text_open $VIRSH_NETLIST_COUNT 120 24
+				virsh net-list >> $HTML 2>&1
+				text_close
 			fi
 		else
 			# Output this line to let the user know we're aware virsh isn't working
@@ -5040,11 +4951,11 @@ else
 	raw_close
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # XEN Virtualization
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 section "section_xen" "Xen Virtualization"
 
@@ -5081,11 +4992,11 @@ else
 
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
-#############=============-----------------................
+#----------------------------------------------------------------------------
 #
 # End Of Report - Complete and Process Output Files
 #
-#############=============-----------------................
+#----------------------------------------------------------------------------
 
 line "</body></html>" >> $HTML 2>&1
 
