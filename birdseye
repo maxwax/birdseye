@@ -654,6 +654,10 @@ FILE_EXISTS="no"
 check_for_program sensors
 AVAILABLE_SENSORS=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program lspci
+AVAILABLE_LSPCI=$FILE_EXISTS
+
 # Suse SLES 11 SP3 reports sensors is present even when the binary
 # is not because it sees an /etc/sensors.conf file.  This causes
 # check for program to return true and an attempt to use sensors later
@@ -694,7 +698,10 @@ fi
 DMIDECODE_WORKS="no"
 if [[ $AVAILABLE_DMIDECODE == "yes" ]]
 then
-	if [[ $(dmidecode | grep "No SMBIOS nor DMI" | wc -l) -gt 0 ]]
+	# Virtual machine = "No SMIBIOS"
+	# Google Compute Engine container = "Operation not permitted"
+	if [[ $(dmidecode 2>&1 | grep "No SMBIOS nor DMI" | wc -l) -gt 0 ]] || 
+		 [[ $(dmidecode 2>&1 | grep "Operation not permitted" | wc -l) -gt 0 ]]
 	then
 		DMIDECODE_WORKS="no"
 	else
@@ -742,6 +749,23 @@ then
 else
 	# Error code > 0 means we don't have this feature, boo!
 	FEATURE_DMESG_CTIME="no"
+fi
+
+LSMOD_WORKS="no"
+# this check is really just for consistency with how other programs are treated
+if [[ $AVAILABLE_LSMOD == "yes" ]]
+then
+
+	# Google Compute Engine (containers?) fails with a long error including 'could not open'
+	if [[ $(lsmod 2>&1 | grep "could not open" | wc -l) -gt 0 ]]
+	then
+		LSMOD_WORKS="no"
+	else
+		LSMOD_WORKS="yes"
+	fi
+
+else
+	LSMOD_WORKS="no"
 fi
 
 #----------------------------------------------------------------------------
@@ -2751,6 +2775,7 @@ then
 	# Check the size of /var/log/messages
 	MSG_LINES=$(wc -l /var/log/messages | awk -F " " '{print $1}')
 
+	raw_caption "cap_messages" "cat /var/log/messages"
 	textarea_open 120 24
 
 	# A large messages file is usually full of unwanted crap like
@@ -2777,6 +2802,7 @@ fi
 if [ -f /var/log/syslog ]
 then
 
+	raw_caption "cap_syslog" "cat /var/log/syslog"
 	textarea_open 120 24
 	cat /var/log/syslog >> $HTML 2>&1
 	textarea_close
@@ -2795,7 +2821,7 @@ fi
 
 section "section_kernelcfg" "Kernel Configuration"
 
-item_title "item_kernelsinstalled"		"Installed Kernels" "rpm -qa | grep -kernel"
+item_title "item_kernelsinstalled" "Installed Kernels" "rpm -qa | grep -kernel"
 if [[ $DIST_PACKAGES == "rpm" ]]
 then
 	raw_open
@@ -2804,7 +2830,19 @@ then
 elif [[ $DIST_PACKAGES == "dpkg" ]]
 then
 	raw_open
-	dpkg -l | grep linux-image >> $HTML 2>&1
+	# Check to see if any 'linux-image' kernel packages exist
+	if [[ $(dpkg -l | grep linux-image | wc -l) -eq 0 ]]
+	then
+		# didn't find any, is this Google Compute Engine?
+		if [[ $(dpkg -l | grep -i "Compute Engine" | wc -l) -gt 0 ]]
+		then
+			line "No 'linux-image' kernel packages were found."
+			line "These files suggest this is Google Compute Engine"
+			dpkg -l | grep -i "Compute Engine" >> $HTML 2>&1
+		fi
+	else
+		dpkg -l | grep linux-image >> $HTML 2>&1
+	fi
 	raw_close
 elif [[ $DIST_PACKAGES == "zypper" ]]
 then
@@ -3153,9 +3191,16 @@ fi
 section "section_modules" "Kernel Modules"
 
 item_title "item_lsmod"		"Kernel Modules" "lsmod"
-textarea_open 120 24
-lsmod >> $HTML 2>&1
-textarea_close
+if [[ $AVAILABLE_LSMOD == "yes" && $LSMOD_WORKS == "yes" ]]
+then
+	textarea_open 120 24
+	lsmod >> $HTML 2>&1
+	textarea_close
+else
+	raw_open
+	line "lsmod is not available on this system. Is it a virtual machine?"
+	raw_close
+fi
 
 item_title "item_modconf"		"Kernel Module Configuration" "cat /etc/modules.conf"
 raw_open
@@ -3170,9 +3215,11 @@ raw_close
 item_title "item_modblist"		"Kernel Module Blacklist" "cat /etc/modprobe.d/blacklist.conf"
 if [[ -f /etc/modprobe.d/blacklist.conf ]]
 then
-	textarea_open 120 24
+	BLACKLIST_LINES=$(cat /etc/modprobe.d/blacklist.conf | wc -l)
+
+	text_open $BLACKLIST_LINES 120 24
 	cat /etc/modprobe.d/blacklist.conf >> $HTML 2>&1
-	textarea_close
+	text_close
 else
 	raw_open
 	line "/etc/blacklist.conf is not available on this system."
@@ -3180,18 +3227,33 @@ else
 fi
 
 item_title "item_modinfo"	"Kernel Module Info" "modinfo"
-textarea_open 120 24
-for EACHMOD in $(lsmod | grep -v Module | awk -F " " '{print $1}')
-do
-	line ""
-	modinfo $EACHMOD >> $HTML 2>&1
-done
-textarea_close
+if [[ $AVAILABLE_LSMOD == "yes" && $LSMOD_WORKS == "yes" ]]
+then
+	textarea_open 120 24
+	for EACHMOD in $(lsmod | grep -v Module | awk -F " " '{print $1}')
+	do
+		line ""
+		modinfo $EACHMOD >> $HTML 2>&1
+	done
+	textarea_close
+
+else
+	raw_open
+	line "lsmod is not available on this system. Is it a virtual machine?"
+	raw_close
+fi
 
 item_title "item_moddep"	"Module Dependencies" "cat /lib/modules/(kernel)/modules.dep"
-textarea_open 120 24
-cat /lib/modules/$(uname -r)/modules.dep >> $HTML 2>&1
-textarea_close
+if [[ $(cat /lib/modules/$(uname -r)/modules.dep 2>&1 | grep "No such file" | wc -l) -eq 0 ]]
+then
+	textarea_open 120 24
+	cat /lib/modules/$(uname -r)/modules.dep >> $HTML 2>&1
+	textarea_close
+else
+	raw_open
+	line "/lib/modules/$(uname -r)/modules.dep is not available on this system. Is it a virtual machine?"
+	raw_close
+fi
 
 #----------------------------------------------------------------------------
 #
@@ -3399,14 +3461,14 @@ fi
 
 section "section_storage_cfg" "Storage Configuration"
 
-item_title "item_fsblk"		"File System Block Devices" "lsblk -fi"
+item_title "item_fsblk"		"File System Block Devices" "lsblk -i"
 if [[ $AVAILABLE_LSBLK == "yes" ]]
 then
-	FSBLOCK_LINES=$(lsblk -fi | wc -l)
+	FSBLOCK_LINES=$(lsblk -i | wc -l)
 	text_open $FSBLOCK_LINES 160 24
 	# -i option uses ASCII characters for tree relationships +--^ etc
 	# -f show filesystem information
-	lsblk -fi >> $HTML 2>&1
+	lsblk -i >> $HTML 2>&1
 	text_close	
 fi
 
@@ -3433,16 +3495,25 @@ then
 	then
 		SHOW_LVM="no"
 	fi
+else
+	SHOW_LVM="no"
 fi
 
 item_title "item_pvscan" "LVM2: Physical Volumes" "pvscan"
-raw_open
 # Regardless of whether physical volumes were found above, let pvscan
 # report the status to the user.  Then use the SHOW_LVM variable set above
 # to determine whether volume groups and logical volumes are processed.
-#" "Skip those commands if no physical volumes are present)
-pvscan >> $HTML 2>&1
-raw_close
+# Skip those commands if no physical volumes are present)
+if [[ $AVAILABLE_PVSCAN == "yes" ]]
+then
+	raw_open
+	pvscan >> $HTML 2>&1
+	raw_close
+else
+	raw_open
+	line "pvscan is not available on this system."
+	raw_close
+fi
 
 item_title "item_pvs" "LVM2: Volume Groups" "pvs"
 raw_open
@@ -3451,7 +3522,7 @@ if [ $SHOW_LVM == "yes" ]
 then
 	pvs >> $HTML 2>&1 
 else
-	line "No physical volumes present per pvscan"
+	line "pvs is not available on this system."
 fi
 raw_close
 
@@ -3461,7 +3532,7 @@ if [ $SHOW_LVM == "yes" ]
 then
 	vgscan >> $HTML 2>&1
 else
-	line "No physical volumes present per pvscan"
+	line "vgscan is not available on this system."
 fi
 raw_close
 
@@ -3471,7 +3542,7 @@ if [ $SHOW_LVM == "yes" ]
 then
 	vgs >> $HTML 2>&1
 else
-	line "No physical volumes present per pvscan"
+	line "vgs is not available on this system."
 fi
 raw_close
 
@@ -3481,7 +3552,7 @@ if [ $SHOW_LVM == "yes" ]
 then
 	lvscan >> $HTML 2>&1
 else
-	line "No physical volumes present per pvscan"
+	line "lvscan is not availble on this system."
 fi
 raw_close
 
@@ -3491,7 +3562,7 @@ if [ $SHOW_LVM == "yes" ]
 then
 	lvs >> $HTML 2>&1
 else
-	line "No physical volumes present per pvscan"
+	line "lvs is not available on this system."
 fi
 raw_close
 
@@ -3591,13 +3662,15 @@ then
 	item_title "item_apt_repos"		"dpkg Repositories" "cat /etc/apt/sources.list"
 	if [[ -f /etc/apt/sources.list ]]
 	then
-		textarea_open 120 24
+
+		SOURCES_LINES=$(cat /etc/apt/sources.list | wc -l)
+		text_open $SOURCES_LINES 120 24
 		EACHFILE="/etc/apt/sources.list"
 		line ""
 		line "Repository config file: $EACHFILE"
 		line "----------"
 		cat "$EACHFILE" >> $HTML 2>&1
-		textarea_close
+		text_close
 	else
 		raw_open
 		line "There is no /etc/apt/sources.list available this system."
@@ -3758,7 +3831,7 @@ done # loop - process serial port prefixes 'S' and 'USB'
 if [[ $SERIAL_PORTS_SEEN == "no" ]]
 then
 	raw_open
-	line "There are no serial ports on this system."
+	line "There are no physical serial ports on this system."
 	raw_close
 fi
 
@@ -4164,7 +4237,10 @@ text_close
 
 item_title "item_lspci"			"PCI devices" "lspci"
 # count the number of lines that will appear as output
-LSPCI_LINES=$(lspci | wc -l)
+if [[ $AVAILABLE_LSPCI == "yes" ]]
+then
+	LSPCI_LINES=$(lspci | wc -l)
+fi
 
 if [[ $LSPCI_LINES -eq 0 ]]
 then
@@ -4180,7 +4256,12 @@ fi
 
 item_title "item_lspcivv"	"PCI Devices Detail" "lspci -vv"
 # Count the number of output lines
-LSPCI_VV_LINES=$(lspci -vv | wc -l)
+if [[ $AVAILABLE_LSPCI == "yes" && $AVAILABLE_LSPCI == "yes" ]]
+then
+	LSPCI_VV_LINES=$(lspci -vv | wc -l)
+else
+	LSPCI_VV_LINES=0
+fi
 
 # If we have more than 0, we need to report them
 if [[ $LSPCI_VV_LINES -gt 0 ]]
