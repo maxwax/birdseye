@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1022.01"
+VERSION="2013.1026.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -26,23 +26,25 @@ else
 fi
 
 #----------------------------------------------------------------------------
-#
-# TODO LIST
-#
+# DESIGN GOALS
 #----------------------------------------------------------------------------
-# Design goals:
-# 1) Single file shell script that can be copied to a target system
-# and easily capture nearly all useful information
-# 2) Output in easy to navigate, quick to search, and context-aware
-# HTML using CSS for presentation
-# 3) CSS should facilitate different output presentations allowing
-# the script to focus on content generation not output tweaks
-# 4) Should be multi-distribution, multi-version aware
-# 5) Should be able to run on bare metal, hypervisor (Xen) and
-# several virtual machine guest environments
-# 6) Should be user extensible using plugins
-# 7) Should be well documented and easy to understand
 
+# 1. Maintain a single file script that is easy to copy & use on remote systems
+# 2. Require zero dependencies outside of this script so that modification
+#    of the remote system is greatly restricted and the remote is not
+#    'contaminated' with many support files or dependencies
+# 3. Output HTML5 with CSS presentation that is easy to navigate and search
+# 4. Ensure multiple presentations with CSS (test to verify)
+# 5. Ensure compatibility with bare-metal, virtual machine and cloud Linux
+# 6. Ensure compatibility with multiple distributions 
+#    with a focus on those users will use most
+# 7. Develop code that is simple and well documented
+#    so it can be easily modified and used in other projects by other users
+# 8. Enable users to learn more about Linux using the output and code
+
+#----------------------------------------------------------------------------
+# TESTING
+#----------------------------------------------------------------------------
 # Tested:
 # Fedora 19 ok
 # SLES 11 SP3 ok
@@ -50,70 +52,59 @@ fi
 # Red Hat 6.4 ok
 # Red Hat 5.9 ok
 # Citrix 6.1 ok
+# Debian 7.2 ok
 # Amazon AWS - Amazon Linux ok
 # Rackspace Cloud - CentOS ok
+# Google Compute Engine ok
 
-# When something isn't present, show a disabled TOC entry for it
-# and don't show it later?? Need to make things predictable without
-# having ten items that aren't present on a Debian system but
-# are normally included on a RHEL system
+#----------------------------------------------------------------------------
+# TODO LIST
+#----------------------------------------------------------------------------
 
-# Capture log files in tar file for user, bring them home in unified
-# birdseye tar file? Could be useful, but could be big.
+# TESTING
 
-# GPL
-# UEFI variables 'uefivars -l' - need uefi system for this.
-# Shorten display on small output:
-# 	system map
-# 	virsh list --all
-# 	virsh pool-list
+# Run on Large systems, both bare-metal and cloud
+# Run on Xen Domain0 hypervisor host and see what is reported
 
-# Run on Xen hypervisor host and see what is reported
-# Run on Amazon, Rackspace VM and see what is reported
+# REQUIRED
 
-# FQDN on each NIC's IP address. Similar to 'hostname --all-fqdns'
+# Add official GPL license
 
-# Report on dpkg for Debian
-
-# .json output? nahhhh
-
-# Test on multiple systems
 # Sample Alternate CSS outputs
 # Cleanup CSS styles
-# Populate github site and figure out how to use
-# Features from sosreport
-# Features from snapshot
 
-# Debian:
-# Show init script configuration instead of chkconfig/systemctl
+# SLES11SP3: Determine installed kernels on SuSE where rpm is not available
+# SLES11SP3: App Armor configuration reporting on SuSE?
+# SLES11SP3: Report on zypper for SUSE
 
-# SLES 11 SP3:
-# Determine installed kernels on SuSE where rpm is not available
-# App Armor configuration reporting on SuSE?
-# Report on zypper for SUSE
+# WISH LIST
+
+# Add plugin variables before/after each section
+
+# Implement a user-friendly list of PCI cards and slots ('sutl cards')
+# Implement a user-friendly list of storage devices ('sutl hbas')
 
 # nics: Handle more than one IP address - patched for now.. report more
+
+# Debian: Show init script configuration instead of chkconfig/systemctl
+
+# When something isn't available for reporting, grey-out/disable 
+# the item's table of contents. Until then, always show output for
+# every item listed in the table of contents
+
+# More testing on UEFI systems 'uefivars -l' for example (need hw)
+
+# Review sosreport for additional feature ideas
+# Review snapshot for additional feature ideas
 
 # Report on IO scheduler in use. See arch linux ssd for instructions
 # cat /sys/block/sdX/queue/scheduler
 
-# More tips? - Not just NUMA stuff?
-# --include-tips?
+# Add --include tips for verbose, educational output?
 
 # RPM package
 # Debian Package
 # Man page
-
-# Check lsinitrd on Debian systems.. Mohan got a 'no such file' error
-# Tell the user about the -quiet option when prompting them. - JasonF
-
-# Replace calls to 'sutl' with new code:
-# sutl cards
-# sutl hbas
-
-# Add plugin variables before/after each section
-
-# Testing: Fedora 19/RHEL7 do not have lsb_release
 
 #----------------------------------------------------------------------------
 #
@@ -132,13 +123,6 @@ function string {
 function line {
 	echo -e "${1}" >> $HTML
 }
-
-# Output a string of text to the html file
-# with a trailing line break for readability
-#function raw_caption {
-#	#echo -e "${1}" >> $HTML
-#	echo -e "<p class=\"raw_caption\">" >> $HTML
-#}
 
 # Output a string of text to the html file
 # Wrap it in <p> so it can be styled as a line
@@ -324,6 +308,7 @@ function helpful_tip {
 	echo -e "</div>" >> $HTML
 }
 
+# This function checks to see if a program is installed
 function check_for_program {
 	# Use whereis to see if the file exists
 	CMD_WHEREIS=$(whereis $1)
@@ -341,6 +326,9 @@ function check_for_program {
 	fi
 }
 
+# This large bit of code produces a user-friendly table that summarizes
+# network device information
+# It also exists as a separate program called 'nics'
 function nic_list {
 
 	# This code used when calling the external script during development
@@ -577,6 +565,14 @@ function nic_list {
 #
 #----------------------------------------------------------------------------
 
+# Instead of statically associating the availability of programs with
+# known distribution and version combinations, check for programs when
+# Birdseye runs and dynamically set whether or not this platform
+# has the programs we desire to use
+
+# All of the programs listed here are known to be missing on at least
+# one of the standard testing platforms.
+
 # Documentation: check_for_program function (above)
 # 1. Set FILE_EXISTS to no
 # 2. Call check_for_program with the name of the file you question
@@ -779,29 +775,42 @@ fi
 # overwritten.  Later code references these values regardless
 # of whether their values come from these settings or an
 # external configuration file.
-export BIRDSEYE_TAG=""
-export BIRDSEYE_NAME=""
-export BIRDSEYE_EMAIL=""
-export BIRDSEYE_GROUP=""
-export BIRDSEYE_FOCUS=""
-export BIRDSEYE_CFG_NOTES=""
 
+# HEADER INFORMATION FOR TOP OF REPORT
+# filename tag
+export BIRDSEYE_TAG=""
+# username
+export BIRDSEYE_NAME=""
+# user's email
+export BIRDSEYE_EMAIL=""
+# user's group/team/association
+export BIRDSEYE_GROUP=""
+# the focus of this report: defect, issue, etc.
+export BIRDSEYE_FOCUS=""
+# user's notes on the configuration of the system being reported
+export BIRDSEYE_CFG_NOTES=""
+# host's FQDN
+export BIRDSEYE_FQDN="null"
+# host's out of bands FQDN (HP iLO, Dell DRAC, MP port, etc)
+export BIRDSEYE_OOB="null"
+
+# These variables used in producing output filenames
 export BIRDSEYE_FILENAME_YEAR="yes"
 export BIRDSEYE_FILENAME_MONTH="yes"
 export BIRDSEYE_FILENAME_TIME="no"
 export BIRDSEYE_FILENAME_HOST="no"
 export BIRDSEYE_FILENAME_TAG="yes"
 
+# Controls whether we will overwrite and existing report
 export BIRDSEYE_OUTPUT_FORCE="no"
+# Controls whether we show security-related IP and firewall info
 export BIRDSEYE_PUBLIC_REPORT="no"
+# Controls whether we ask user header questions or just run
 export BIRDSEYE_PROMPT_USER="yes"
+# Specifies an external CSS style sheet file from the user
 export BIRDSEYE_CSS_FILE="null"
 # Nice idea, but we can't attach to another X display.. yet?
 export BIRDSEYE_XDISPLAY="null"
-export BIRDSEYE_PUBLIC_REPORT="no"
-
-export BIRDSEYE_FQDN="null"
-export BIRDSEYE_OOB="null"
 
 # Report on Virtualization Details?
 export BIRDSEYE_SHOW_VIRT="yes"
