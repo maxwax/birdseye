@@ -9,7 +9,7 @@
 # See http://www.maxwellspangler.com/linux/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1026.01"
+VERSION="2013.1028.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
