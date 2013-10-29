@@ -787,8 +787,10 @@ export BIRDSEYE_EMAIL=""
 export BIRDSEYE_GROUP=""
 # the focus of this report: defect, issue, etc.
 export BIRDSEYE_FOCUS=""
-# user's notes on the configuration of the system being reported
-export BIRDSEYE_CFG_NOTES=""
+# user's notes on the HW configuration of the system being reported
+export BIRDSEYE_HW_NOTES=""
+# user's notes on the SW configuration of the system being reported
+export BIRDSEYE_SW_NOTES=""
 # host's FQDN
 export BIRDSEYE_FQDN="null"
 # host's out of bands FQDN (HP iLO, Dell DRAC, MP port, etc)
@@ -822,12 +824,13 @@ then
 	echo "Using in $HOME/.birdseye.cfg:"
 	. $HOME/.birdseye.cfg
 
-	echo "Tag   $BIRDSEYE_TAG"
-	echo "Name  $BIRDSEYE_NAME"
-	echo "Email $BIRDSEYE_EMAIL"
-	echo "Group $BIRDSEYE_GROUP"
-	echo "Issue $BIRDSEYE_FOCUS"
-	echo "Notes $BIRDSEYE_CFG_NOTES"
+	echo "Tag       $BIRDSEYE_TAG"
+	echo "Name      $BIRDSEYE_NAME"
+	echo "Email     $BIRDSEYE_EMAIL"
+	echo "Group     $BIRDSEYE_GROUP"
+	echo "Focus     $BIRDSEYE_FOCUS"
+	echo "HW Notes  $BIRDSEYE_HW_NOTES"
+	echo "SW Notes  $BIRDSEYE_SW_NOTES"
 	echo
 fi
 
@@ -843,7 +846,8 @@ DEF_NAME=${BIRDSEYE_NAME:-"Not specified"}
 DEF_EMAIL=${BIRDSEYE_EMAIL:-"Not specified"}
 DEF_GROUP=${BIRDSEYE_GROUP:-"Not specified"}
 DEF_FOCUS=${BIRDSEYE_FOCUS:-"Not specified"}
-DEF_CFG_NOTES=${BIRDSEYE_CFG_NOTES:-"Not specified"}
+DEF_HW_NOTES=${BIRDSEYE_HW_NOTES:-"Not specified"}
+DEF_SW_NOTES=${BIRDSEYE_SW_NOTES:-"Not specified"}
 
 DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
 # Nice idea, but we can't attach to another X display.. yet?
@@ -1023,7 +1027,12 @@ do
 		# command line parameter: specify notes on the hw configuration
 		--hwnotes )
 			shift
-			DEF_CFG_NOTES=$1;;
+			DEF_HW_NOTES=$1;;
+
+		# command line parameter: specify notes on the hw configuration
+		--swnotes )
+			shift
+			DEF_SW_NOTES=$1;;
 
 		# command line parameter: future option, specify output filename
 		-o | --output )
@@ -1073,7 +1082,8 @@ then
 	echo "DEF_EMAIL $DEF_EMAIL"
 	echo "DEF_GROUP $DEF_GROUP"
 	echo "DEF_FOCUS $DEF_FOCUS"
-	echo "DEF_CFG_NOTES $DEF_CFG_NOTES"
+	echo "DEF_HW_NOTES $DEF_HW_NOTES"
+	echo "DEF_SW_NOTES $DEF_SW_NOTES"
 	echo "DEF_FQDN $DEF_FQDN"
 	echo "DEF_OOB $DEF_OOB"
 	echo
@@ -1100,7 +1110,8 @@ then
 	MY_FOCUS=${DEF_FOCUS:-"null"}
 	MY_FQDN=${DEF_FQDN:-"null"}
 	MY_OOB=${DEF_OOB:-"null"}
-	MY_CFG_NOTES=${DEF_CFG_NOTES:-"null"}
+	MY_HW_NOTES=${DEF_HW_NOTES:-"null"}
+	MY_SW_NOTES=${DEF_SW_NOTES:-"null"}
 else
 
 	echo
@@ -1211,21 +1222,39 @@ else
 	fi
 
 	####################
-	echo -e "Notes about the system configuration? [$DEF_CFG_NOTES]"
-	read -p "->" MY_CFG_NOTES
+	echo -e "Notes about the system configuration? [$DEF_HW_NOTES]"
+	read -p "->" MY_HW_NOTES
 
 	# Keep a valid, non-null user supplied value or set it to "null"
-	MY_CFG_NOTES="${MY_CFG_NOTES:-"null"}"
+	MY_HW_NOTES="${MY_HW_NOTES:-"null"}"
 
 	# If the user value is not "null" and not "" then process it
 	# otherwise, set it to the DEF_TAG value set earlier in the script
-	if [ "$MY_CFG_NOTES" != "null" ]
+	if [ "$MY_HW_NOTES" != "null" ]
 	then
 		# quote required - spaces will be included!
-		MY_CFG_NOTES="$MY_CFG_NOTES"
+		MY_HW_NOTES="$MY_HW_NOTES"
 	else	
 		# quote required - spaces will be included!
-		MY_CFG_NOTES="$DEF_CFG_NOTES"
+		MY_HW_NOTES="$DEF_HW_NOTES"
+	fi
+
+	####################
+	echo -e "Notes about the system configuration? [$DEF_SW_NOTES]"
+	read -p "->" MY_SW_NOTES
+
+	# Keep a valid, non-null user supplied value or set it to "null"
+	MY_SW_NOTES="${MY_SW_NOTES:-"null"}"
+
+	# If the user value is not "null" and not "" then process it
+	# otherwise, set it to the DEF_TAG value set earlier in the script
+	if [ "$MY_SW_NOTES" != "null" ]
+	then
+		# quote required - spaces will be included!
+		MY_SW_NOTES="$MY_SW_NOTES"
+	else	
+		# quote required - spaces will be included!
+		MY_SW_NOTES="$DEF_SW_NOTES"
 	fi
 
 	####################
@@ -1294,7 +1323,8 @@ then
 	echo "MY_EMAIL $MY_EMAIL"
 	echo "MY_GROUP $MY_GROUP"
 	echo "MY_FOCUS $MY_FOCUS"
-	echo "MY_CFG_NOTES $MY_CFG_NOTES"
+	echo "MY_HW_NOTES $MY_HW_NOTES"
+	echo "MY_SW_NOTES $MY_SW_NOTES"
 	echo "MY_FQDN $MY_FQDN"
 	echo "MY_OOB $MY_OOB"
 	echo
@@ -2287,11 +2317,18 @@ else
 	paragraph "Focus of this report $MY_FOCUS" 
 fi
 
-if [[ $MY_CFG_NOTES != "null" ]]
+if [[ $MY_HW_NOTES != "null" ]]
 then
-	paragraph "Notes about this configuration <strong>$MY_CFG_NOTES</strong>" 
+	paragraph "Notes about this hardware configuration <strong>$MY_HW_NOTES</strong>" 
 else
-	paragraph "Notes about this configuration $MY_CFG_NOTES" 
+	paragraph "Notes about this hardware configuration $MY_HW_NOTES" 
+fi
+
+if [[ $MY_SW_NOTES != "null" ]]
+then
+	paragraph "Notes about this software configuration <strong>$MY_SW_NOTES</strong>" 
+else
+	paragraph "Notes about this software configuration $MY_SW_NOTES" 
 fi
 
 paragraph "Capture File $OUTPUT_DIR"
@@ -2490,7 +2527,7 @@ if [[ $DIST_PACKAGES == "rpm" ]]
 then
 	list "item_rpm_config"				"Repository Config (yum)" "cat /etc/yum.repos.d/*"
 	list "item_rpm_repos"					"Repositories (yum)" "cat /etc/yum.repos.d/*"
-	list "item_rpm_pkgs"					"Installed Packages (rpm)" "rpm -qa"
+	list "item_rpm_pkgs"					"Installed Packages (rpm)" "rpm -qa | sort"
 
 elif [[ $DIST_PACKAGES == "dpkg" ]]
 then
@@ -3642,10 +3679,10 @@ then
 	done
 	textarea_close
 
-	item_title "item_rpm_pkgs"		"Installed RPM Packages" "rpm -qa"
+	item_title "item_rpm_pkgs"		"Installed RPM Packages" "rpm -qa | sort"
 
 	textarea_open 120 24
-	rpm -qa >> $HTML 2>&1
+	rpm -qa | sort >> $HTML 2>&1
 	textarea_close
 
 elif [[ $DIST_PACKAGES = "dpkg" ]]
