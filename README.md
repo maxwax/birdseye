@@ -9,5 +9,5 @@ be viewed with any modern browser.
 
 Hardware, firmware, software and state information is reported.
 
-Download the birdseye-sample.html file and open it with an HTML5 compliant
+Download the [Birdseye Sample][http://www.maxwellspangler.com/scripting/birdseye/birdseye-sample.html "Birdseye Sample"] file and open it with an HTML5 compliant
 browser to see an example of a Birdseye report on a basic Linux system.
