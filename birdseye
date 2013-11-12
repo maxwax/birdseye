@@ -6,10 +6,10 @@
 #
 # Birdseye creates a simple, well-presented HTML based report of a Linux
 # systems hardware, software and configuration details.
-# See http://www.maxwellspangler.com/linux/birdseye for more information.
+# See http://www.maxwellspangler.com/scripts/birdseye for more information.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1028.01"
+VERSION="2013.1111.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -850,6 +850,8 @@ DEF_HW_NOTES=${BIRDSEYE_HW_NOTES:-"Not specified"}
 DEF_SW_NOTES=${BIRDSEYE_SW_NOTES:-"Not specified"}
 
 DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
+DEF_CSS_STYLE=${BIRDSEYE_CSS_STYLE:-"default"}
+
 # Nice idea, but we can't attach to another X display.. yet?
 DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
 
@@ -908,6 +910,8 @@ function usage {
 	echo "-f --fqdn     Specify a FQDN for this system's primary NIC"
 	echo
 	echo "-c --css      Use an external CSS style file's contents '/home/user/style.css'"
+	echo "   --csstype  Use the alternate 'typewriter' CSS style for output"
+	echo
 	echo "   --celsius  Use Celsius instead of Farenheit readings for sensors"
 	echo
 	echo "   --novirt   Skip the sections related to Virtualization"
@@ -1054,6 +1058,12 @@ do
 			shift
 			DEF_CSS_FILE=$1;;
 
+		# command line parameter: specify external CSS style file
+		--csstype )
+			shift
+			DEF_CSS_STYLE="typewriter";;
+
+		# Provide the user with help
 		-h | --help )
 		usage
 		exit 1;;
@@ -1091,6 +1101,7 @@ then
 	echo "PROMPT_USER $PROMPT_USER"
 	echo "DEF_OUTPUT $DEF_OUTPUT"
 	echo "DEF_CSS_FILE $DEF_CSS_FILE"
+	echo "DEF_CSS_STYLE $DEF_CSS_STYLE"
 	echo
 fi
 
@@ -1993,6 +2004,7 @@ fi
 #----------------------------------------------------------------------------
 
 line "<!doctype html>\n<html>\n<head>\n<title>Birdseye Report for $MY_HOST</title>"
+line "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">"
 
 #----------------------------------------------------------------------------
 #
@@ -2006,19 +2018,18 @@ then
 	cat "$DEF_CSS_FILE" >> $HTML
 else
 
-# Future:
-# if/then/else here could be used to let the user choose between
-# multiple integrated CSS styles for multiple standard presentations
-	
-cat >> $HTML << CSS-STYLE-SCRIPT
+	if [[ $DEF_CSS_STYLE == "default" ]]
+	then
+		cat >> $HTML << CSS-STYLE-SCRIPT-DEFAULT
 <style type="text/css">
 
-/*********************
+/*------------------------------------------------------------------------
  * Body - Overall page defaults
- */
+ *------------------------------------------------------------------------*/
+
 body {
 	/* default font */
-	font-family: lucida, myriad pro, myriad, verdana, sans-serif;
+	font-family: Lucida, "Myriad Pro", Myriad, Verdana, sans-serif;
 
 	/* default text color */
 	color: #000;
@@ -2034,9 +2045,10 @@ body {
 	font-size: 100%;
 }
 
-/*********************
+/*------------------------------------------------------------------------
  * Paragraphs
- */
+ *------------------------------------------------------------------------*/
+
 p {
   line-height: 1.0em;
   font-size: 1.0em;
@@ -2047,9 +2059,9 @@ p {
   margin-left: 20px;
 }
 
-/*********************
+/*------------------------------------------------------------------------
  * Headings
- */
+ *------------------------------------------------------------------------*/
 
 /*
 	This is an example of how heading styles are used and how they
@@ -2068,64 +2080,6 @@ h1, h2, h3, h4, h5, h6 {
 	margin: 0 0 3px 0;
 }
 
-/*********************
- * Headings: h1: Top of Report Title page
- */
-
-h1 {
-  font-size: 1.5em;
-  font-weight: bold;
-  color: #3c6eb4;
-}
-
-/*********************
- * Headings: h2: Calls attention to sections of data
- */
-h2 {
-  font-size: 1.3em;
-  font-weight: bold;
-  color: #3c6eb4;
-  text-decoration: underline;
-}
-
-/* Used as a title for each item of information being reported */
-h3 {
-  font-size: 1.05em;
-  font-weight: bold;
-  color: #3c6eb4; 
-}
-
-/* Used to show raw commands in title without the title's bold */
-.h3_nobold {
-	font-weight: underline;
-	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
-}
-
-/* Used as a title for each sub-item of information being reported */
-h4 {
-  font-size: 0.95em;
-  font-weight: bold;
-}
-
-/* Used to show raw commands in title without the title's bold */
-.h4_nobold {
-	font-weight: normal;
-	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
-}
-
-/* Used as a title for each sub-item of information being reported */
-h5 {
-  font-size: 0.95em;
-  font-weight: bold;
-  margin: 0px 25px 5px 25px;
-}
-
-/* Used to show raw commands in title without the title's bold */
-.h5_nobold {
-	font-weight: normal;
-	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
-}
-
 /* Hovering over the link to the Birdseye Landing page */
 h1 a:hover {
   color: #EC5800;
@@ -2140,10 +2094,78 @@ h4 a:hover {
   text-decoration: none;
 }
 
+/*------------------------------------------------------------------------
+ * Heading: h2: Calls attention to sections of data
+ *------------------------------------------------------------------------*/
 
-/*********************
+h1 {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #3c6eb4;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h2: Calls attention to sections of data
+ *------------------------------------------------------------------------*/
+
+h2 {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #3c6eb4;
+  text-decoration: underline;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h3:
+ *------------------------------------------------------------------------*/
+
+/* Used as a title for each item of information being reported */
+h3 {
+  font-size: 1.05em;
+  font-weight: bold;
+  color: #3c6eb4; 
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h3_nobold {
+	font-weight: normal;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h4:
+ *------------------------------------------------------------------------*/
+
+/* Used as a title for each sub-item of information being reported */
+h4 {
+  font-size: 0.95em;
+  font-weight: bold;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h4_nobold {
+	font-weight: normal;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h5:
+ *------------------------------------------------------------------------*/
+
+/* Used as a title for each sub-item of information being reported */
+h5 {
+  font-size: 0.95em;
+  font-weight: bold;
+  margin: 0px 25px 5px 25px;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h5_nobold {
+	font-weight: normal;
+}
+
+
+/*------------------------------------------------------------------------
  * Lists
- */
+ *------------------------------------------------------------------------*/
 
 /* Used to show raw commands in list items using fixed width fonts */
 .list_nobold {
@@ -2152,9 +2174,9 @@ h4 a:hover {
 	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
 }
 
-/*********************
+/*------------------------------------------------------------------------
  * Links
- */
+ *------------------------------------------------------------------------*/
 
 a:link      { color:#3c6eb4; text-decoration: none; }
 a:visited   { color:#004E66; text-decoration: underline; }
@@ -2169,47 +2191,26 @@ ol, ul, li {
   margin: 2px 0 8px 0px;
 }
 
-/*********************
- * Lists
- */
+/*------------------------------------------------------------------------
+ * Pointer to top of page - Replace with cleaner Javascript in future?
+ *------------------------------------------------------------------------*/
 
 /* This makes a little box with the word "Top" in it that takes the user
    back to the top of the page */
 .boxtop {
 	color: #A7ABBE;
   margin: 0px 0px 0px 10px;
-/*
-	padding: 2px;
-	background-color: rgb(214,227,255);
-	border-width: 1px;
-	border-style: solid;
-	border-radius: 8px;
-	border-color: #CFCFCF;
-	font-size: 0.75em;
-	-moz-box-shadow: 3px 3px 5px #DFDFDF;
-	-webkit-box-shadow: 3px 3px 5px #DFDFDF;
-	-khtml-box-shadow: 3px 3px 5px #DFDFDF;
-	-o-box-shadow: 3px 3px 5px #DFDFDF;
-	box-shadow: 3px 3px 5px #DFDFDF;
-	-moz-border-radius: 8px;
-	-webkit-border-radius: 8px;
-	-khtml-border-radius: 8px;
-	margin: 0 0 0 1ex;
-*/
 }
-
-/*
-.boxtop a:link      { color:red; text-decoration: none; }
-.boxtop a:visited   { color:blue; text-decoration: underline; }
-.boxtop a:active    { color:purple; text-decoration: underline; }
-*/
 
 /* Hovering over the link to the Birdseye Landing page */
 .boxtop a:hover {
   color: #EC5800;
-	background-color: red;
   text-decoration: none;
 }
+
+/*------------------------------------------------------------------------
+ * Raw Output
+ *------------------------------------------------------------------------*/
 
 /*
 	Raw output data from commands,
@@ -2260,10 +2261,10 @@ ol, ul, li {
   -khtml-border-radius: 8px;
 }
 
-/* Used to call attention to helpful tips such as additional information
- * 	being available in external files, or what a command's output is
- * 	useful for
-*/
+/*------------------------------------------------------------------------
+ * Tips
+ *------------------------------------------------------------------------*/
+
 blockquote.tip {
 
   background-color: #F5F298;
@@ -2292,23 +2293,283 @@ blockquote.tip {
 }
 
 </style>
-CSS-STYLE-SCRIPT
+CSS-STYLE-SCRIPT-DEFAULT
+
+	elif [[ $DEF_CSS_STYLE == "typewriter" ]]
+	then
+		cat >> $HTML << CSS-STYLE-SCRIPT-TYPEWRITER
+<style type="text/css">
+
+/*------------------------------------------------------------------------
+ * Body - Overall page defaults
+ *------------------------------------------------------------------------*/
+
+body {
+	/* default font */
+	font-family: "Courier New", Courier, monospace;
+
+	/* default text color */
+	color: black;
+
+	/* default page color */
+	background-color: #fff;
+
+	/* provides slight margin space on left and right of whole page */
+	margin-left: 25px;
+	margin-right: 25px;
+
+	/* font size, adjust to smaller at 93% for alternate look */
+	font-size: 85%;
+}
+
+/*------------------------------------------------------------------------
+ * Paragraphs
+ *------------------------------------------------------------------------*/
+
+p {
+  line-height: 1.0em;
+  font-size: 1.0em;
+  margin: 2px 0 2px 0px;
+}
+
+.toc_master_paragraph {
+  margin-left: 20px;
+}
+
+/*------------------------------------------------------------------------
+ * Headings
+ *------------------------------------------------------------------------*/
+
+/*
+	This is an example of how heading styles are used and how they
+	are called using bash functions within birdseye
+
+	function      h?  Example             Description
+	n/a           h1 "Birdseye Report"    Report Title
+	toc_section{} h2 "Hardware Summary"   Titles a section of TOC items
+	section{}     h2 "Hardware Summary"   Titles a section of information
+	title{}       h3 "Product Name"       Titles a group of related items
+	item_title{}    h4 "Product Model"    Title for an item of data
+
+*/
+
+h1, h2, h3, h4, h5, h6 {
+	margin: 0 0 3px 0;
+}
+
+/* Hovering over the link to the Birdseye Landing page */
+h1 a:hover {
+	color: black;
+  text-decoration: none;
+	font-weight: bold;
+}
+
+/* Hovering over a heading that links to something */
+h2 a:hover,
+h3 a:hover,
+h4 a:hover {
+	color: black;
+  text-decoration: none;
+}
+
+
+/*------------------------------------------------------------------------
+ * Heading: h1
+ *------------------------------------------------------------------------*/
+
+h1 {
+  font-size: 1.0em;
+  font-weight: bold;
+	color: black;
+	text-transform: uppercase;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h2: Calls attention to sections of data
+ *------------------------------------------------------------------------*/
+
+h2 {
+  font-size: 1.0em;
+  font-weight: bold;
+	color: black;
+  text-decoration: underline;
+	text-transform: uppercase;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h3: 
+ *------------------------------------------------------------------------*/
+
+/* Used as a title for each item of information being reported */
+h3 {
+  font-size: 1.0em;
+  font-weight: bold;
+	color: black;
+	text-transform: uppercase;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h3_nobold {
+	font-weight: normal;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h4: 
+ *------------------------------------------------------------------------*/
+
+/* Used as a title for each sub-item of information being reported */
+h4 {
+  font-size: 1.0em;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h4_nobold {
+	font-weight: normal;
+}
+
+/*------------------------------------------------------------------------
+ * Heading: h5: 
+ *------------------------------------------------------------------------*/
+
+/* Used as a title for each sub-item of information being reported */
+h5 {
+  font-size: 1.0em;
+  font-weight: bold;
+  margin: 0px 25px 5px 25px;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h5_nobold {
+	font-weight: normal;
+}
+
+/*------------------------------------------------------------------------
+ * Lists
+ *------------------------------------------------------------------------*/
+
+/* Used to show raw commands in list items using fixed width fonts */
+.list_nobold {
+	font-weight: normal;
+  font-size: 1.0em;
+	font-family: "Courier New", Courier, monospace;
+}
+
+/*------------------------------------------------------------------------
+ * Links
+ *------------------------------------------------------------------------*/
+
+/*
+a:link      { color:#3c6eb4; text-decoration: none; }
+*/
+a:link      { color:black; text-decoration: none; }
+a:visited   { color:black; text-decoration: underline; }
+a:active    { color:black; text-decoration: underline; }
+a:hover     { color:black; text-decoration: underline; background-color: yellow;}
+
+/* Lists */
+ol, ul, li {
+  margin: 2px 0 2px 0px;
+  font-size: 1.0em;
+}
+
+li:hover {
+	background-color: yellow;
+}
+
+
+/*------------------------------------------------------------------------
+ * Pointer to top of page - Replace with cleaner Javascript in future?
+ *------------------------------------------------------------------------*/
+
+/* This makes a little box with the word "Top" in it that takes the user
+   back to the top of the page */
+.boxtop {
+	color: #A7ABBE;
+  margin: 0px 0px 0px 10px;
+}
+
+/* Hovering over the link to the Birdseye Landing page */
+.boxtop a:hover {
+  color: #EC5800;
+	background-color: yellow;
+  text-decoration: none;
+}
+
+/*------------------------------------------------------------------------
+ * Raw Output
+ *------------------------------------------------------------------------*/
+
+/*
+	Raw output data from commands,
+	Presented as a box with soft, rounded corners, 3D shadowing, 
+	A different background color,
+	Uses a fixed width font to preserve raw output column formatting.
+*/
+
+.programlisting {
+	font-family: "Courier New", Courier, monospace;
+  font-size: 1.0em;
+  margin: 0px 25px 20px 25px;
+  overflow: auto;
+
+/*
+	background-color: rgb(242,242,242);
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  padding: 12px;
+
+  border-color: #CFCFCF;
+  background-color: rgb(238,232,213);
+  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+*/
+}
+
+.raw_textarea {
+	font-family: "Courier New", Courier, monospace;
+  font-size: 1.0em;
+  margin: 0px 25px 20px 25px;
+  overflow: auto;
+}
+
+/*------------------------------------------------------------------------
+ * Tips
+ *------------------------------------------------------------------------*/
+blockquote.tip {
+	font-family: "Courier New", Courier, monospace;
+  font-size: 1.0em;
+  margin: 0px 25px 20px 25px;
+  overflow: auto;
+	width: 55%;
+}
+
+</style>
+CSS-STYLE-SCRIPT-TYPEWRITER
+
+	fi # endif - css internal style processing default/typewriter/etc
 
 fi # if/then/else handling ends for CSS external file & inline style
 
 line "</head>"
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Report Header
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 line "<body>"
 
-line "<h1><a name=\"Top\"><a href=http://www.maxwellspangler.com/linux/birdseye/>Bird's Eye</a> System Inventory for $MY_HOST</a></h1>" 
+line "<h1><a name=\"Top\"><a href=http://www.maxwellspangler.com/scripts/birdseye/>Bird's Eye</a> System Inventory for $MY_HOST</a></h1>" 
 
-paragraph "Produced on $(date "+%A, %B %d %Y at %H:%m") by $MY_NAME ( $MY_EMAIL ) of $MY_GROUP"
+paragraph "Produced on $(date "+%A, %B %d %Y at %H:%m") by $MY_NAME ($MY_EMAIL) of $MY_GROUP"
 
 if [[ $MY_FOCUS != "null" ]]
 then
@@ -2347,11 +2608,11 @@ fi
 
 line "<hr>"
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Master Table of Contents TOC
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 line "<h2><a name=\"toc\">Table of Contents - Master</a></h2>" 
 
@@ -2400,11 +2661,11 @@ toc_master "#toc_vms" "Virtual Machines"
 line "</div>"
 line "<hr>"
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Detailed Table of Contents
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 line "<h2><a name=\"toc\">Table of Contents - Detail</a></h2>" 
 
@@ -2443,7 +2704,7 @@ unordered_list_open
 list "item_kernelsinstalled"	"Kernels Installed" "rpm -qa | grep kernel-"
 list "item_kerneltaint"				"Kernel Taint Value" "cat /proc/sys/kernel/tainted"
 list "item_sysctl"						"System Control Parameters" "sysctl"
-list "item_systemmap"					"System Map" "cat /boot/System.map.$(uname -r)"
+#list "item_systemmap"					"System Map" "cat /boot/System.map.$(uname -r)"
 unordered_list_close
 
 toc_section "toc_bootcfg"			"Boot Configuration" "#section_bootcfg"
@@ -2642,9 +2903,10 @@ unordered_list_open
 list "item_lsblk"							"Block Storage Devices" "lsblk"
 list "item_lsscsi"						"SCSI Information" "lsscsi"
 list "item_procscsi"					"SCSI Information via proc" "cat /proc/scsi/scsi"
-list "item_qla2xxx"						"Fibre Channel Storage: QLogic (qla2xxx)" "cat /proc/scsi/qla2xxx"
-list "item_lpfc"							"Fibre Channel Storage: Emulex Lightpath (qla2xxx)" "cat /proc/scsi/lpfc"
-list "item_qla2xxx"						"Fibre Channel Storage: Brocade (bfa)" "cat /proc/scsi/bfa"
+
+#list "item_qla2xxx"						"Fibre Channel Storage: QLogic (qla2xxx)" "cat /proc/scsi/qla2xxx"
+#list "item_lpfc"							"Fibre Channel Storage: Emulex Lightpath (qla2xxx)" "cat /proc/scsi/lpfc"
+#list "item_qla2xxx"						"Fibre Channel Storage: Brocade (bfa)" "cat /proc/scsi/bfa"
 
 unordered_list_close
 
@@ -2691,11 +2953,11 @@ line "<hr>"
 
 echo "Table of Contents constructed"
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Linux Summary - The Basics: System Name, Date/time, Distribution
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_linux_summary" "Linux Summary"
 
@@ -2764,11 +3026,11 @@ raw_open
 cat /proc/version >> $HTML 2>&1
 raw_close
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Log Files
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_dmesg" "Boot messages"
 
@@ -2859,11 +3121,11 @@ then
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_SYSLOG target=_file_msgs>separate syslog file.</a>"
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Kernel Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_kernelcfg" "Kernel Configuration"
 
@@ -2927,24 +3189,24 @@ textarea_open 120 24
 sysctl -a >> $HTML 2>&1
 textarea_close
 
-item_title "item_systemmap"	"System Map" "cat /boot/System.map.$(uname -r)"
+#item_title "item_systemmap"	"System Map" "cat /boot/System.map.$(uname -r)"
 
-if [[ -f /boot/System.map-$(uname -r) ]]
-then
-	textarea_open 120 24
-	cat /boot/System.map-$(uname -r)  >> $HTML 2>&1
-	textarea_close
-else
-	raw_open
-	line "I cannot find a System.map file for kernel " $(uname -r) " in /boot."
-	raw_close
-fi
+#if [[ -f /boot/System.map-$(uname -r) ]]
+#then
+#	textarea_open 120 24
+#	cat /boot/System.map-$(uname -r)  >> $HTML 2>&1
+#	textarea_close
+#else
+#	raw_open
+#	line "I cannot find a System.map file for kernel " $(uname -r) " in /boot."
+#	raw_close
+#fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Boot Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_bootcfg" "Boot Configuration"
 
@@ -3201,11 +3463,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Security Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 section "section_security" "Security Configuration"
 
 item_title "item_selinux"		"SELinux Configuration" "cat /etc/selinux/config"
@@ -3228,11 +3490,11 @@ else
 	fi
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Kernel Modules
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_modules" "Kernel Modules"
 
@@ -3301,11 +3563,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Network Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_processes" "Processes Running"
 
@@ -3315,11 +3577,11 @@ textarea_open 120 24
 ps axf >> $HTML 2>&1
 textarea_close
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Hardware Sensors
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_hw_sensors" "Hardware Sensors"
 
@@ -3339,11 +3601,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Network Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_network_cfg" "Network Configuration"
 
@@ -3499,11 +3761,11 @@ else
 	text_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Storage Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_storage_cfg" "Storage Configuration"
 
@@ -3612,11 +3874,11 @@ else
 fi
 raw_close
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Services Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_services" "Services Configuration"
 item_title "item_chkconfig"	"Chkconfig" "chkconfig"
@@ -3643,18 +3905,18 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Repositories and Installed Packages
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_packages" "Repositories and Software Packages"
 
 if [[ $DIST_PACKAGES = "rpm" ]]
 then
 
-	#----------------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	# RPM/YUM Repositories
 
 	item_title "item_rpm_config"		"Software Repositories (rpm/yum)" "cat /etc/yum.conf"
@@ -3688,7 +3950,7 @@ then
 elif [[ $DIST_PACKAGES = "dpkg" ]]
 then
 
-	#----------------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	# DPKG/APT Repository
 
 	item_title "item_apt_config"		"Software Repositories (dpkg/apt)" "cat /etc/apt/apt.conf"
@@ -3731,7 +3993,7 @@ then
 elif [[ $DIST_PACKAGES = "zypper" ]]
 then
 
-	#----------------------------------------------------------------------------
+	#--------------------------------------------------------------------------
 	# SuSE Zypper Repository
 
 	item_title "item_zypper_config"		"Software Repositories (SuSE)" "cat /etc/zypp/zypper.conf"
@@ -3767,11 +4029,11 @@ repos.d/*"
 	textarea_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # udev Configuration
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_serial" "Serial device configuration"
 
@@ -3881,11 +4143,11 @@ then
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # X-Windows Graphics
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_xwindows" "X-Windows"
 
@@ -3972,11 +4234,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Hardware Summary - 
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_hw_summary" "Hardware Summary"
 
@@ -4070,11 +4332,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Processor/CPU Details
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_processor" "Processor Information"
 
@@ -4219,11 +4481,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Interrupt Details
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_inter" "Interrupts" "cat /proc/interrupts"
 textarea_open 120 24
@@ -4234,11 +4496,11 @@ helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_IN
 
 cat /proc/interrupts >> $FILE_INTER
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # PCI Expansion Bus & Card Details
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_pci" "Expansion Cards"
  
@@ -4335,11 +4597,11 @@ else
 	echo "This system doesn't list any PCI devices, is it a virtual machine?">> $FILE_PCI 2>&1
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # USB System Details
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_usb" "USB System"
 
@@ -4408,11 +4670,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # System Board Details with dmidecode
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_dmidecode" "System Board Information"
 
@@ -4434,11 +4696,11 @@ then
 	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Network Devices
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_network_devices" "Network Devices"
 
@@ -4553,11 +4815,11 @@ else
 
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Storage Resources
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_storage" "Storage Devices"
 
@@ -4617,11 +4879,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Peripherals - General, Not Included Elsewhere
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_periphs" "Peripherals"
 
@@ -4638,11 +4900,11 @@ else
 	raw_close
 fi
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Virtualization
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_virt" "Virtualization"
 
@@ -4829,11 +5091,11 @@ else
 	line
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # Virtual Machines
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_vms" "Virtual Machines"
 
@@ -5078,11 +5340,11 @@ else
 	raw_close
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # XEN Virtualization
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 section "section_xen" "Xen Virtualization"
 
@@ -5119,11 +5381,11 @@ else
 
 fi # If DEF_SHOW_VIRT is yes, show this section.
 
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 #
 # End Of Report - Complete and Process Output Files
 #
-#----------------------------------------------------------------------------
+#--------------------------------------------------------------------------
 
 line "</body></html>" >> $HTML 2>&1
 
