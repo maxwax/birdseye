@@ -2,14 +2,29 @@
 #
 # birdseye
 #
-# 2013 Maxwell Spangler, maxwell@maxwellspangler.com
-#
 # Birdseye creates a simple, well-presented HTML based report of a Linux
 # systems hardware, software and configuration details.
 # See http://www.maxwellspangler.com/scripts/birdseye for more information.
 
+# Copyright 2013 Maxwell Spangler, maxwell@maxwellspangler.com
+
+# This program is free software; you can redistribute it and/or
+# modify it under the terms of the GNU General Public License
+# as published by the Free Software Foundation; either version 2
+# of the License, or (at your option) any later version.
+# 
+# This program is distributed in the hope that it will be useful,
+# but WITHOUT ANY WARRANTY; without even the implied warranty of
+# MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+# GNU General Public License for more details.
+# 
+# You should have received a copy of the GNU General Public License
+# along with this program; if not, write to the 
+# Free Software Foundation, Inc., 
+# 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
+
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1111.01"
+VERSION="2013.1129.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -24,87 +39,6 @@ else
 	# user on our output files. Same as 'who am i'
 	SUDO_USER=$(who -m | awk '{ print $1 }')
 fi
-
-#----------------------------------------------------------------------------
-# DESIGN GOALS
-#----------------------------------------------------------------------------
-
-# 1. Maintain a single file script that is easy to copy & use on remote systems
-# 2. Require zero dependencies outside of this script so that modification
-#    of the remote system is greatly restricted and the remote is not
-#    'contaminated' with many support files or dependencies
-# 3. Output HTML5 with CSS presentation that is easy to navigate and search
-# 4. Ensure multiple presentations with CSS (test to verify)
-# 5. Ensure compatibility with bare-metal, virtual machine and cloud Linux
-# 6. Ensure compatibility with multiple distributions 
-#    with a focus on those users will use most
-# 7. Develop code that is simple and well documented
-#    so it can be easily modified and used in other projects by other users
-# 8. Enable users to learn more about Linux using the output and code
-
-#----------------------------------------------------------------------------
-# TESTING
-#----------------------------------------------------------------------------
-# Tested:
-# Fedora 19 ok
-# SLES 11 SP3 ok
-# Ubuntu 13.10 ok
-# Red Hat 6.4 ok
-# Red Hat 5.9 ok
-# Citrix 6.1 ok
-# Debian 7.2 ok
-# Amazon AWS - Amazon Linux ok
-# Rackspace Cloud - CentOS ok
-# Google Compute Engine ok
-
-#----------------------------------------------------------------------------
-# TODO LIST
-#----------------------------------------------------------------------------
-
-# TESTING
-
-# Run on Large systems, both bare-metal and cloud
-# Run on Xen Domain0 hypervisor host and see what is reported
-
-# REQUIRED
-
-# Add official GPL license
-
-# Sample Alternate CSS outputs
-# Cleanup CSS styles
-
-# SLES11SP3: Determine installed kernels on SuSE where rpm is not available
-# SLES11SP3: App Armor configuration reporting on SuSE?
-# SLES11SP3: Report on zypper for SUSE
-
-# WISH LIST
-
-# Add plugin variables before/after each section
-
-# Implement a user-friendly list of PCI cards and slots ('sutl cards')
-# Implement a user-friendly list of storage devices ('sutl hbas')
-
-# nics: Handle more than one IP address - patched for now.. report more
-
-# Debian: Show init script configuration instead of chkconfig/systemctl
-
-# When something isn't available for reporting, grey-out/disable 
-# the item's table of contents. Until then, always show output for
-# every item listed in the table of contents
-
-# More testing on UEFI systems 'uefivars -l' for example (need hw)
-
-# Review sosreport for additional feature ideas
-# Review snapshot for additional feature ideas
-
-# Report on IO scheduler in use. See arch linux ssd for instructions
-# cat /sys/block/sdX/queue/scheduler
-
-# Add --include tips for verbose, educational output?
-
-# RPM package
-# Debian Package
-# Man page
 
 #----------------------------------------------------------------------------
 #
@@ -4486,6 +4420,14 @@ fi
 # Interrupt Details
 #
 #--------------------------------------------------------------------------
+
+section "section_inter" "Interrupts" "cat /proc/interrupts"
+#textarea_open 120 24
+#cat /proc/interrupts >> $HTML 2>&1
+#textarea_close
+line "<table border=1>"
+cat /proc/interrupts | awk -F "  " '{print "<tr> <td>"$1"</td><td>"$2"</td><td>"$3"</td><td>"$4"</td><td>"$5"</td><td>"$6"</td><td>"$7"</td><td>"$8"</td></tr>"}' >> $HTML 2>&1
+line "</table>"
 
 section "section_inter" "Interrupts" "cat /proc/interrupts"
 textarea_open 120 24
