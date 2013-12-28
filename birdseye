@@ -24,7 +24,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1129.01"
+VERSION="2013.1228.01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -934,7 +934,6 @@ do
 
 		# command line parameter: specify external CSS style file
 		--novirt )
-			shift
 			DEF_SHOW_VIRT="no";;
 
 		# command line parameter: specify the output tag
