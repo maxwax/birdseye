@@ -588,6 +588,10 @@ FILE_EXISTS="no"
 check_for_program lspci
 AVAILABLE_LSPCI=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program facter
+AVAILABLE_FACTER=$FILE_EXISTS
+
 # Suse SLES 11 SP3 reports sensors is present even when the binary
 # is not because it sees an /etc/sensors.conf file.  This causes
 # check for program to return true and an attempt to use sensors later
@@ -1068,7 +1072,7 @@ else
 	echo
 
 	####################
-	echo -e "Provide a short tag to include with this [$DEF_TAG] ?"
+	echo -e "\n(1/9) Provide a short tag to include with this [$DEF_TAG] ?"
 	read -p "->" MY_TAG
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1088,7 +1092,7 @@ else
 	fi
 
 	####################
-	echo -e "What's your name [$DEF_NAME] ?" 
+	echo -e "\n(2/9) What's your name [$DEF_NAME] ?" 
 	read -p "->" MY_NAME
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1108,7 +1112,7 @@ else
 	fi
 
 	####################
-	echo -e "What's your email address [$DEF_EMAIL] ?" 
+	echo -e "\n(3/9) What's your email address [$DEF_EMAIL] ?" 
 	read -p "->" MY_EMAIL
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1128,7 +1132,7 @@ else
 	fi
 
 	####################
-	echo -e "What group/company/org are you in ('devops') [$DEF_GROUP] ?"
+	echo -e "\n(4/9) What group/company/org are you in ('devops') [$DEF_GROUP] ?"
 	read -p "->" MY_GROUP
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1146,7 +1150,7 @@ else
 	fi
 
 	####################
-	echo -e "A simple description for the issue being reported [$DEF_FOCUS] ?"
+	echo -e "\n(5/9) A simple description for the issue being reported [$DEF_FOCUS] ?"
 	read -p "->" MY_FOCUS
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1166,7 +1170,7 @@ else
 	fi
 
 	####################
-	echo -e "Notes about the system configuration? [$DEF_HW_NOTES]"
+	echo -e "\n(6/9) Notes about the system configuration? [$DEF_HW_NOTES]"
 	read -p "->" MY_HW_NOTES
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1184,7 +1188,7 @@ else
 	fi
 
 	####################
-	echo -e "Notes about the system configuration? [$DEF_SW_NOTES]"
+	echo -e "\n(7/9) Notes about the system configuration? [$DEF_SW_NOTES]"
 	read -p "->" MY_SW_NOTES
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1202,7 +1206,7 @@ else
 	fi
 
 	####################
-	echo -e "What is the FQDN for this systems primary NIC? [$DEF_FQDN]"
+	echo -e "\n(8/9) What is the FQDN for this systems primary NIC? [$DEF_FQDN]"
 	read -p "->" MY_FQDN
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1220,7 +1224,7 @@ else
 	fi
 
 	####################
-	echo -e "What is the FQDN for this systems out-of-band mgmt NIC? [$DEF_OOB]"
+	echo -e "\n(9/9) What is the FQDN for this systems out-of-band mgmt NIC? [$DEF_OOB]"
 	read -p "->" MY_OOB
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -2557,6 +2561,7 @@ paragraph "Linux Environment"
 toc_master "#toc_linux_summary" "Linux Summary"
 toc_master "#toc_bootmsgs" 			"Boot messages"
 toc_master "#toc_messages"			"Console/System Messages"
+toc_master "#toc_configmgmt"		"Config Mgmt Facts"
 toc_master "#toc_kernelcfg"	 		"Kernel Configuration"
 toc_master "#toc_bootcfg" 			"Boot Configuration"
 toc_master "#toc_security" 			"Security Configuration"
@@ -2630,6 +2635,11 @@ unordered_list_open
 list "item_messages"					"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
 unordered_list_close
 
+toc_section "toc_configmgmt"	"Config Mgmt Facts" "#section_configmgmt"
+
+unordered_list_open
+list "item_facter"				 		"Puppet facter items" "facter"
+unordered_list_close
 
 toc_section "toc_kernelcfg"		"Kernel Configuration" "#section_kernelcfg"
 
@@ -3003,6 +3013,19 @@ fi
 textarea_close
 
 helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMESG target=_file_dmesg>separate dmesg info file.</a>"
+
+section "section_configmgmt" "Config Mgmt Facts"
+
+item_title "item_facter"	"Puppet Facter" "facter"
+
+if [[ $AVAILABLE_LSB_RELEASE == "yes" ]]
+then
+	textarea_open 120 24
+	facter >> $HTML 2>&1
+	textarea_close
+else
+	line "The Puppet 'facter' command is not available on this system."
+fi
 
 section "section_messages" "Console/System Messages"
 
