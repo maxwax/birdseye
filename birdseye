@@ -271,8 +271,41 @@ function nic_list {
 	# integrate 'nics' bash code here to avoid external calls 
 	# ----- cut here -----
 
-	# default style for Birdseye is 'short'
+	# default style for Birdseye is 'traffic'
 	NIC_SUMMARY_STYLE="traffic"
+
+	# Process command line arguments
+	while [ "$1" != "" ]
+	do
+		case $1 in
+
+			# Default, output limited to < 80 characters wide
+			-s | "--short" )
+				shift
+				NIC_SUMMARY_STYLE="short";;
+
+			# Wider, shows per device traffic summary
+			-t | "--traffic" )
+				shift
+				NIC_SUMMARY_STYLE="traffic";;
+
+			# Wider still, shows ipv6 addresses 
+			-6 | "--ipv6" )
+				shift
+				NIC_SUMMARY_STYLE="ipv6";;
+
+			# Wider still, shows ipv6 addresses 
+			"--debug" )
+				shift
+				DEBUG="yes";;
+
+			# I don't know what I want! Help me!
+			-h | --help | --syntax | *)
+				usage
+				exit 0;;
+
+		esac
+	done
 
 	# Print the header for our summary table
 	case $NIC_SUMMARY_STYLE in 
@@ -295,18 +328,20 @@ function nic_list {
 	# 5: macvtap bridges (used with KVM) look like this:
 	#    macvtap0@p10p1
 	#    convert the "@" symbol to ATSYMBOL and then we'll use a bash
-	#    parameter expansion below to remove all to the right of ATSYMBOL
+	#    parameter expansion below to remove everything to the right of ATSYMBOL
 
 	for EACH_NIC in $(ip link list | grep -e "[0-9]: " | awk -F " " '{print $2}' | sed "s/://g" | sed "s/@/ATSYMBOL/" )
 	do
-
-		#echo "DEBUG PRE-EACH-NIC $EACH_NIC"
 
 		# If ATSYMBOL is present, remove everything to right of it so we have
 		# just a simple name like macvtap0
 		EACH_NIC=${EACH_NIC%%ATSYMBOL*}
 
-		#echo "DEBUG POST-EACH-NIC $EACH_NIC"
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "Processing: $EACH_NIC"
+			ip -oneline -stats link show $EACH_NIC >> link.show.txt
+		fi
 
 		# If we're anything but the software-only loopback device, try to find the
 		# hardware MAC address this device
@@ -376,21 +411,81 @@ function nic_list {
 		# If it's not set, make it blank.
 		MTU=${MTU:-"none"}
 
+		# set to null here
+		MASTER_NIC=""
+
+		# The output of 'ip -oneline -stats line show' varies depending
+	  # on whether the device is a NIC or a BRIDGE and other factors.
+		# We've seen columns added on some devices but not others,
+		# So we identify them, capture their data, and strip them out.
+	  # After doing so the resulting line is in a predicable state
+
+		# 1. Check for a 'Master'+(value) column pair seen with virbr0-nic
+		# 2. Check for a 'Mode'+(value) column pair
+		# 3. Process the resulting output
+
+		# Capture the output of ip link show once here and re-use it repeatedly
+		IP_LINK_SHOW_OUTPUT=$(ip -oneline -stats link show $EACH_NIC)
+
+		# KVM makes 'virbr0-nic' lines for VM's nics and includes two additional
+		# columns: 'Master' 'virbr0'
+		# So if we see Master IN COLUMN 8 then bump everything over two
+		# This sucks
+		MASTER_CHECK=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $8}' | grep -F "master" | wc -l)
+
+		# Added for checking 2013.1129, remove this later
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "MASTER is $MASTER_CHECK"
+		fi
+
+		if [[ $MASTER_CHECK == 1 ]]
+		then
+			# Capture the value of the 'master' parameter
+			MASTER_NIC=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $9}')
+
+			# Added for checking 2013.1129, remove this later
+			if [[ $DEBUG == "yes" ]]
+			then
+				echo "MASTER_CHECK is $MASTER_CHECK and the nic master is $MASTER_NIC"
+			fi
+
+			# Now that we've identified the presence of a 'master' column pair
+			# and handled that line, cut out the two columns and continue
+			IP_LINK_SHOW_OUTPUT=$(echo $IP_LINK_SHOW_OUTPUT | cut -d " " -f 1-7,10-999)
+
+		fi
+
 		# The position of our statistics varies based on whether or not
 		# the 'ip' command includes a 'mode' attribute and its value.
 		# Let's check to see if it's there and we'll use it for RX and TX data
-		MODE_CHECK=$(ip link show $EACH_NIC | grep -F " mode " | wc -l)
+		MODE_CHECK=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $10}' | grep -F "mode" | wc -l)
+
+		# Added for checking 2013.1129, remove this later
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "MODE_CHECK is $MODE_CHECK"
+		fi
 
 		if [[ $MODE_CHECK -eq 1 ]]
 		then
-			# We have a 'mode' parameter so use 26/27 for our values
-			let RX_BYTES=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $26}')
-			let RX_PACKETS=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $27}')
-		else
-			# We do not have a 'mode' parameter so use 24/25 for our values
-			let RX_BYTES=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $24}')
-			let RX_PACKETS=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $25}')
+			MODE_VALUE=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $11}')
+
+			# Added for checking 2013.1129, remove this later
+			if [[ $DEBUG == "yes" ]]
+			then
+				echo "MODE_CHECK is $MODE_CHECK and the mode value is $MODE_VALUE"
+			fi
+
+			# Now that we've identified the presence of a 'mode' column pair
+			# and handled that line, cut out the two columns and continue
+			IP_LINK_SHOW_OUTPUT=$(echo $IP_LINK_SHOW_OUTPUT | cut -d " " -f 1-9,12-999)
+
 		fi
+
+		# Capture the number of bytes and packets received on this interface
+		let RX_BYTES=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $26}')
+		let RX_PACKETS=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $27}')
 
 		# If these weren't set correctly, set them to numeric 0
 		RX_BYTES=${RX_BYTES:-"0"}
@@ -419,26 +514,21 @@ function nic_list {
 			RX_HUMAN_TYPE="B"
 		fi
 
-		# Use the MODE_CHECK value above to figure out the position of transmit data
-		if [[ $MODE_CHECK -eq 1 ]]
-		then
-			let TX_BYTES=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $41}')
-			let TX_PACKETS=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $42}')
-		else
-			let TX_BYTES=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $39}')
-			let TX_PACKETS=$(ip -o -s link show $EACH_NIC | awk '{FS=" "; print $40}')
-		fi
+		# Capture the number of bytes and packets transmitted on this interface
+		let TX_BYTES=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $41}')
+		let TX_PACKETS=$(echo $IP_LINK_SHOW_OUTPUT | awk '{FS=" "; print $42}')
 
 		# If these weren't set correctly, set them to numeric 0
 		TX_BYTES=${TX_BYTES:-"0"}
 		TX_PACKETS=${TX_PACKETS:-"0"}
 
-		# Calculate the traffic in MiB and GiB
+		# Calculate the traffic in MiB and GiB let TX_MIB=( TX_BYTES / 1048576)
 		let TX_MIB=( TX_BYTES / 1048576)
 		let TX_GIB=( TX_BYTES / 1073741824)
 
 		# Default the human readable size we'll report to " "
 		TX_HUMAN=" "
+
 		# If we have 1 or more gigabytes, let's use that.
 		if [[ $TX_GIB > 1 ]]
 		then
@@ -488,7 +578,6 @@ function nic_list {
 		esac
 
 	done
-
 	# ----- cut here -----
 
 }
