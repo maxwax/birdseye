@@ -1425,7 +1425,7 @@ fi
 export OUTPUT_DIR="$FILENAME_DATA"
 
 # Does the output directory exist? 
-if [[ -d $OUTPUT_DIR ]]
+if [[ -d "$OUTPUT_DIR" ]]
 then
 	# If we haven't been told to force it, don't overwrite what might
 	# be important existing data that can't be recreated
@@ -1447,7 +1447,7 @@ then
 else # Our output directory does NOT exist
 
 	# Let's try to make a new output directory
-	mkdir $OUTPUT_DIR
+	mkdir "$OUTPUT_DIR"
 
 	# Did we succeed?
 	if [ $? != 0 ]
@@ -1488,19 +1488,19 @@ function trap_cleanup {
 
 	echo "Trap caught, cleaning up.."
 
-	if [[ -f $OUTPUT_DIR ]]
+	if [[ -f "$OUTPUT_DIR" ]]
 	then	
-		rm -r $OUTPUT_DIR 
+		rm -r "$OUTPUT_DIR"
 	fi
 
-	if [[ -f $OUTPUT_DIR.tar ]]
+	if [[ -f "$OUTPUT_DIR.tar" ]]
 	then	
-		rm -f $OUTPUT_DIR.tar
+		rm -f "$OUTPUT_DIR.tar"
 	fi
 
-	if [[ -f $OUTPUT_DIR.tar.gz ]]
+	if [[ -f "$OUTPUT_DIR.tar.gz" ]]
 	then	
-		rm -f $OUTPUT_DIR.tar.gz
+		rm -f "$OUTPUT_DIR.tar.gz"
 	fi
 
 	exit 255
@@ -5443,14 +5443,14 @@ fi # If DEF_SHOW_VIRT is yes, show this section.
 line "</body></html>" >> $HTML 2>&1
 
 # if we see an existing file, remove it so we can replace it.
-if [ -f $OUTPUT_DIR.tar ]
+if [ -f "$OUTPUT_DIR.tar" ]
 then
-	rm $OUTPUT_DIR.tar
+	rm "$OUTPUT_DIR.tar"
 fi
 # if we see an existing file, remove it so we can replace it.
-if [ -f $OUTPUT_DIR.tar.gz ]
+if [ -f "$OUTPUT_DIR.tar.gz" ]
 then
-	rm $OUTPUT_DIR.tar.gz
+	rm "$OUTPUT_DIR.tar.gz"
 fi
 
 # If we ran this script using sudo or su -- anything but a real
@@ -5484,16 +5484,16 @@ then
 fi
 
 echo -e "\nTaring up results."
-tar cf $OUTPUT_DIR.tar $OUTPUT_DIR
+tar cf "$OUTPUT_DIR.tar" "$OUTPUT_DIR"
 
 echo "Compressing tar file."
-gzip -9 $OUTPUT_DIR.tar
+gzip -9 "$OUTPUT_DIR.tar"
 
 FILE_EXISTS="no"
 check_for_program zip
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	zip -qrl $OUTPUT_DIR.zip $OUTPUT_DIR
+	zip -qrl "$OUTPUT_DIR.zip" "$OUTPUT_DIR"
 fi
 
 if [[ $SUDO_USER != "root" ]]
