@@ -1259,7 +1259,7 @@ else
 	fi
 
 	####################
-	echo -e "\n(6/9) Notes about the system configuration? [$DEF_HW_NOTES]"
+	echo -e "\n(6/9) Notes about the system hardware configuration? [$DEF_HW_NOTES]"
 	read -p "->" MY_HW_NOTES
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -1277,7 +1277,7 @@ else
 	fi
 
 	####################
-	echo -e "\n(7/9) Notes about the system configuration? [$DEF_SW_NOTES]"
+	echo -e "\n(7/9) Notes about the system software configuration? [$DEF_SW_NOTES]"
 	read -p "->" MY_SW_NOTES
 
 	# Keep a valid, non-null user supplied value or set it to "null"
