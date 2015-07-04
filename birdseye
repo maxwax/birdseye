@@ -1092,7 +1092,7 @@ do
 		# Provide the user with help
 		-h | --help )
 		usage
-		exit 1;;
+		exit 0;;
 
 		# Something we don't understand? show syntax and exit
 		* )
