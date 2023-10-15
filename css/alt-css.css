@@ -1,0 +1,210 @@
+<style type="text/css">
+
+body {
+	/* chosen font */
+	font-family: lucida, myriad pro, myriad, verdana, sans-serif;
+
+	/* text color */
+	color: purple;
+
+	/* page color */
+	background-color: blue;
+
+	/* white spage on left and right of page */
+	margin-left: 25px;
+	margin-right: 25px;
+
+	/* font size, adjust to smaller at 93% for alternate look */
+	font-size: 100%;
+}
+
+/* Heading Definitions */
+
+/* Common settings to all heading styles */
+h1, h2, h3, h4, h5, h6 {
+	margin: 0 0 5px 0;
+}
+
+/*
+	This is an example of how heading styles are used and how they
+	are called using bash functions within birdseye
+
+	function      h?  Example             Description
+	n/a           h1 "Birdseye Report"    Report Title
+	toc_section{} h2 "Hardware Summary"   Titles a section of TOC items
+	section{}     h2 "Hardware Summary"   Titles a section of information
+	title{}       h3 "Product Name"       Title for an item of data
+	item_title{}    h4 "Product Model"      Supplementary item of data
+
+*/
+
+/* Major heading : Used on top of report for title */
+h1 {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #3c6eb4;
+}
+
+/* Section heading: Used to separate sections */
+h2 {
+  font-size: 1.3em;
+  font-weight: bold;
+  color: #3c6eb4;
+  text-decoration: underline;
+}
+
+/* Used as a title for each item of information being reported */
+h3 {
+/*
+  font-size: 1.2em;
+*/
+  font-size: 1.05em;
+  font-weight: bold;
+  color: #3c6eb4; 
+}
+
+/* Used as a title for each sub-item of information being reported */
+h4 {
+  font-size: 0.95em;
+  font-weight: bold;
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h3_nobold {
+	font-weight: underline;
+	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
+}
+
+/* Used to show raw commands in title without the title's bold */
+.h4_nobold {
+	font-weight: normal;
+	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
+}
+
+/* Hovering over the link to the Birdseye Landing page */
+h1 a:hover {
+  color: #EC5800;
+  text-decoration: none;
+}
+
+/* Hovering over a heading that links to something */
+h2 a:hover,
+h3 a:hover,
+h4 a:hover {
+  color: #666666;
+  text-decoration: none;
+}
+
+/* Lists */
+ol, ul, li {
+  margin-top: 0.2em;
+  margin-bottom: 0.1em; 
+}
+
+/* Used to show raw commands in list items using fixed width fonts */
+.list_nobold {
+	font-weight: normal;
+	font-size: 0.5em;
+	font-family: "Andale Mono", "Courier New", "Courier", "Fixed"
+}
+
+/* Overall Link Styles */
+a:link      { color:#3c6eb4; text-decoration: none; }
+a:visited   { color:#004E66; text-decoration: underline; }
+a:active    { color:#3c6eb4; text-decoration: underline; }
+a:hover     { color:#000000; text-decoration: underline; }
+
+/* Text Styles */
+p, ol, ul, li {
+  line-height: 1.0em;
+  font-size: 1.0em;
+  margin: 2px 0 8px 0px;
+}
+
+/* This makes a little box with the word "Top" in it that takes the user
+   back to the top of the page */
+.boxtop {
+  background-color: rgb(214,227,255);
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  padding: 5px;
+	font-size: 0.75em;
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+  margin: 0 0 0 1ex;
+/*
+  color: black;
+  overflow: auto;
+  background-color: #F7F7F7;
+  width: 572px;
+*/
+}
+
+/*
+	Raw output data from commands,
+	Presented as a box with soft, rounded corners, 3D shadowing, 
+	A different background color,
+	Uses a fixed width font to preserve raw output column formatting.
+*/
+
+.programlisting {
+
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  background-color: blue;
+  padding: 12px;
+  margin: 0px 25px 20px 25px;
+  overflow: auto;
+
+  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+}
+
+/* Used to call attention to helpful tips such as additional information
+ * 	being available in external files, or what a command's output is
+ * 	useful for
+*/
+blockquote.tip {
+
+  background-color: #F5F298;
+  color: black;
+
+  border-width: 1px;
+  border-style: solid;
+  border-color: #DBDBCC;
+
+  padding: 12px;
+  margin: 0px 25px 20px 25px;
+	width: 55%;
+
+  overflow: auto;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+  border-radius: 8px;
+
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+
+}
+
+</style>

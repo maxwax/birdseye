@@ -1,0 +1,278 @@
+cat >> $HTML << CSS-STYLE-SCRIPT
+<style type="text/css">
+
+body {
+	/* chosen font */
+	font-family: lucida, myriad pro, myriad, verdana, sans-serif;
+
+	/* text color */
+	color: #000;
+
+	/* page color */
+	background-color: #fff;
+
+	/* white spage on left and right of page */
+	margin-left: 25px;
+	margin-right: 25px;
+
+	/* font size, adjust to smaller at 93% for alternate look */
+	font-size: 100%;
+}
+
+/* division class used to center header lines in simple, traditional pages */
+.titleheader {
+	text-align: center;
+	background-color: rgb(212,226,255);
+	padding: 10px 10px 10px 10px;
+
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  padding: 5px;
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+}
+
+/* basic table */
+.simple_table {
+	border-collapse: collapse;
+	padding-top: 5px;
+	padding-right: 5px;
+	padding-bottom: 5px;
+	padding-left: 5px;
+}
+
+/* basic table caption */
+.simple_table caption {
+	font-weight:bold;
+}
+
+/* borders for all cells */
+.simple_table th,td {
+	border: 1px solid;
+}
+
+/* basic table header cells */
+.simple_table th {
+	background-color: rgb(176,202,255);
+}
+
+/* basic table data cells */
+.simple_table td {
+	background-color: rgb(214,227,255);
+	padding-top: 5px;
+	padding-right: 5px;
+	padding-bottom: 5px;
+	padding-left: 5px;
+}
+
+/* division class used to center header lines in simple, traditional pages */
+.official_links {
+	text-align: center;
+}
+
+/* basic table */
+.links_table {
+/*
+	border-collapse: collapse;
+	padding-top: 5px;
+	padding-right: 5px;
+	padding-bottom: 5px;
+	padding-left: 5px;
+*/
+	margin-left: auto;
+	margin-right: auto;
+}
+
+/* basic table caption */
+.links_table caption {
+	font-weight:bold;
+}
+
+/* borders for all cells */
+.links_table th,td {
+	border: 1px solid;
+}
+
+/* basic table header cells */
+.links_table th {
+	background-color: rgb(176,202,255);
+}
+
+/* basic table data cells */
+.links_table td {
+	background-color: rgb(214,227,255);
+	padding-top: 5px;
+	padding-right: 8px;
+	padding-bottom: 3px;
+	padding-left: 8px;
+
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  padding: 5px;
+/*
+	font-size: 0.75em;
+*/
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+/*
+  margin: 0 0 0 1ex;
+*/
+}
+/* Heading Definitions */
+
+h1, h2, h3, h4, h5, h6 {
+	margin: 0 0 5px 0;
+}
+
+h1 {
+  font-size: 1.8em;
+  font-weight: bold;
+  color: #3c6eb4; /* fedora logo color */
+}
+
+h2 {
+  font-size: 1.5em;
+  font-weight: bold;
+  color: #3c6eb4; /* fedora logo color */
+  text-decoration: underline;
+}
+
+h3 {
+  font-size: 1.2em;
+  font-weight: bold;
+  color: #3c6eb4; /* fedora logo color */
+}
+
+h4 {
+  font-size: 0.95em;
+  font-weight: normal;
+}
+
+h5 {
+  font-size: 0.9em;
+  font-weight: normal;
+}
+
+h6 {
+  font-size: 0.85em;
+  font-weight: normal;
+}
+
+h1 a:hover {
+  color: #EC5800;
+  text-decoration: none;
+}
+
+h2 a:hover,
+h3 a:hover,
+h4 a:hover {
+  color: #666666;
+  text-decoration: none;
+}
+
+ol, ul, li {
+/*
+  font-size: 1.0em;
+  line-height: 1.2em;
+*/
+  margin-top: 0.2em;
+  margin-bottom: 0.1em; 
+}
+
+pre {
+  font-family: monospace;
+  font-size: 1.0em;
+}
+
+
+/* Link Styles */
+
+a:link      { color:#3c6eb4; text-decoration: none; } /* fedora logo blue */
+a:visited   { color:#004E66; text-decoration: underline; } /* darker blue */
+a:active    { color:#3c6eb4; text-decoration: underline; } /* fedora logo blue */
+a:hover     { color:#000000; text-decoration: underline; }
+
+/* Text Styles */
+
+p, ol, ul, li {
+  line-height: 1.0em;
+/*
+  background-color: rgb(114,227,255);
+*/
+  font-size: 1.0em;
+  margin: 2px 0 8px 0px;
+}
+
+/* box tops */
+.boxtop {
+  background-color: rgb(214,227,255);
+  border-width: 1px;
+  border-style: solid;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  padding: 5px;
+	font-size: 0.75em;
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+  margin: 0 0 0 1ex;
+/*
+  color: black;
+  overflow: auto;
+  background-color: #F7F7F7;
+  width: 572px;
+*/
+}
+
+.programlisting {
+  -moz-box-shadow: 3px 3px 5px #DFDFDF;
+  -webkit-box-shadow: 3px 3px 5px #DFDFDF;
+  -khtml-box-shadow: 3px 3px 5px #DFDFDF;
+  -o-box-shadow: 3px 3px 5px #DFDFDF;
+  box-shadow: 3px 3px 5px #DFDFDF;
+  border-width: 1px;
+  border-style: solid;
+  padding: 12px;
+/* changed to 0px 2013-01-27 looks better lined up on the left with everything else.  */
+  margin: 0px 0px 10px 0px;
+  overflow: auto;
+  -moz-border-radius: 8px;
+  -webkit-border-radius: 8px;
+  -khtml-border-radius: 8px;
+  border-radius: 8px;
+  border-color: #CFCFCF;
+  background-color: rgb(238,232,213);
+}
+
+.image_info {
+/* debugging
+	background-color: rgb(180,200,200);
+*/
+	height: 30px;
+	weight: 30px;
+	margin: 0 0 0 0;
+}
+
+</style>
+CSS-STYLE-SCRIPT
