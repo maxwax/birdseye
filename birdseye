@@ -24,7 +24,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2013.1228.01"
+VERSION="2023-1014-01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -916,7 +916,7 @@ USE_FARENHEIT=" -f "
 
 # Display syntax
 function usage {
-	echo "Bird's Eye $VERSION"
+	echo "Birdseye (version $VERSION)"
 	echo
 	echo "usage: birdseye <options>"
 	echo
@@ -1151,17 +1151,22 @@ then
 	MY_SW_NOTES=${DEF_SW_NOTES:-"null"}
 else
 
+  echo
+	echo "Birdseye Linux Environment Reporting Script"
 	echo
-	echo "Answers to the following questions are used in Birdseye's HTML"
-	echo "report to title and describe the system being inventoried."
+	echo "Answers to the following questions are used in Birdseye's"
+	echo "HTML report to title and document the system being reported."
 	echo
-	echo "Providing a unique tag in the first question is highly recommended."
+  echo "Specify a 'report-tag' and it will be used to generate unique"
+  echo "output filenames to help identify each Birdseye report"
+  echo
+  echo "Example: birdseye.yyyy.mmdd.MY-REPORT-TAG.html"
 	echo
 	echo "All other questions are optional and can be skipped by hitting ENTER."
 	echo
 
 	####################
-	echo -e "\n(1/9) Provide a short tag to include with this [$DEF_TAG] ?"
+	echo -e "\n(1/9) Provide a unique report-tag to include [$DEF_TAG] ?"
 	read -p "->" MY_TAG
 
 	# Keep a valid, non-null user supplied value or set it to "null"
@@ -2593,7 +2598,7 @@ line "</head>"
 
 line "<body>"
 
-line "<h1><a name=\"Top\"><a href=http://www.maxwellspangler.com/scripts/birdseye/>Bird's Eye</a> System Inventory for $MY_HOST</a></h1>" 
+line "<h1><a name=\"Top\"><a href=https://github.com/maxwax/birdseye>Birdseye</a> System Inventory for $MY_HOST</a></h1>" 
 
 paragraph "Produced on $(date "+%A, %B %d %Y at %H:%m") by $MY_NAME ($MY_EMAIL) of $MY_GROUP"
 
