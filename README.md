@@ -28,7 +28,7 @@ It doesn't know about services and applications like web servers, databases, or 
 ## Run as root
 
 > [!WARNING]
-> Birdseye runs many Linux programs to gather system details and many of these require root privilegs so you have to run it as root or via sudo.
+> Birdseye runs many Linux programs to gather system details and many of these require root privileges so you have to run it as root or via sudo.
 
 * Scary, I know!
 
