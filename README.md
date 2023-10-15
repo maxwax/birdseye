@@ -1,9 +1,8 @@
 # birdseye
-===
 
 **Birdseye is a Bash shell script that generates a comprehensive system report including as many details about a Linux operating environment as possible.**
 
-It focuses its reporting on the environment where programs can run: that means the Linux installation, hardware, storage, networking, and configuration aspects of the system.
+It focuses its reporting on the *environment* where programs can run: that means the Linux OS installation, hardware, storage, networking, and configuration aspects of the system.
 
 It doesn't know about services and applications like web servers, databases, or your custom programs.  But it knows about the environment where they run.
 
@@ -28,9 +27,10 @@ It doesn't know about services and applications like web servers, databases, or 
 
 ## Run as root
 
-* Scary, I know!
+> [!WARNING]
+> Birdseye runs many Linux programs to gather system details and many of these require root privelges so you have to run it as root or via sudo.
 
-* Birdseye runs many Linux programs to gather system details and many of these require root privelges so you have to run it as root or via sudo.
+* Scary, I know!
 
 * The source code is fully available for review so you can gain trust with it.
 
@@ -78,7 +78,7 @@ It doesn't know about services and applications like web servers, databases, or 
     (7/9) Notes about the system software configuration? [Not specified]
     ->Baseline Linux OS, not yet configured for a workload
 
-    (8/9) What is the FQDN for this systems primary NIC? [metal.maxlab]
+    (8/9) What is the FQDN for this systems primary NIC? [server501.db.example.com]
     ->server501.db.example.com
 
     (9/9) What is the FQDN for this systems out-of-band mgmt NIC? [null]
@@ -87,7 +87,7 @@ It doesn't know about services and applications like web servers, databases, or 
 
     Produces this report header:
     ```
-    Bird's Eye System Inventory for metal.maxlab
+    Birdseye System Inventory for server501.db.example.com
 
     Produced on Saturday, October 14 2023 at 21:10 by Happy User (happyuser@example.com) of Data center operations
 
@@ -99,7 +99,7 @@ It doesn't know about services and applications like web servers, databases, or 
 
     Capture File birdseye.2023.1014.hp-superdomex-dc-main-unit-db501
 
-    metal.maxlab is accessibile at server501.db.example.com with an out-of-band mgmt port at https://server501-ilo.db.example.com/
+    server501 is accessibile at server501.db.example.com with an out-of-band mgmt port at https://server501-ilo.db.example.com/
     ```
 # Sample Report
 
