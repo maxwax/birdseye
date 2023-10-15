@@ -28,16 +28,10 @@ VERSION="2023-1014-01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
-SUDO_USER="null"
 if [ $UID != 0 ]
 then
 	echo "You must be root or use 'sudo' to run birdseye."
 	exit 1
-else
-	# When this script is called using 'sudo' OR 'su' this records
-	# the name of the non-root user so we can set security to this
-	# user on our output files. Same as 'who am i'
-	SUDO_USER=$(who -m | awk '{ print $1 }')
 fi
 
 #----------------------------------------------------------------------------
@@ -5463,7 +5457,9 @@ fi
 # to the non-root username
 # ONLY CHANGE FILES WE MADE - No wildcards!! - maxwell
 
-if [[ $SUDO_USER != "root" ]]
+# If length of SUDO_USER is non-zero, we have a non-root username
+# and we can reset the ownership of our output files to it.
+if [[ -n $SUDO_USER ]]
 then
 	if [[ $DEBUG = "yes" ]]
 	then
@@ -5501,7 +5497,7 @@ then
 	zip -qrl "$OUTPUT_DIR.zip" "$OUTPUT_DIR"
 fi
 
-if [[ $SUDO_USER != "root" ]]
+if [[ -n $SUDO_USER ]]
 then
 	if [[ $DEBUG = "yes" ]]
 	then
