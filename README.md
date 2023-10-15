@@ -25,6 +25,12 @@ It doesn't know about services and applications like web servers, databases, or 
 
 * Birdeye requires only a single Bash script file that can be temporarily deployed on a Linux system.  **Birdseye doesn't modify your environment, deploy dependencies, or do anything else that might cause harm to your system.**
 
+## Sample Report
+
+* 2023 note: This is a very old, outdated report
+
+A [Birdseye Sample](https://github.com/maxwax/birdseye/blob/master/birdseye-sample.html "Birdseye Sample") is available to see what Birdseye looks like.
+
 ## Run as root
 
 > [!WARNING]
@@ -101,9 +107,20 @@ It doesn't know about services and applications like web servers, databases, or 
 
     server501 is accessibile at server501.db.example.com with an out-of-band mgmt port at https://server501-ilo.db.example.com/
     ```
-# Sample Report
+## Configuration
 
-* 2023 note: This is a very old, outdated report
+Default answers to the questions birdseye asks can be defined in a .birdseye.cfg file deployed in the same directory where `birdseye` is run.
 
-A [Birdseye Sample](https://github.com/maxwax/birdseye/blob/master/birdseye-sample.html "Birdseye Sample") is available to see what Birdseye looks like.
+This will allow you to press ENTER to skip having to type your name, department and other common values while providing the answers that are unique to each Birdseye report.
 
+See the included [.birdseye.cfg](https://github.com/maxwax/birdseye/blob/main/.birdseye.cfg) or [sample-dot-birdseye.cfg](https://github.com/maxwax/birdseye/blob/main/sample-dot-birdseye.cfg)
+
+## Supported Platforms
+
+I develop Birdseye on Fedora based Linux systems and occasionally test on the following:
+
+* Red Hat Enterprise Linux 9+
+* CentOS Stream 8,9+
+* Rocky Linux 9+
+* Debian 11 (via Proxmox hypervisors)
+* Recent Amazon Linux on AWS
