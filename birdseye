@@ -24,7 +24,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2023-1014-01"
+VERSION="2023-1121-01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -1421,28 +1421,35 @@ fi
 
 # Set the working variable for the output directory to our constructed 
 # output filename template
-export OUTPUT_DIR="$FILENAME_DATA"
+#export OUTPUT_DIR="reports/$FILENAME_DATA"
+export OUTPUT_DIR="birdseye-reports"
+
+# Construct the base name of the tar file that is automatically
+# generated to hold all of this birdeye run's data files
+# ex: birdseye.something.tar.gz
+export OUTPUT_FILE="$OUTPUT_DIR/$FILENAME_DATA"
 
 # Does the output directory exist? 
 if [[ -d "$OUTPUT_DIR" ]]
 then
-	# If we haven't been told to force it, don't overwrite what might
-	# be important existing data that can't be recreated
-	if [[ $OUTPUT_FORCE == "no" ]]
-	then
-		echo
-		echo "Directory $OUTPUT_DIR exists. Please remove or use --force"
-		exit
-	else
-		echo
-		echo "Directory $OUTPUT_DIR exists, using --force to replace it."
-		# I'm paranoid about using 'rm -f' with a variable (especially as 
-		# root) So we'll keep the existing directory and remove only the
-		# old files that might conflict with THIS report.
-		# Other files in the existing directory are kept 
-
-		rm -f $OUTPUT_DIR/*.txt birdseye.$FILENAME_DATA.tar birdseye.$FILENAME_DATA.tar.gz
-	fi
+  echo "Using existing directory ${OUTPUT_DIR} for output."
+#	# If we haven't been told to force it, don't overwrite what might
+#	# be important existing data that can't be recreated
+#	if [[ $OUTPUT_FORCE == "no" ]]
+#	then
+#		echo
+#		echo "Directory $OUTPUT_DIR exists. Please remove or use --force"
+#		exit
+#	else
+#		echo
+#		echo "Directory $OUTPUT_DIR exists, using --force to replace it."
+#		# I'm paranoid about using 'rm -f' with a variable (especially as 
+#		# root) So we'll keep the existing directory and remove only the
+#		# old files that might conflict with THIS report.
+#		# Other files in the existing directory are kept 
+#
+#		rm -f "$OUTPUT_DIR/*.txt" "$OUTPUT_DIR/birdseye.$FILENAME_DATA.tar" "$OUTPUT_DIR/birdseye.$FILENAME_DATA.tar.gz"
+#	fi
 else # Our output directory does NOT exist
 
 	# Let's try to make a new output directory
@@ -1462,6 +1469,7 @@ HTML="$OUTPUT_DIR/$FILENAME_DATA.html"
 if [[ $DEBUG == "yes" ]]
 then
 	echo "Construct Output: OUTPUT_DIR $OUTPUT_DIR"
+	echo "Construct HTML Output: HTML $HTML"
 fi
 
 # These additional ASCII files contain raw output and many users
@@ -1487,19 +1495,19 @@ function trap_cleanup {
 
 	echo "Trap caught, cleaning up.."
 
-	if [[ -f "$OUTPUT_DIR" ]]
+	if [[ -f "$OUTPUT_FILE.tar" ]]
 	then	
-		rm -r "$OUTPUT_DIR"
+		rm -f "$OUTPUT_FILE.tar"
 	fi
 
-	if [[ -f "$OUTPUT_DIR.tar" ]]
+	if [[ -f "$OUTPUT_FILE.tar.gz" ]]
 	then	
-		rm -f "$OUTPUT_DIR.tar"
+		rm -f "$OUTPUT_FILE.tar.gz"
 	fi
 
-	if [[ -f "$OUTPUT_DIR.tar.gz" ]]
+	if [[ -f "$OUTPUT_FILE.zip" ]]
 	then	
-		rm -f "$OUTPUT_DIR.tar.gz"
+		rm -f "$OUTPUT_FILE.tar.zip"
 	fi
 
 	exit 255
@@ -2617,7 +2625,7 @@ else
 	paragraph "Notes about this software configuration $MY_SW_NOTES" 
 fi
 
-paragraph "Capture File $OUTPUT_DIR"
+paragraph "Capture File $OUTPUT_FILE"
 
 # Do we have both a FQDN port for this system and an OOB mgmt port?
 if [[ $MY_FQDN != "null" ]] && [[ $MY_OOB != "null" ]]
@@ -5442,14 +5450,14 @@ fi # If DEF_SHOW_VIRT is yes, show this section.
 line "</body></html>" >> $HTML 2>&1
 
 # if we see an existing file, remove it so we can replace it.
-if [ -f "$OUTPUT_DIR.tar" ]
+if [ -f "$OUTPUT_FILE.tar" ]
 then
-	rm "$OUTPUT_DIR.tar"
+	rm "$OUTPUT_FILE.tar"
 fi
 # if we see an existing file, remove it so we can replace it.
-if [ -f "$OUTPUT_DIR.tar.gz" ]
+if [ -f "$OUTPUT_FILE.tar.gz" ]
 then
-	rm "$OUTPUT_DIR.tar.gz"
+	rm "$OUTPUT_FILE.tar.gz"
 fi
 
 # If we ran this script using sudo or su -- anything but a real
@@ -5466,7 +5474,7 @@ then
 		echo "Changing ownership of output directory to $SUDO_USER"
 	fi
 
-	chown $SUDO_USER "${OUTPUT_DIR}" 
+	chown $SUDO_USER "${HTML}" 
 
 	for EACH_FILE in \
 		"${FILE_DMI}" "${FILE_CPU}" "${FILE_MSGS}" "${FILE_SYSLOG}" \
@@ -5484,17 +5492,23 @@ then
 	done
 fi
 
+# Generate a base tar file with all data files from this birdseye run
+# Don't compress here because we'll make a .gzip and .zip of this
 echo -e "\nTaring up results."
-tar cf "$OUTPUT_DIR.tar" "$OUTPUT_DIR"
+tar cf "$OUTPUT_FILE.tar" \
+  ${OUTPUT_DIR}/*${FILENAME_DATA}.html \
+  ${OUTPUT_DIR}/*${FILENAME_DATA}.txt
 
 echo "Compressing tar file."
-gzip -9 "$OUTPUT_DIR.tar"
+gzip -9k "$OUTPUT_FILE.tar"
 
 FILE_EXISTS="no"
 check_for_program zip
 if [[ $FILE_EXISTS == "yes" ]]
 then
-	zip -qrl "$OUTPUT_DIR.zip" "$OUTPUT_DIR"
+	zip -qrl "$OUTPUT_FILE.zip" \
+  ${OUTPUT_DIR}/*${FILENAME_DATA}.html \
+  ${OUTPUT_DIR}/*${FILENAME_DATA}.txt
 fi
 
 if [[ -n $SUDO_USER ]]
@@ -5504,15 +5518,16 @@ then
 		echo "Changing ownership of output directory to $SUDO_USER"
 	fi
 
-	if [[ -f $OUTPUT_DIR.tar.gz ]]
+	if [[ -f $OUTPUT_FILE.tar.gz ]]
 	then
-		chown $SUDO_USER "${OUTPUT_DIR}.tar.gz" 
+		chown $SUDO_USER "${OUTPUT_FILE}.tar"
+		chown $SUDO_USER "${OUTPUT_FILE}.tar.gz" 
 	fi
 
-	if [[ -f $OUTPUT_DIR.zip ]]
+	if [[ -f $OUTPUT_FILE.zip ]]
 	then
-		chown $SUDO_USER "${OUTPUT_DIR}.zip"
+		chown $SUDO_USER "${OUTPUT_FILE}.zip"
 	fi
 fi
 
-echo -e "Birdseye capture complete: $OUTPUT_DIR.tar.gz\n"
+echo -e "Birdseye capture complete: $OUTPUT_FILE.tar.gz\n"
