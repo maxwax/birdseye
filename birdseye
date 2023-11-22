@@ -4530,13 +4530,16 @@ fi
 #
 #--------------------------------------------------------------------------
 
-section "section_inter" "Interrupts" "cat /proc/interrupts"
-#textarea_open 120 24
-#cat /proc/interrupts >> $HTML 2>&1
-#textarea_close
-line "<table border=1>"
-cat /proc/interrupts | awk -F "  " '{print "<tr> <td>"$1"</td><td>"$2"</td><td>"$3"</td><td>"$4"</td><td>"$5"</td><td>"$6"</td><td>"$7"</td><td>"$8"</td></tr>"}' >> $HTML 2>&1
-line "</table>"
+# Commented out 2023-1121: Poor handling of data going into an HTML table
+# Also only creates a table with up to 8 columns and bigger systems will
+# need more, so just show the user the raw output data and data from a file
+#section "section_inter_table" "Interrupts Table" "cat /proc/interrupts"
+##textarea_open 120 24
+##cat /proc/interrupts >> $HTML 2>&1
+##textarea_close
+#line "<table border=1>"
+#cat /proc/interrupts | awk -F "  " '{print "<tr> <td>"$1"</td><td>"$2"</td><td>"$3"</td><td>"$4"</td><td>"$5"</td><td>"$6"</td><td>"$7"</td><td>"$8"</td></tr>"}' >> $HTML 2>&1
+#line "</table>"
 
 section "section_inter" "Interrupts" "cat /proc/interrupts"
 textarea_open 120 24
