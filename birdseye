@@ -129,6 +129,7 @@ function item_title {
 	else
 		echo -e "<h4><a name=\"$1\">$2</a><a href="#top" class="boxtop">Table of Contents</a></h4>" >> $HTML
 	fi
+  echo "Capturing: $3"
 }
 
 # Output a bullet (<li>) entry 
@@ -1474,15 +1475,15 @@ fi
 # These additional ASCII files contain raw output and many users
 # wish to have them seperate for processing with 'grep' and other
 # programs.
-FILE_DMI="$OUTPUT_DIR/dmidecode.$FILENAME_DATA.txt"
-FILE_CPU="$OUTPUT_DIR/cpuinfo.$FILENAME_DATA.txt"
-FILE_MSGS="$OUTPUT_DIR/messages.$FILENAME_DATA.txt"
-FILE_SYSLOG="$OUTPUT_DIR/syslog.$FILENAME_DATA.txt"
-FILE_DMESG="$OUTPUT_DIR/dmesg.$FILENAME_DATA.txt"
-FILE_DMESG_NOTIME="$OUTPUT_DIR/dmesg-notime.$FILENAME_DATA.txt"
-FILE_INTER="$OUTPUT_DIR/interrupts.$FILENAME_DATA.txt"
-FILE_PCI="$OUTPUT_DIR/lspci.$FILENAME_DATA.txt"
-FILE_INITRD="$OUTPUT_DIR/initrd.$FILENAME_DATA.txt"
+FILE_DMI="$OUTPUT_DIR/$FILENAME_DATA.dmidecode.txt"
+FILE_CPU="$OUTPUT_DIR/$FILENAME_DATA.cpuinfo.txt"
+FILE_MSGS="$OUTPUT_DIR/$FILENAME_DATA.messages.txt"
+FILE_SYSLOG="$OUTPUT_DIR/$FILENAME_DATA.syslog.txt"
+FILE_DMESG="$OUTPUT_DIR/$FILENAME_DATA.dmesg.txt"
+FILE_DMESG_NOTIME="$OUTPUT_DIR/$FILENAME_DATA.dmesg-notime.txt"
+FILE_INTER="$OUTPUT_DIR/$FILENAME_DATA.interrupts.txt"
+FILE_PCI="$OUTPUT_DIR/$FILENAME_DATA.lspci.txt"
+FILE_INITRD="$OUTPUT_DIR/$FILENAME_DATA.initrd.txt"
 
 #----------------------------------------------------------------------------
 #
@@ -5476,7 +5477,7 @@ fi
 echo -e "\nTaring up results."
 tar cf "$OUTPUT_FILE.tar" \
   ${OUTPUT_DIR}/*${FILENAME_DATA}.html \
-  ${OUTPUT_DIR}/*${FILENAME_DATA}.txt
+  ${OUTPUT_DIR}/*${FILENAME_DATA}*.txt
 
 echo "Compressing tar file."
 gzip -9k "$OUTPUT_FILE.tar"
