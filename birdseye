@@ -944,8 +944,8 @@ function usage {
 	echo "   --month    Include month & day in filename"
 	echo "   --time     Include 24-hour format time in filename"
 	echo "   --host     Include system's hostname in filename"
-	echo "   --notag    Do not include report tag in filename (Default: include)"
-	echo "   --force    Overwrite an existing output directory if it exists."
+  echo "   --notag    Do not include report tag in filename (Default: include)"
+  echo "   --force    Overwrite an existing output file if it exists."
 	echo
 }
 
@@ -1429,27 +1429,28 @@ export OUTPUT_DIR="birdseye-reports"
 # ex: birdseye.something.tar.gz
 export OUTPUT_FILE="$OUTPUT_DIR/$FILENAME_DATA"
 
+# HTML is the name of our often used HTML format output file
+HTML="$OUTPUT_DIR/$FILENAME_DATA.html"
+
 # Does the output directory exist? 
-if [[ -d "$OUTPUT_DIR" ]]
+if [[ -d "${OUTPUT_DIR}" ]]
 then
-  echo "Using existing directory ${OUTPUT_DIR} for output."
-#	# If we haven't been told to force it, don't overwrite what might
-#	# be important existing data that can't be recreated
-#	if [[ $OUTPUT_FORCE == "no" ]]
-#	then
-#		echo
-#		echo "Directory $OUTPUT_DIR exists. Please remove or use --force"
-#		exit
-#	else
-#		echo
-#		echo "Directory $OUTPUT_DIR exists, using --force to replace it."
-#		# I'm paranoid about using 'rm -f' with a variable (especially as 
-#		# root) So we'll keep the existing directory and remove only the
-#		# old files that might conflict with THIS report.
-#		# Other files in the existing directory are kept 
-#
-#		rm -f "$OUTPUT_DIR/*.txt" "$OUTPUT_DIR/birdseye.$FILENAME_DATA.tar" "$OUTPUT_DIR/birdseye.$FILENAME_DATA.tar.gz"
-#	fi
+  # Does an existing output file with the same name exist?
+  if [[ -f "${HTML}" ]]
+  then
+    # If we haven't been told to force it, don't overwrite what might
+    # be important existing data that can't be recreated
+    if [[ $OUTPUT_FORCE == "no" ]]
+    then
+      echo
+      echo "An existing HTML output file exists. Please remove manually or use --force to overwrite"
+      echo
+      echo "Existing files from a previous run:"
+      echo
+      ls -l ${OUTPUT_DIR}/*${FILENAME_DATA}*
+      exit
+    fi
+  fi
 else # Our output directory does NOT exist
 
 	# Let's try to make a new output directory
@@ -1458,13 +1459,10 @@ else # Our output directory does NOT exist
 	# Did we succeed?
 	if [ $? != 0 ]
 	then
-		echo "Error: I can't create directory $OUTPUT_DIR"
+		echo "Error: I can't create directory $OUTPUT_DIR for data files"
 		exit
 	fi
 fi
-
-# HTML is the name of our often used HTML format output file
-HTML="$OUTPUT_DIR/$FILENAME_DATA.html"
 
 if [[ $DEBUG == "yes" ]]
 then
@@ -1494,21 +1492,12 @@ FILE_INITRD="$OUTPUT_DIR/initrd.$FILENAME_DATA.txt"
 function trap_cleanup {
 
 	echo "Trap caught, cleaning up.."
-
-	if [[ -f "$OUTPUT_FILE.tar" ]]
-	then	
-		rm -f "$OUTPUT_FILE.tar"
-	fi
-
-	if [[ -f "$OUTPUT_FILE.tar.gz" ]]
-	then	
-		rm -f "$OUTPUT_FILE.tar.gz"
-	fi
-
-	if [[ -f "$OUTPUT_FILE.zip" ]]
-	then	
-		rm -f "$OUTPUT_FILE.tar.zip"
-	fi
+  echo
+  echo "This script no longer uses the 'rm' command to remove files."
+  echo
+  echo "Please clean up manually by removing these files in directory '${OUTPUT_DIR}'"
+  echo
+  ls -l ${OUTPUT_DIR}/*${FILENAME_DATA}*
 
 	exit 255
 }
@@ -5448,17 +5437,6 @@ fi # If DEF_SHOW_VIRT is yes, show this section.
 #--------------------------------------------------------------------------
 
 line "</body></html>" >> $HTML 2>&1
-
-# if we see an existing file, remove it so we can replace it.
-if [ -f "$OUTPUT_FILE.tar" ]
-then
-	rm "$OUTPUT_FILE.tar"
-fi
-# if we see an existing file, remove it so we can replace it.
-if [ -f "$OUTPUT_FILE.tar.gz" ]
-then
-	rm "$OUTPUT_FILE.tar.gz"
-fi
 
 # If we ran this script using sudo or su -- anything but a real
 # login as 'root', then change the output directory and files
