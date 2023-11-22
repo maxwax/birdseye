@@ -2699,6 +2699,7 @@ line "<div class=\"toc_detail\">"
 toc_section "toc_linux_summary" "Linux Summary" "#section_linux_summary"
 unordered_list_open
 list "item_hostname"					"System name" "hostname"
+list "item_hostnamectl"			  "System name" "hostnamectl"
 list "item_date"							"System date/time" "date"
 list "item_uname"							"System identification" "uname -a"
 list "item_issue"							"Distribution, Version" "/etc/issue"
@@ -2994,6 +2995,11 @@ section "section_linux_summary" "Linux Summary"
 item_title "item_hostname"	"System name" "hostname"
 raw_open
 hostname >> $HTML 2>&1
+raw_close
+
+item_title "item_hostnamectl"	"System name" "hostnamectl"
+raw_open
+hostnamectl >> $HTML 2>&1
 raw_close
 
 item_title "item_date"		"System date/time" "date"
