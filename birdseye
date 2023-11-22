@@ -24,7 +24,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="2023-1121-01"
+VERSION="1.9.0"
+VERSION_DATE="2023-1121-01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -910,7 +911,7 @@ USE_FARENHEIT=" -f "
 
 # Display syntax
 function usage {
-	echo "Birdseye (version $VERSION)"
+	echo "Birdseye (version ${VERSION} ${VERSION_DATE})"
 	echo
 	echo "usage: birdseye <options>"
 	echo
