@@ -678,6 +678,10 @@ FILE_EXISTS="no"
 check_for_program facter
 AVAILABLE_FACTER=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program ohai
+AVAILABLE_OHAI=$FILE_EXISTS
+
 # Suse SLES 11 SP3 reports sensors is present even when the binary
 # is not because it sees an /etc/sensors.conf file.  This causes
 # check for program to return true and an attempt to use sensors later
@@ -1485,6 +1489,7 @@ FILE_DMESG_NOTIME="$OUTPUT_DIR/$FILENAME_DATA.dmesg-notime.txt"
 FILE_INTER="$OUTPUT_DIR/$FILENAME_DATA.interrupts.txt"
 FILE_PCI="$OUTPUT_DIR/$FILENAME_DATA.lspci.txt"
 FILE_INITRD="$OUTPUT_DIR/$FILENAME_DATA.initrd.txt"
+FILE_OHAI="$OUTPUT_DIR/$FILENAME_DATA.ohai.json"
 
 #----------------------------------------------------------------------------
 #
@@ -1518,7 +1523,7 @@ trap 'trap_cleanup; exit 255' SIGINT SIGQUIT SIGTERM
 
 for EACH_FILE in \
 	$HTML $FILE_DMI $FILE_CPU $FILE_MSGS $FILE_DMESG $FILE_DMESG_NOTIME \
-	$FILE_INTER $FILE_PCI $FILE_INITRD
+	$FILE_INTER $FILE_PCI $FILE_INITRD $FILE_OHAI
 do
 	echo -n > $EACH_FILE
 done
@@ -2960,7 +2965,8 @@ unordered_list_close
 toc_section "toc_configmgmt"	"Config Mgmt Facts" "#section_configmgmt"
 
 unordered_list_open
-list "item_facter"				 		"Puppet facter items" "facter"
+list "item_facter"				 		"Puppet facter inventory" "facter"
+list "item_ohai"				 		  "Chef ohai inventory" "ohai"
 unordered_list_close
 
 toc_section "toc_virt"				"Virtualization" "#section_virt"
@@ -3136,6 +3142,20 @@ then
 else
   raw_open
 	line "The Puppet 'facter' command is not available on this system."
+  raw_close
+fi
+
+item_title "item_ohai"	"Chef Ohai" "ohai"
+
+if [[ $AVAILABLE_OHAI == "yes" ]]
+then
+	textarea_open 120 24
+	ohai >> $HTML 2>&1
+  ohai >> $FILE_OHAI 2>&1
+	textarea_close
+else
+  raw_open
+	line "The Chef 'ohai' program is not available on this system."
   raw_close
 fi
 
@@ -4449,10 +4469,12 @@ fi
 #
 #--------------------------------------------------------------------------
 
+section "section_inter" "Interrupts"
+
 # Commented out 2023-1121: Poor handling of data going into an HTML table
 # Also only creates a table with up to 8 columns and bigger systems will
 # need more, so just show the user the raw output data and data from a file
-#section "section_inter_table" "Interrupts Table" "cat /proc/interrupts"
+#item_title "item_inter_table"  "Interrupts" "cat/proc/interrupts"
 ##textarea_open 120 24
 ##cat /proc/interrupts >> $HTML 2>&1
 ##textarea_close
@@ -4460,7 +4482,7 @@ fi
 #cat /proc/interrupts | awk -F "  " '{print "<tr> <td>"$1"</td><td>"$2"</td><td>"$3"</td><td>"$4"</td><td>"$5"</td><td>"$6"</td><td>"$7"</td><td>"$8"</td></tr>"}' >> $HTML 2>&1
 #line "</table>"
 
-section "section_inter" "Interrupts" "cat /proc/interrupts"
+item_title "item_inter"  "Interrupts" "cat/proc/interrupts"
 textarea_open 120 24
 cat /proc/interrupts >> $HTML 2>&1
 textarea_close
@@ -5518,7 +5540,7 @@ then
 	for EACH_FILE in \
 		"${FILE_DMI}" "${FILE_CPU}" "${FILE_MSGS}" "${FILE_SYSLOG}" \
 		"${FILE_DMESG}" "${FILE_DMESG_NOTIME}" "${FILE_INTER}" \
-		"${FILE_PCI}" "${FILE_INITRD}"
+		"${FILE_PCI}" "${FILE_INITRD}" "${FILE_OHAI}"
 	do
 		if [[ $DEBUG = "yes" ]]
 		then
