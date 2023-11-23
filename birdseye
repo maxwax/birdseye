@@ -2028,7 +2028,7 @@ fi
 #----------------------------------------------------------------------------
 
 line "<!doctype html>\n<html>\n<head>\n<title>Birdseye Report for $MY_HOST</title>"
-line "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=ISO-8859-1\">"
+line "<meta http-equiv=\"Content-Type\" content=\"text/html; charset=utf-8\">"
 
 #----------------------------------------------------------------------------
 #
