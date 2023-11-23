@@ -1739,7 +1739,7 @@ fi
 
 #----------------------------------------------------------------------------
 
-if [[ $DIST_NAME == "Fedora" ]]
+if [[ $DIST_NAME == "Fedora" || $DIST_NAME == "Fedora Linux" ]]
 then
 	DIST_PACKAGES="rpm"
 	DIST_FAMILY="Redhat"
@@ -2648,20 +2648,21 @@ paragraph "Linux Environment"
 toc_master "#toc_linux_summary" "Linux Summary"
 toc_master "#toc_bootmsgs" 			"Boot messages"
 toc_master "#toc_messages"			"Console/System Messages"
-toc_master "#toc_configmgmt"		"Config Mgmt Facts"
 toc_master "#toc_kernelcfg"	 		"Kernel Configuration"
 toc_master "#toc_bootcfg" 			"Boot Configuration"
 toc_master "#toc_security" 			"Security Configuration"
 toc_master "#toc_modules"		 		"Kernel Modules"
 toc_master "#toc_processes"		 	"Processes Running"
-toc_master "#toc_hw_sensors"		"Hardware Sensors"
-toc_master "#toc_network_cfg"		"Network Configuration"
-toc_master "#toc_storage_cfg"		"Storage Configuration"
 toc_master "#toc_services"			"Services Configuration"
 toc_master "#toc_packages"			"Repositories and Software Packages"
 toc_master "#toc_udev"					"Udev configuration"
-toc_master "#toc_serial"				"Serial device configuration"
 toc_master "#toc_xwindows"			"X-Windows"
+
+paragraph "Networking"
+toc_master "#toc_network_cfg"		"Network Configuration"
+
+paragraph "Storage"
+toc_master "#toc_storage_cfg"		"Storage Configuration"
 
 paragraph "Hardware Resources"
 
@@ -2675,6 +2676,12 @@ toc_master "#toc_usb"						"USB System"
 toc_master "#toc_network_dev"		"Network Devices"
 toc_master "#toc_storage"				"Storage Devices"
 toc_master "#toc_periphs"				"Peripherals"
+toc_master "#toc_serial"				"Serial device configuration"
+toc_master "#toc_hw_sensors"		"Hardware Sensors"
+
+paragraph "Configuration Management"
+
+toc_master "#toc_configmgmt"		"Config Mgmt Facts"
 
 paragraph "Virtualization"
 
@@ -2697,6 +2704,7 @@ line "<h2><a name=\"toc\">Table of Contents - Detail</a></h2>"
 line "<div class=\"toc_detail\">"
 
 toc_section "toc_linux_summary" "Linux Summary" "#section_linux_summary"
+
 unordered_list_open
 list "item_hostname"					"System name" "hostname"
 list "item_hostnamectl"			  "System name" "hostnamectl"
@@ -2721,12 +2729,6 @@ toc_section "toc_messages"		"Console/System Messages" "#section_messages"
 
 unordered_list_open
 list "item_messages"					"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
-unordered_list_close
-
-toc_section "toc_configmgmt"	"Config Mgmt Facts" "#section_configmgmt"
-
-unordered_list_open
-list "item_facter"				 		"Puppet facter items" "facter"
 unordered_list_close
 
 toc_section "toc_kernelcfg"		"Kernel Configuration" "#section_kernelcfg"
@@ -2755,6 +2757,7 @@ list "item_redhatgrub"				"EFI: Redhat Grub" "cat /boot/efi/redhat/grub.conf"
 unordered_list_close
 
 toc_section "toc_security"		"Security Configuration" "#section_security"
+
 unordered_list_open
 list "item_selinux"						"SELinux Status" "cat /etc/selinux/config"
 unordered_list_close
@@ -2770,51 +2773,20 @@ list "item_moddep"						"Module Dependencies" "cat /lib/modules/(kernel)/modules
 unordered_list_close
 
 toc_section "toc_processes"		"Processes Running" "#section_processes"
+
 unordered_list_open
 list "item_processes"					"Processes" "ps axf"
 unordered_list_close
 
-toc_section "toc_hw_sensors"	"Hardware Sensors" "#section_hw_sensors"
-unordered_list_open
-list "item_hw_sensors"				"Hardware Sensors Readings" "sensors"
-unordered_list_close
-
-toc_section "toc_network_cfg"	"Network Configuration" "#section_network_cfg"
-
-unordered_list_open
-list "item_nics_list"					"Network Device List" "nics (script)"
-list "item_resolv"						"DNS Resolution" "cat /etc/resolv.conf"
-list "item_hosts"							"Local Hosts" "cat /etc/hosts"
-list "item_nsswitch"					"Name Service Switch Config" "cat /etc/nsswitch.conf"
-list "item_ifcfg"							"Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
-list "item_networks"					"Network Configuration (debian)" "cat /etc/network/interfaces"
-list "item_iproute"						"Network routing table via ip route" "ip route"
-list "item_netstat"						"Network routing table via netstat" "netstat"
-list "item_firewall"					"Firewall rules" "iptables -L"
-unordered_list_close
-
 toc_section "toc_services"		"Services Configuration" "#section_services"
+
 unordered_list_open
 list "item_chkconfig"					"Chkconfig" "chkconfig"
-list "item_systemctl"					"Systemctl" "chkconfig"
-unordered_list_close
-
-toc_section "toc_storage_cfg"	"Storage Configuration" "#section_storage_cfg"
-
-unordered_list_open
-list "item_fsblk"							"Filesystem Block Devices" "lsblk -fi"
-list "item_fstab"							"Filesystem mount table" "fstab"
-list "item_mount"							"Mounted filesystems" "mount"
-list "item_findmnt"		  			"Mounted filesystems" "findmnt"
-list "item_pvscan"						"LVM2: Physical Volumes" "pvscan"
-list "item_pvs"								"LVM2: Physical Volumes" "pvs"
-list "item_vgscan"						"LVM2: Volume Groups" "vgscan"
-list "item_vgs"								"LVM2: Volume Groups" "vgs"
-list "item_lvscan"						"LVM2: Logical Volumes" "lvscan"
-list "item_lvs"								"LVM2: Logical Volumes" "lvs"
+list "item_systemctl"					"Systemctl" "systemctl"
 unordered_list_close
 
 toc_section "toc_packages"		"Repositories and Software Packages" "#section_packages"
+
 unordered_list_open
 if [[ $DIST_PACKAGES == "rpm" ]]
 then
@@ -2843,20 +2815,41 @@ list "item_udevconf"					"udev configuration" "cat /etc/udev.conf"
 list "item_udevrules"					"udev rules" "cat /etc/udev/rules.d/*"
 unordered_list_close
 
-toc_section "toc_serial"			"Serial device configuration" "#section_serial"
-
-unordered_list_open
-list "item_serialdmesg"				"Serial devices in dmesg logs" "dmesg | grep tty<serial>"
-list "item_serialproc"				"Serial devices /proc" "cat /proc/tty/drivers/*"
-list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
-unordered_list_close
-
 toc_section "toc_xwindows"		"X-Windows" "#section_xwindows"
 
 unordered_list_open
 list "item_xrandr"						"X RandR: Resize, Rotate and Reflect Extension Ifno" "xrandr"
 list "item_dpyinfo"						"X Display Info" "xdpyinfo"
 list "item_glxinfo"						"GLX Info" "glxinfo/glxinfo64"
+unordered_list_close
+
+toc_section "toc_network_cfg"	"Network Configuration" "#section_network_cfg"
+
+unordered_list_open
+list "item_nics_list"					"Network Device List" "nics (script)"
+list "item_resolv"						"DNS Resolution" "cat /etc/resolv.conf"
+list "item_hosts"							"Local Hosts" "cat /etc/hosts"
+list "item_nsswitch"					"Name Service Switch Config" "cat /etc/nsswitch.conf"
+list "item_ifcfg"							"Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
+list "item_networks"					"Network Configuration (debian)" "cat /etc/network/interfaces"
+list "item_iproute"						"Network routing table via ip route" "ip route"
+list "item_netstat"						"Network routing table via netstat" "netstat"
+list "item_firewall"					"Firewall rules" "iptables -L"
+unordered_list_close
+
+toc_section "toc_storage_cfg"	"Storage Configuration" "#section_storage_cfg"
+
+unordered_list_open
+list "item_fsblk"							"Filesystem Block Devices" "lsblk -fi"
+list "item_fstab"							"Filesystem mount table" "fstab"
+list "item_mount"							"Mounted filesystems - mount" "mount"
+list "item_findmnt"		  			"Mounted filesystems - findmnt" "findmnt"
+list "item_pvscan"						"LVM2: Physical Volumes" "pvscan"
+list "item_pvs"								"LVM2: Physical Volumes" "pvs"
+list "item_vgscan"						"LVM2: Volume Groups" "vgscan"
+list "item_vgs"								"LVM2: Volume Groups" "vgs"
+list "item_lvscan"						"LVM2: Logical Volumes" "lvscan"
+list "item_lvs"								"LVM2: Logical Volumes" "lvs"
 unordered_list_close
 
 toc_section "toc_hw_summary"  "Hardware Summary" "#section_hw_summary"
@@ -2948,6 +2941,26 @@ unordered_list_open
 list "item_cdinfo"						"DVD/CD drive info" "cd-info"
 unordered_list_close
 
+toc_section "toc_hw_sensors"	"Hardware Sensors" "#section_hw_sensors"
+
+unordered_list_open
+list "item_hw_sensors"				"Hardware Sensors Readings" "sensors"
+unordered_list_close
+
+toc_section "toc_serial"			"Serial device configuration" "#section_serial"
+
+unordered_list_open
+list "item_setserial"					"Serial devices" "setserial -g ttyS[0123456789]"
+list "item_serialdmesg"				"Serial devices in dmesg logs" "dmesg | grep tty<serial>"
+list "item_serialproc"				"Serial devices /proc" "cat /proc/tty/drivers/*"
+unordered_list_close
+
+toc_section "toc_configmgmt"	"Config Mgmt Facts" "#section_configmgmt"
+
+unordered_list_open
+list "item_facter"				 		"Puppet facter items" "facter"
+unordered_list_close
+
 toc_section "toc_virt"				"Virtualization" "#section_virt"
 
 unordered_list_open
@@ -2964,6 +2977,7 @@ list "item_virsh_netlist"			"Virtualization Network List" "virsh net-list"
 unordered_list_close
 
 toc_section "toc_vms"					"Virtual Machines" "#section_vms"
+
 unordered_list_open
 list "item_vmlist"						"Virtual Machines Defined" "virsh list --all"
 list "item_virsh_pool_list"		"Virtualization Storage Pool List" "virsh pool-list"
@@ -3629,30 +3643,6 @@ textarea_close
 
 #--------------------------------------------------------------------------
 #
-# Hardware Sensors
-#
-#--------------------------------------------------------------------------
-
-section "section_hw_sensors" "Hardware Sensors"
-
-item_title "item_hw_sensors"	"Hardware Sensor Readings" "sensors"
-line "The sensor readings shown here are accurate as of the time of this Birdseye report and may not reflect the readings at an earlier time of importance."
-if [[ $AVAILABLE_SENSORS == "yes" ]]
-then
-	# count the number of output lines
-	SENSORS_LINES=$(sensors | wc -l)
-
-	text_open $SENSORS_LINES 120 24
-	sensors $USE_FARENHEIT >> $HTML 2>&1
-	text_close
-else
-	raw_open
-	line "The lm_sensors package's 'sensors' program is not available on this system."
-	raw_close
-fi
-
-#--------------------------------------------------------------------------
-#
 # Network Configuration
 #
 #--------------------------------------------------------------------------
@@ -4083,120 +4073,6 @@ repos.d/*"
 	textarea_open 120 24
 	zypper search | grep "i |" >> $HTML 2>&1
 	textarea_close
-fi
-
-#--------------------------------------------------------------------------
-#
-# udev Configuration
-#
-#--------------------------------------------------------------------------
-
-section "section_serial" "Serial device configuration"
-
-item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep tty"
-# standard serial ports - try to ignore non-serial console tty devices
-# This should catch ttyS01 as well as ttyUSB01 and similar
-if [[ $(dmesg | grep "tty" | grep -v "tty[0123456789]" | wc -l) -gt 0 ]]
-then
-	line "Logs related to serial ports have been seen in the past but those ports may not <strong>currently</strong> be available."
-	raw_open
-	dmesg | grep "tty" | grep -v "tty[0123456789]" >> $HTML 2>&1
-	raw_close
-else
-	raw_open
-	line "Information about serial ports is not available in the dmesg logs."
-	raw_close
-fi
-
-item_title "item_serialproc"	"Serial devices in /proc" "cat /proc/tty/driver/*"
-line
-for EACH_SERIAL_TYPE in /proc/tty/driver/*
-do
-	raw_caption "cap_serial_driver" "${EACH_SERIAL_TYPE}:"
-	raw_open
-	cat $EACH_SERIAL_TYPE >> $HTML 2>&1
-	raw_close
-done
-
-item_title "item_setserial"	"Serial devices" "setserial -g ttyS#"
-
-# Default this flag to no, we haven't seen/processed any ports
-SERIAL_PORTS_SEEN="no"
-
-# Loop on each type of serial port known
-for EACH_SERIAL_PREFIX in S USB
-do
-
-	# Loop on first ten serial ports. Haven't more than ten in a long time?
-	for EACH_SERIAL_NUMBER in {0..9}
-	do
-
-		# Let's set this variable to an actual serial port device name
-		EACH_SERIAL_DEVICE="/dev/${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
-
-		if [[ $DEBUG == "yes" ]]
-		then
-			echo "Serial Scanning $EACH_SERIAL_DEVICE"
-		fi
-		
-		if [[ -c $EACH_SERIAL_DEVICE ]]
-		then
-
-			# The presence of UART chips on the computer may cause /dev/ttyS#
-			# entries to appear even when actual ports do not exist.
-			# If stty fails, then we probably don't have a real port.
-			# set serial will still run.
-			stty < $EACH_SERIAL_DEVICE > /dev/null 2>&1
-			if (( $? == 0 ))
-			then
-
-				if [[ $DEBUG == "yes" ]]
-				then
-					echo "Device $EACH_SERIAL_DEVICE is present."
-				fi
-	
-				# If the setserial program is installed, then execute it
-				if [[ $AVAILABLE_SETSERIAL == "yes" ]]
-				then
-
-					# setserial is really about serial port UART chips and
-					# does not like USB based serial ports
-					if [[ ${EACH_SERIAL_DEVICE:1:6} != "ttyUSB" ]]
-					then
-
-						raw_caption "caption_setserial" "setserial $EACH_SERIAL_DEVICE"
-						raw_open
-						setserial -a $EACH_SERIAL_DEVICE >> $HTML 2>&1
-						raw_close
-					fi
-
-				else
-					echo "'setserial' is not available on this system." >> $HTML 2>&1
-				fi
-
-				line
-
-				raw_caption "caption_stty" "stty $EACH_SERIAL_DEVICE"
-				raw_open
-				stty -a < $EACH_SERIAL_DEVICE >> $HTML 2>&1
-				raw_close
-
-				# Now that we've seen/processed a port, set the seen to yes
-				SERIAL_PORTS_SEEN="yes"
-
-			fi # endif - can we execute stty on the serial port?
-
-
-		fi # endif - do we have a serial port device in /dev/ ?
-	done # loop - process serial ports by number 0..9
-done # loop - process serial port prefixes 'S' and 'USB'
-
-# If we haven't seen any serial ports, report it cleanly to the user
-if [[ $SERIAL_PORTS_SEEN == "no" ]]
-then
-	raw_open
-	line "There are no physical serial ports on this system."
-	raw_close
 fi
 
 #--------------------------------------------------------------------------
@@ -4964,6 +4840,143 @@ then
 else
 	raw_open
 	line "cd-info is not available on this system"
+	raw_close
+fi
+
+#--------------------------------------------------------------------------
+#
+# Serial Configuration
+#
+#--------------------------------------------------------------------------
+
+section "section_serial" "Serial device configuration"
+
+item_title "item_setserial"	"Serial devices" "setserial -g ttyS#"
+
+# Default this flag to no, we haven't seen/processed any ports
+SERIAL_PORTS_SEEN="no"
+
+# Loop on each type of serial port known
+for EACH_SERIAL_PREFIX in S USB
+do
+
+	# Loop on first ten serial ports. Haven't more than ten in a long time?
+	for EACH_SERIAL_NUMBER in {0..9}
+	do
+
+		# Let's set this variable to an actual serial port device name
+		EACH_SERIAL_DEVICE="/dev/${EACH_SERIAL_PREFIX}${EACH_SERIAL_NUMBER}"
+
+		if [[ $DEBUG == "yes" ]]
+		then
+			echo "Serial Scanning $EACH_SERIAL_DEVICE"
+		fi
+		
+		if [[ -c $EACH_SERIAL_DEVICE ]]
+		then
+
+			# The presence of UART chips on the computer may cause /dev/ttyS#
+			# entries to appear even when actual ports do not exist.
+			# If stty fails, then we probably don't have a real port.
+			# set serial will still run.
+			stty < $EACH_SERIAL_DEVICE > /dev/null 2>&1
+			if (( $? == 0 ))
+			then
+
+				if [[ $DEBUG == "yes" ]]
+				then
+					echo "Device $EACH_SERIAL_DEVICE is present."
+				fi
+	
+				# If the setserial program is installed, then execute it
+				if [[ $AVAILABLE_SETSERIAL == "yes" ]]
+				then
+
+					# setserial is really about serial port UART chips and
+					# does not like USB based serial ports
+					if [[ ${EACH_SERIAL_DEVICE:1:6} != "ttyUSB" ]]
+					then
+
+						raw_caption "caption_setserial" "setserial $EACH_SERIAL_DEVICE"
+						raw_open
+						setserial -a $EACH_SERIAL_DEVICE >> $HTML 2>&1
+						raw_close
+					fi
+
+				else
+					echo "'setserial' is not available on this system." >> $HTML 2>&1
+				fi
+
+				line
+
+				raw_caption "caption_stty" "stty $EACH_SERIAL_DEVICE"
+				raw_open
+				stty -a < $EACH_SERIAL_DEVICE >> $HTML 2>&1
+				raw_close
+
+				# Now that we've seen/processed a port, set the seen to yes
+				SERIAL_PORTS_SEEN="yes"
+
+			fi # endif - can we execute stty on the serial port?
+
+
+		fi # endif - do we have a serial port device in /dev/ ?
+	done # loop - process serial ports by number 0..9
+done # loop - process serial port prefixes 'S' and 'USB'
+
+# If we haven't seen any serial ports, report it cleanly to the user
+if [[ $SERIAL_PORTS_SEEN == "no" ]]
+then
+	raw_open
+	line "There are no physical serial ports on this system."
+	raw_close
+fi
+item_title "item_serialdmesg"	"Serial log in dmesg" "dmesg | grep tty"
+# standard serial ports - try to ignore non-serial console tty devices
+# This should catch ttyS01 as well as ttyUSB01 and similar
+if [[ $(dmesg | grep "tty" | grep -v "tty[0123456789]" | wc -l) -gt 0 ]]
+then
+	line "Logs related to serial ports have been seen in the past but those ports may not <strong>currently</strong> be available."
+	raw_open
+	dmesg | grep "tty" | grep -v "tty[0123456789]" >> $HTML 2>&1
+	raw_close
+else
+	raw_open
+	line "Information about serial ports is not available in the dmesg logs."
+	raw_close
+fi
+
+item_title "item_serialproc"	"Serial devices in /proc" "cat /proc/tty/driver/*"
+line
+for EACH_SERIAL_TYPE in /proc/tty/driver/*
+do
+	raw_caption "cap_serial_driver" "${EACH_SERIAL_TYPE}:"
+	raw_open
+	cat $EACH_SERIAL_TYPE >> $HTML 2>&1
+	raw_close
+done
+
+#--------------------------------------------------------------------------
+#
+# Hardware Sensors
+#
+#--------------------------------------------------------------------------
+
+section "section_hw_sensors" "Hardware Sensors"
+
+item_title "item_hw_sensors"	"Hardware Sensor Readings" "sensors"
+line "The sensor readings shown here are accurate as of the time of this Birdseye report and may not reflect the readings at an earlier time of importance."
+if [[ $AVAILABLE_SENSORS == "yes" ]]
+then
+	# count the number of output lines
+	SENSORS_LINES=$(sensors | wc -l)
+
+	text_open $SENSORS_LINES 120 24
+	sensors $USE_FARENHEIT >> $HTML 2>&1
+	text_close
+else
+	raw_open
+	line "The lm_sensors package's 'sensors' program is not available on this system."
 	raw_close
 fi
 
