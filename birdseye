@@ -25,8 +25,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="1.9.2"
-VERSION_DATE="2023-1122-01"
+VERSION="1.9.3"
+VERSION_DATE="2023-1123-01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -681,6 +681,10 @@ AVAILABLE_FACTER=$FILE_EXISTS
 FILE_EXISTS="no"
 check_for_program ohai
 AVAILABLE_OHAI=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program journalctl
+AVAILABLE_JOURNALCTL=$FILE_EXISTS
 
 # Suse SLES 11 SP3 reports sensors is present even when the binary
 # is not because it sees an /etc/sensors.conf file.  This causes
@@ -1462,6 +1466,7 @@ else # Our output directory does NOT exist
 
 	# Let's try to make a new output directory
 	mkdir "$OUTPUT_DIR"
+	chown $SUDO_USER "$OUTPUT_DIR"
 
 	# Did we succeed?
 	if [ $? != 0 ]
@@ -1483,6 +1488,7 @@ fi
 FILE_DMI="$OUTPUT_DIR/$FILENAME_DATA.dmidecode.txt"
 FILE_CPU="$OUTPUT_DIR/$FILENAME_DATA.cpuinfo.txt"
 FILE_MSGS="$OUTPUT_DIR/$FILENAME_DATA.messages.txt"
+FILE_JOURNAL="$OUTPUT_DIR/$FILENAME_DATA.journal.txt"
 FILE_SYSLOG="$OUTPUT_DIR/$FILENAME_DATA.syslog.txt"
 FILE_DMESG="$OUTPUT_DIR/$FILENAME_DATA.dmesg.txt"
 FILE_DMESG_NOTIME="$OUTPUT_DIR/$FILENAME_DATA.dmesg-notime.txt"
@@ -1522,7 +1528,7 @@ trap 'trap_cleanup; exit 255' SIGINT SIGQUIT SIGTERM
 #----------------------------------------------------------------------------
 
 for EACH_FILE in \
-	$HTML $FILE_DMI $FILE_CPU $FILE_MSGS $FILE_DMESG $FILE_DMESG_NOTIME \
+	$HTML $FILE_DMI $FILE_CPU $FILE_MSGS $FILE_SYSLOG $FILE_JOURNAL $FILE_DMESG $FILE_DMESG_NOTIME \
 	$FILE_INTER $FILE_PCI $FILE_INITRD $FILE_OHAI
 do
 	echo -n > $EACH_FILE
@@ -2734,7 +2740,9 @@ unordered_list_close
 toc_section "toc_messages"		"Console/System Messages" "#section_messages"
 
 unordered_list_open
-list "item_messages"					"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
+list "item_messages"					"Linux system log - messages" "cat /var/log/messages"
+list "item_syslog"  					"Linux system log - syslog" "cat /var/log/syslog"
+list "item_journal"					  "Linux system log - Journal" "journalctl -b"
 unordered_list_close
 
 toc_section "toc_kernelcfg"		"Kernel Configuration" "#section_kernelcfg"
@@ -3128,7 +3136,7 @@ else
 fi
 textarea_close
 
-helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMESG target=_file_dmesg>separate dmesg info file.</a>"
+helpful_tip "Detailed information is available in the <a href=file:${FILE_DMESG##${OUTPUT_DIR}/} target=_file_dmesg>separate dmesg info file.</a>"
 
 section "section_configmgmt" "Config Mgmt Facts"
 
@@ -3161,9 +3169,8 @@ fi
 
 section "section_messages" "Console/System Messages"
 
-item_title "item_messages"	"Linux system log" "cat /var/log/messages | cat /var/log/syslog"
+item_title "item_messages"	"Linux system log" "cat /var/log/messages"
 
-# need to edit for debian, newer fedora, etc
 if [ -f /var/log/messages ]
 then
 	declare -i MSG_LINES
@@ -3177,13 +3184,13 @@ then
 	# A large messages file is usually full of unwanted crap like
 	# sound card and GUI errors.  So lets show only a reasonable amount
 	# if the file is very large.
-	if [[ $MSG_LINES -gt 25000 ]]
+	if [[ $MSG_LINES -gt 10000 ]]
 	then
-		# file is longer than 25000 lines
-		echo "/var/log/messages is $MSG_LINES long.  This is the last 25000 lines" >> $HTML 2>&1
-		tail -n 25000 /var/log/messages >> $HTML 2>&1
+		# file is longer than 10000 lines
+		echo "/var/log/messages is $MSG_LINES long.  This is the last 10000 lines" >> $HTML 2>&1
+		tail -n 10000 /var/log/messages >> $HTML 2>&1
 	else
-		# file is shorter than 25000 lines
+		# file is shorter than 10000 lines
 		cat /var/log/messages >> $HTML 2>&1
 	fi
 
@@ -3192,8 +3199,14 @@ then
 	echo "/var/log/messages:" >> $FILE_MSGS
 	cat /var/log/messages >> $FILE_MSGS
 
-	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_MSGS target=_file_msgs>separate messages file.</a>"
+	helpful_tip "Detailed information is available in the <a href=file:${FILE_MSGS##${OUTPUT_DIR}/} target=_file_msgs>separate messages file.</a>"
+else
+	raw_open
+	line "This system does not have /var/log/messages file."
+	raw_close
 fi
+
+item_title "item_syslog"	"Linux system log - syslog" "cat /var/log/syslog"
 
 if [ -f /var/log/syslog ]
 then
@@ -3206,9 +3219,131 @@ then
 	echo "/var/log/syslog:" >> $FILE_SYSLOG
 	cat /var/log/syslog >> $FILE_SYSLOG
 
-	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_SYSLOG target=_file_msgs>separate syslog file.</a>"
+	helpful_tip "Detailed information is available in the <a href=file:${FILE_SYSLOG##${OUTPUT_DIR}/} target=_file_msgs>separate syslog file.</a>"
+else
+	raw_open
+	line "This system does not have /var/log/syslog file."
+	raw_close
 fi
 
+item_title "item_journal"	"Linux system log - journal" "journalctl -b"
+
+if [[ $AVAILABLE_JOURNALCTL ]]
+then
+
+	declare -i MSG_LINES
+
+	# Check the size of /var/log/messages
+	MSG_LINES=$(journalctl -b | wc -l | awk -F " " '{print $1}')
+
+	raw_caption "cap_journal" "journalctl -b"
+	textarea_open 120 24
+
+	# A large messages file is usually full of unwanted crap like
+	# sound card and GUI errors.  So lets show only a reasonable amount
+	# if the file is very large.
+	if [[ $MSG_LINES -gt 10000 ]]
+	then
+		# file is longer than 10000 lines
+		echo "This boot's system journal is $MSG_LINES long.  This is the last 10000 lines" >> $HTML 2>&1
+		journalctl -b | tail -n 10000 >> $HTML 2>&1
+	else
+		# file is shorter than 10000 lines
+		journalctl -b >> $HTML 2>&1
+	fi
+
+	textarea_close
+
+	journalctl -b >> $FILE_JOURNAL
+
+	helpful_tip "Detailed information is available in the <a href=file:${FILE_JOURNAL##${OUTPUT_DIR}/} target=_file_msgs>separate journal file.</a>"
+	helpful_tip "DEBUG: ${FILE_JOURNAL##${OUTPUT_DIR}/}"
+else
+	raw_open
+	line "This system does not have the journalctl program."
+	raw_close
+fi
+
+#--------------------------------------------------------------------------
+#
+# Kernel Configuration
+#
+#--------------------------------------------------------------------------
+
+section "section_kernelcfg" "Kernel Configuration"
+
+item_title "item_kernelsinstalled" "Installed Kernels" "rpm -qa | grep -kernel"
+if [[ $DIST_PACKAGES == "rpm" ]]
+then
+	raw_open
+	rpm -qa | fgrep "kernel-" | grep -v "devel" | grep -v "header" >> $HTML 2>&1
+	raw_close
+elif [[ $DIST_PACKAGES == "dpkg" ]]
+then
+	raw_open
+	# Check to see if any 'linux-image' kernel packages exist
+	if [[ $(dpkg -l | grep linux-image | wc -l) -eq 0 ]]
+	then
+		# didn't find any, is this Google Compute Engine?
+		if [[ $(dpkg -l | grep -i "Compute Engine" | wc -l) -gt 0 ]]
+		then
+			line "No 'linux-image' kernel packages were found."
+			line "These files suggest this is Google Compute Engine"
+			dpkg -l | grep -i "Compute Engine" >> $HTML 2>&1
+		fi
+	else
+		dpkg -l | grep linux-image >> $HTML 2>&1
+	fi
+	raw_close
+elif [[ $DIST_PACKAGES == "zypper" ]]
+then
+	raw_open
+	line "Birdseye needs to be configured to find zypper kernel packages."
+	raw_close
+else
+	raw_open
+	line "Birdseye needs additional functionality to determine ${DIST_NAME}'s installed kernels, Sorry."
+	raw_close
+fi
+
+item_title "item_kerneltaint"		"Kernel Tainted Value" "cat /proc/sys/kernel/tainted"
+raw_open
+cat /proc/sys/kernel/tainted >> $HTML 2>&1
+raw_close
+
+item_title "item_sysrq"	"Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
+
+SYSRQ_ENABLE=$(cat /proc/sys/kernel/sysrq)
+raw_open
+if [[ $SYSRQ_ENABLE == "0" ]]
+then
+	line "The Magic SysRq feature is not enabled."
+elif [[ $SYSRQ_ENABLE == "0" ]]
+then
+	line "The Magic SysRq feature is enabled."
+else
+	line "/proc/sys/kernel/sysrq reports $SYSRQ_ENABLE"
+fi
+raw_close
+
+item_title "item_sysctl"	"System Control Parameters" "sysctl"
+
+textarea_open 120 24
+sysctl -a >> $HTML 2>&1
+textarea_close
+
+#item_title "item_systemmap"	"System Map" "cat /boot/System.map.$(uname -r)"
+
+#if [[ -f /boot/System.map-$(uname -r) ]]
+#then
+#	textarea_open 120 24
+#	cat /boot/System.map-$(uname -r)  >> $HTML 2>&1
+#	textarea_close
+#else
+#	raw_open
+#	line "I cannot find a System.map file for kernel " $(uname -r) " in /boot."
+#	raw_close
+#fi
 #--------------------------------------------------------------------------
 #
 # Kernel Configuration
@@ -4307,7 +4442,7 @@ then
 		lsinitrd >> $FILE_INITRD 2>&1
 	fi
 
-	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INITRD target=_file_initrd>separate lsinitrd file.</a>"
+	helpful_tip "Detailed information is available in the <a href=file:${FILE_INITRD##${OUTPUT_DIR}/} target=_file_initrd>separate lsinitrd file.</a>"
 else
 	raw_open
 	line "lsinitrd is not available on this system."
@@ -4401,7 +4536,7 @@ raw_close
 
 cat /proc/cpuinfo >> $FILE_CPU
 
-helpful_tip "<strong>Tip:</strong> Detailed information is available in the <a href=file:$BASE_FILE_CPU target=_file_cpu>separate cpu info file.</a>"
+helpful_tip "<strong>Tip:</strong> Detailed information is available in the <a href=file:${FILE_CPU##${OUTPUT_DIR}/} target=_file_cpu>separate cpu info file.</a>"
 
 item_title "item_buddyinfo"		"Buddy Memory" "cat /proc/buddyinfo"
 
@@ -4487,9 +4622,9 @@ textarea_open 120 24
 cat /proc/interrupts >> $HTML 2>&1
 textarea_close
 
-helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_INTER target=_file_inter>separate interrupts info file.</a><br>" >> $HTML 2>&1
-
 cat /proc/interrupts >> $FILE_INTER
+
+helpful_tip "Detailed information is available in the <a href=file:${FILE_INTER##${OUTPUT_DIR}/} target=_file_inter>separate interrupts info file.</a><br>" >> $HTML 2>&1
 
 #--------------------------------------------------------------------------
 #
@@ -4580,7 +4715,7 @@ then
 	# Record this information into the raw file
 	lspci -vv >> $FILE_PCI 2>&1
 	# If we've recorded something into the file, then show this tip, too
-	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_PCI target=_file_pci>separate lspci file.</a>"
+	helpful_tip "Detailed information is available in the <a href=file:${FILE_PCI##${OUTPUT_DIR}/} target=_file_pci>separate lspci file.</a>"
 
 else
 	raw_open
@@ -4688,7 +4823,7 @@ fi
 if [[ $AVAILABLE_DMIDECODE == "yes" && $DMIDECODE_WORKS == "yes" ]]
 then
 	dmidecode >> $FILE_DMI
-	helpful_tip "Detailed information is available in the <a href=file:$BASE_FILE_DMI target=_file_dmi>separate dmidecode file.</a>"
+	helpful_tip "Detailed information is available in the <a href=file:${FILE_DMI##${OUTPUT_DIR}/} target=_file_dmi>separate dmidecode file.</a>"
 fi
 
 #--------------------------------------------------------------------------
@@ -5538,7 +5673,7 @@ then
 	chown $SUDO_USER "${HTML}" 
 
 	for EACH_FILE in \
-		"${FILE_DMI}" "${FILE_CPU}" "${FILE_MSGS}" "${FILE_SYSLOG}" \
+		"${FILE_DMI}" "${FILE_CPU}" "${FILE_MSGS}" "${FILE_SYSLOG}" "${FILE_JOURNAL}" \
 		"${FILE_DMESG}" "${FILE_DMESG_NOTIME}" "${FILE_INTER}" \
 		"${FILE_PCI}" "${FILE_INITRD}" "${FILE_OHAI}"
 	do
