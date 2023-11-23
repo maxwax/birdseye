@@ -4,9 +4,10 @@
 #
 # Birdseye creates a simple, well-presented HTML based report of a Linux
 # systems hardware, software and configuration details.
-# See http://www.maxwellspangler.com/scripts/birdseye for more information.
+# See http://github.com/maxwax/birdseye for more information.
 
-# Copyright 2013 Maxwell Spangler, maxwell@maxwellspangler.com
+# Copyright 2013 Maxwell Spangler, maxcode@maxwellspangler.com
+# Copyright 2023 Maxwell Spangler, maxcode@maxwellspangler.com
 
 # This program is free software; you can redistribute it and/or
 # modify it under the terms of the GNU General Public License
@@ -24,7 +25,7 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="1.9.1"
+VERSION="1.9.2"
 VERSION_DATE="2023-1122-01"
 
 # Bash variable UID returns the user id # of the user
@@ -2781,8 +2782,8 @@ unordered_list_close
 toc_section "toc_services"		"Services Configuration" "#section_services"
 
 unordered_list_open
-list "item_chkconfig"					"Chkconfig" "chkconfig"
 list "item_systemctl"					"Systemctl" "systemctl"
+list "item_chkconfig"					"Chkconfig" "chkconfig"
 unordered_list_close
 
 toc_section "toc_packages"		"Repositories and Software Packages" "#section_packages"
@@ -3927,6 +3928,18 @@ raw_close
 #
 #--------------------------------------------------------------------------
 
+item_title "item_systemctl"		"Systemctl" "systemctl"
+if [[ $AVAILABLE_SYSTEMCTL == "yes" ]]
+then
+	textarea_open 120 24
+	systemctl >> $HTML 2>&1
+	textarea_close	
+else
+	raw_open
+	line "systemctl is not present on this system."
+	raw_close
+fi
+
 section "section_services" "Services Configuration"
 item_title "item_chkconfig"	"Chkconfig" "chkconfig"
 if [[ $AVAILABLE_CHKCONFIG == "yes" ]]
@@ -3937,18 +3950,6 @@ then
 else
 	raw_open
 	line "chkconfig is not present on this system."
-	raw_close
-fi
-
-item_title "item_systemctl"		"Systemctl" "systemctl"
-if [[ $AVAILABLE_SYSTEMCTL == "yes" ]]
-then
-	textarea_open 120 24
-	systemctl >> $HTML 2>&1
-	textarea_close	
-else
-	raw_open
-	line "systemctl is not present on this system."
 	raw_close
 fi
 
