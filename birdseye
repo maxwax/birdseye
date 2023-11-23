@@ -3128,13 +3128,15 @@ section "section_configmgmt" "Config Mgmt Facts"
 
 item_title "item_facter"	"Puppet Facter" "facter"
 
-if [[ $AVAILABLE_LSB_RELEASE == "yes" ]]
+if [[ $AVAILABLE_FACTER == "yes" ]]
 then
 	textarea_open 120 24
 	facter >> $HTML 2>&1
 	textarea_close
 else
+  raw_open
 	line "The Puppet 'facter' command is not available on this system."
+  raw_close
 fi
 
 section "section_messages" "Console/System Messages"
