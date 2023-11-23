@@ -24,8 +24,8 @@
 # 51 Franklin Street, Fifth Floor, Boston, MA 02110-1301, USA.
 
 # Version number set here: date produced plus a daily sequence version
-VERSION="1.9.0"
-VERSION_DATE="2023-1121-01"
+VERSION="1.9.1"
+VERSION_DATE="2023-1122-01"
 
 # Bash variable UID returns the user id # of the user
 # Running as root, or running this script using sudo should return user 0
@@ -2805,6 +2805,7 @@ unordered_list_open
 list "item_fsblk"							"Filesystem Block Devices" "lsblk -fi"
 list "item_fstab"							"Filesystem mount table" "fstab"
 list "item_mount"							"Mounted filesystems" "mount"
+list "item_findmnt"		  			"Mounted filesystems" "findmnt"
 list "item_pvscan"						"LVM2: Physical Volumes" "pvscan"
 list "item_pvs"								"LVM2: Physical Volumes" "pvs"
 list "item_vgscan"						"LVM2: Volume Groups" "vgscan"
@@ -3834,10 +3835,16 @@ raw_open
 cat /etc/fstab >> $HTML 2>&1
 raw_close
 
-item_title "item_mount"		"Mounted filesystems" "mount"
+item_title "item_mount"		"Mounted filesystems - mount" "mount"
 MOUNT_LINES=$(mount | wc -l)
 text_open $MOUNT_LINES 140 24
 mount >> $HTML 2>&1
+text_close
+
+item_title "item_findmnt"		"Mounted filesystems - findmnt" "findmnt"
+FINDMNT_LINES=$(findmnt | wc -l)
+text_open $FINDMNT_LINES 140 24
+findmnt >> $HTML 2>&1
 text_close
 
 # Enable by default" (most RHEL and Fedora use LVM)
