@@ -2790,8 +2790,9 @@ toc_section "toc_packages"		"Repositories and Software Packages" "#section_packa
 unordered_list_open
 if [[ $DIST_PACKAGES == "rpm" ]]
 then
-	list "item_rpm_config"				"Repository Config (yum)" "cat /etc/yum.repos.d/*"
-	list "item_rpm_repos"					"Repositories (yum)" "cat /etc/yum.repos.d/*"
+	list "item_rpm_config_dnf"		"Repository Config (dnf)" "cat /etc/dnf/dnf.conf"
+	list "item_rpm_config_yum"		"Repository Config (yum)" "cat /etc/yum.conf"
+	list "item_rpm_repos"					"Repositories (yum & dnf)" "cat /etc/yum.repos.d/*"
 	list "item_rpm_pkgs"					"Installed Packages (rpm)" "rpm -qa | sort"
 
 elif [[ $DIST_PACKAGES == "dpkg" ]]
@@ -3965,14 +3966,40 @@ then
 	#--------------------------------------------------------------------------
 	# RPM/YUM Repositories
 
-	item_title "item_rpm_config"		"Software Repositories (rpm/yum)" "cat /etc/yum.conf"
+	item_title "item_rpm_config_dnf"		"Repositories Config (dnf)" "cat /etc/dnf/dnf.conf"
 
 	# Report contents of yum.conf - the yum master configuration file
-	textarea_open 120 24
+	if [[ -f /etc/dnf/dnf.conf ]]
+	then
+    DNF_LINES=$(cat /etc/dnf/dnf.conf | wc -l)
+	  text_open $DNF_LINES 120 24
+		cat /etc/dnf/dnf.conf >> $HTML 2>&1
+	  text_close
+  else
+	  raw_open
+    line "There is no /etc/dnf/dnf.conf on this system."
+	  raw_close	
+	fi
+
+	item_title "item_rpm_config_yum"		"Repositories Config (yum)" "cat /etc/yum.conf"
+
+	# Report contents of yum.conf - the yum master configuration file
 	if [[ -f /etc/yum.conf ]]
 	then
+	  YUM_LINES=$(cat /etc/yum.conf | wc -l)
+	  text_open $YUM_LINES 120 24
 		cat /etc/yum.conf >> $HTML 2>&1
+	  text_close
+  else
+	  raw_open
+    line "There is no /etc/yum.conf on this system."
+	  raw_close	
 	fi
+
+	# Report contents of individual repositories configured for use with yum
+	item_title "item_rpm_repos_list"		"Yum Repositories" "ls -l /etc/yum.repos.d/*.repo"
+	textarea_open 120 24
+  ls -l /etc/yum.repos.d/*.repo >> $HTML 2>&1
 	textarea_close
 
 	# Report contents of individual repositories configured for use with yum
