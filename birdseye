@@ -307,13 +307,13 @@ function nic_list {
   # Print the header for our summary table
   case $NIC_SUMMARY_STYLE in 
     "short") 
-      printf "%12s %17s %8s %18s %7s %9s\n" \
+      printf "%20s %17s %8s %18s %7s %9s\n" \
         "INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" ;;
     "traffic") 
-      printf "%12s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
+      printf "%20s %17s %8s %18s %7s %9s %8s %-3s %8s %-3s\n" \
         "INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX";;
     "ipv6") 
-      printf "%12s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
+      printf "%20s %17s %8s %18s %40s %8s %9s %8s %-3s %8s %-3s\n" \
         "INTERFACE" "MAC ADDRESS" "LINK" "IP ADDRESS" "IP6 ADDRESS" "MTU" "WIRE SPD" "" "RX" "" "TX";;
   esac
 
@@ -686,6 +686,26 @@ FILE_EXISTS="no"
 check_for_program journalctl
 AVAILABLE_JOURNALCTL=$FILE_EXISTS
 
+FILE_EXISTS="no"
+check_for_program xvinfo
+AVAILABLE_XVINFO=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program resolvectl
+AVAILABLE_RESOLVECTL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program nmcli
+AVAILABLE_NMCLI=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program timedatectl
+AVAILABLE_TIMEZONECTL=$FILE_EXISTS
+
+FILE_EXISTS="no"
+check_for_program lsmod
+AVAILABLE_LSMOD=$FILE_EXISTS
+
 # Suse SLES 11 SP3 reports sensors is present even when the binary
 # is not because it sees an /etc/sensors.conf file.  This causes
 # check for program to return true and an attempt to use sensors later
@@ -844,7 +864,7 @@ export BIRDSEYE_PROMPT_USER="yes"
 # Specifies an external CSS style sheet file from the user
 export BIRDSEYE_CSS_FILE="null"
 # Nice idea, but we can't attach to another X display.. yet?
-export BIRDSEYE_XDISPLAY="null"
+export BIRDSEYE_XDISPLAY=":1"
 
 # Report on Virtualization Details?
 export BIRDSEYE_SHOW_VIRT="yes"
@@ -885,7 +905,7 @@ DEF_CSS_FILE=${BIRDSEYE_CSS_FILE:-"internal"}
 DEF_CSS_STYLE=${BIRDSEYE_CSS_STYLE:-"default"}
 
 # Nice idea, but we can't attach to another X display.. yet?
-DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"null"}
+DEF_XDISPLAY=${BIRDSEYE_XDISPLAY:-"_null"}
 
 DEF_FQDN=${BIRDSEYE_FQDN:-"null"}
 if [[ $DEF_FQDN == "null" ]]
@@ -2655,14 +2675,11 @@ line "<h2><a name=\"toc\">Table of Contents - Master</a></h2>"
 line "<div class=\"toc_master\">"
 
 paragraph "Linux Environment"
-
-# Linux/Software/Configuration
 toc_master "#toc_linux_summary" "Linux Summary"
 toc_master "#toc_bootmsgs"      "Boot messages"
 toc_master "#toc_messages"      "Console/System Messages"
 toc_master "#toc_kernelcfg"     "Kernel Configuration"
 toc_master "#toc_bootcfg"       "Boot Configuration"
-toc_master "#toc_security"      "Security Configuration"
 toc_master "#toc_modules"       "Kernel Modules"
 toc_master "#toc_processes"     "Processes Running"
 toc_master "#toc_services"      "Services Configuration"
@@ -2677,8 +2694,6 @@ paragraph "Storage"
 toc_master "#toc_storage_cfg"   "Storage Configuration"
 
 paragraph "Hardware Resources"
-
-# Hardware/Device/Physical resources
 toc_master "#toc_hw_summary"    "Hardware Summary"
 toc_master "#toc_cpuinfo"       "Processor/CPU information"
 toc_master "#toc_dmidecode"     "System Board Information"
@@ -2691,13 +2706,13 @@ toc_master "#toc_periphs"       "Peripherals"
 toc_master "#toc_serial"        "Serial device configuration"
 toc_master "#toc_hw_sensors"    "Hardware Sensors"
 
-paragraph "Configuration Management"
+paragraph "Security"
+toc_master "#toc_security"      "Security Configuration"
 
+paragraph "Configuration Management"
 toc_master "#toc_configmgmt"    "Config Mgmt Facts"
 
 paragraph "Virtualization"
-
-# Less widely used configuration/resources
 toc_master "#toc_virt" "Virtualization"
 toc_master "#toc_xen" "Xen Virtualization"
 toc_master "#toc_vms" "Virtual Machines"
@@ -2721,13 +2736,13 @@ unordered_list_open
 list "item_hostname"          "System name" "hostname"
 list "item_hostnamectl"       "System name" "hostnamectl"
 list "item_date"              "System date/time" "date"
+list "item_timedatectl"       "Timezone information" "timedatectl"
+list "item_hwclock"           "Hardware clock" "hwclock"
 list "item_uname"             "System identification" "uname -a"
 list "item_issue"             "Distribution, Version" "/etc/issue"
 list "item_lsb"               "Distribution, Release" "lsb_release"
 list "item_osrelease"         "Distribution, Release" "cat /etc/os-release"
 list "item_imageid"           "Distribution, Release" "cat /etc/image-id"
-list "item_kerneltaint"       "Distribution, Release" "lsb_release"
-list "item_kernelvers"        "Kernel Version & GCC Compile Version" "cat /proc/version"
 unordered_list_close
 
 toc_section "toc_bootmsgs"    "Boot messages" "#section_dmesg"
@@ -2737,21 +2752,12 @@ list "item_dmesg_notime"      "Linux boot messages (without timestamps)" "dmesg"
 list "item_dmesg_time"        "Linux boot messages (with timestamps)" "dmesg"
 unordered_list_close
 
-toc_section "toc_messages"    "Console/System Messages" "#section_messages"
+toc_section "toc_messages"    "Console/System Logs" "#section_logs"
 
 unordered_list_open
 list "item_messages"          "Linux system log - messages" "cat /var/log/messages"
 list "item_syslog"            "Linux system log - syslog" "cat /var/log/syslog"
 list "item_journal"           "Linux system log - Journal" "journalctl -b"
-unordered_list_close
-
-toc_section "toc_kernelcfg"   "Kernel Configuration" "#section_kernelcfg"
-
-unordered_list_open
-list "item_kernelsinstalled"  "Kernels Installed" "rpm -qa | grep kernel-"
-list "item_kerneltaint"       "Kernel Taint Value" "cat /proc/sys/kernel/tainted"
-list "item_sysctl"            "System Control Parameters" "sysctl"
-#list "item_systemmap"          "System Map" "cat /boot/System.map.$(uname -r)"
 unordered_list_close
 
 toc_section "toc_bootcfg"     "Boot Configuration" "#section_bootcfg"
@@ -2767,13 +2773,17 @@ list "item_grubconfetc"       "/etc Grub Config File" "cat /etc/grub.conf"
 list "item_efibootmgr"        "EFI boot configuration" "efibootmgr"
 list "item_elilo"             "ELILO Config (EFI only)" "cat /boot/efi/efi/(dist)/elilo.conf"
 list "item_elilolist"         "ELILO List Config (EFI only)" "cat /boot/efi/efi/(dist)/elilo.list"
-list "item_redhatgrub"        "EFI: Redhat Grub" "cat /boot/efi/redhat/grub.conf"
 unordered_list_close
 
-toc_section "toc_security"    "Security Configuration" "#section_security"
+toc_section "toc_kernelcfg"   "Kernel Configuration" "#section_kernelcfg"
 
 unordered_list_open
-list "item_selinux"           "SELinux Status" "cat /etc/selinux/config"
+list "item_kernelsinstalled"  "Kernels Installed" "rpm -qa | grep kernel-"
+list "item_kerneltaint"       "Kernel Taint Value" "cat /proc/sys/kernel/tainted"
+list "item_kernelvers"        "Kernel Version & GCC Compile Version" "cat /proc/version"
+list "item_sysrq"             "Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
+list "item_sysctl"            "System Control Parameters" "sysctl"
+list "item_lsinitrd"          "initrd information" "lsinitrd"
 unordered_list_close
 
 toc_section "toc_modules"     "Kernel Modules" "#section_modules"
@@ -2792,6 +2802,10 @@ unordered_list_open
 list "item_processes"         "Processes" "ps axf"
 unordered_list_close
 
+unordered_list_open
+list "item_filedesc"         "File Descriptors" "lsfd"
+unordered_list_close
+
 toc_section "toc_services"    "Services Configuration" "#section_services"
 
 unordered_list_open
@@ -2806,6 +2820,7 @@ if [[ $DIST_PACKAGES == "rpm" ]]
 then
   list "item_rpm_config_dnf"    "Repository Config (dnf)" "cat /etc/dnf/dnf.conf"
   list "item_rpm_config_yum"    "Repository Config (yum)" "cat /etc/yum.conf"
+  list "item_rpm_repos_list"    "Yum Repositories" "ls -l /etc/yum.repos.d/*.repo"
   list "item_rpm_repos"         "Repositories (yum & dnf)" "cat /etc/yum.repos.d/*"
   list "item_rpm_pkgs"          "Installed Packages (rpm)" "rpm -qa | sort"
 
@@ -2826,30 +2841,36 @@ unordered_list_close
 toc_section "toc_udev"        "Udev configuration" "#section_udev"
 
 unordered_list_open
-list "item_udevconf"          "udev configuration" "cat /etc/udev.conf"
+list "item_udevconf"          "udev configuration" "cat /etc/udev/udev.conf"
 list "item_udevrules"         "udev rules" "cat /etc/udev/rules.d/*"
 unordered_list_close
 
 toc_section "toc_xwindows"    "X-Windows" "#section_xwindows"
 
 unordered_list_open
+list "item_xrandr_displays"   "Connected X-windows displays" "xrandr | grep 'connected'"
 list "item_xrandr"            "X RandR: Resize, Rotate and Reflect Extension Ifno" "xrandr"
 list "item_dpyinfo"           "X Display Info" "xdpyinfo"
+list "item_xvinfo"            "Xvideo info" "xvinfo"
 list "item_glxinfo"           "GLX Info" "glxinfo/glxinfo64"
 unordered_list_close
 
 toc_section "toc_network_cfg" "Network Configuration" "#section_network_cfg"
 
 unordered_list_open
+list "item_nmcli"             "Network Manager configuration" "nmcli"
 list "item_nics_list"         "Network Device List" "nics (script)"
+list "item_ifcfg"             "Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
 list "item_resolv"            "DNS Resolution" "cat /etc/resolv.conf"
+list "item_resolvectl"        "DNS Resolution - resolvectl" "resolvectl"
 list "item_hosts"             "Local Hosts" "cat /etc/hosts"
 list "item_nsswitch"          "Name Service Switch Config" "cat /etc/nsswitch.conf"
-list "item_ifcfg"             "Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
 list "item_networks"          "Network Configuration (debian)" "cat /etc/network/interfaces"
 list "item_iproute"           "Network routing table via ip route" "ip route"
-list "item_netstat"           "Network routing table via netstat" "netstat"
-list "item_firewall"          "Firewall rules" "iptables -L"
+list "item_netstat_route"     "Network routing table via netstat" "netstat"
+list "item_ss"                "Network sockets - ss" "ss"
+list "item_netstat-sockets"   "Network sockets - netstat" "netstat"
+list "item_ss_estab_ssh"      "Sockets established with ssh" "ss -o state established '( dport = :ssh or sport = :ssh )'"
 unordered_list_close
 
 toc_section "toc_storage_cfg" "Storage Configuration" "#section_storage_cfg"
@@ -2872,7 +2893,6 @@ toc_section "toc_hw_summary"  "Hardware Summary" "#section_hw_summary"
 unordered_list_open
 list "item_product"           "Product Name" "dmidecode -s system-product-name"
 list "item_processor_line"    "Processor Summary"
-list "item_first_proc"        "First processor" "cat /proc/cpuinfo"
 list "item_memsum"            "Memory" "/proc/meminfo"
 list "item_bios_vendor"       "BIOS Vendor" "dmidecode -s bios-vendor"
 list "item_bios_vers"         "BIOS Version" "dmidecode -s bios-version"
@@ -2970,6 +2990,13 @@ list "item_serialdmesg"       "Serial devices in dmesg logs" "dmesg | grep tty<s
 list "item_serialproc"        "Serial devices /proc" "cat /proc/tty/drivers/*"
 unordered_list_close
 
+toc_section "toc_security"    "Security Configuration" "#section_security"
+
+unordered_list_open
+list "item_selinux"           "SELinux Status" "cat /etc/selinux/config"
+list "item_firewall"          "Firewall rules" "iptables -L"
+unordered_list_close
+
 toc_section "toc_configmgmt"  "Config Mgmt Facts" "#section_configmgmt"
 
 unordered_list_open
@@ -3038,6 +3065,16 @@ raw_open
 date >> $HTML 2>&1
 raw_close
 
+item_title "item_timezone"    "Timezone information" "timedatectl"
+raw_open
+if [[ $AVAILABLE_TIMEZONECTL ]]
+then
+  timedatectl >> $HTML 2>&1
+else
+  line "This system does not have the timedatectl program."
+fi
+raw_close
+
 item_title "item_hwclock"   "Hardware Clock System date/time" "hwclock"
 raw_open
 if [[ $VM_GUEST == "no" ]]
@@ -3088,11 +3125,6 @@ else
 fi
 raw_close
 
-item_title "item_kernelvers"      "Kernel Version & GCC Compile Version" "cat /proc/version"
-raw_open
-cat /proc/version >> $HTML 2>&1
-raw_close
-
 #--------------------------------------------------------------------------
 #
 # Log Files
@@ -3138,36 +3170,13 @@ textarea_close
 
 helpful_tip "Detailed information is available in the <a href=file:${FILE_DMESG##${OUTPUT_DIR}/} target=_file_dmesg>separate dmesg info file.</a>"
 
-section "section_configmgmt" "Config Mgmt Facts"
+#--------------------------------------------------------------------------
+#
+# System Logs
+#
+#--------------------------------------------------------------------------
 
-item_title "item_facter"  "Puppet Facter" "facter"
-
-if [[ $AVAILABLE_FACTER == "yes" ]]
-then
-  textarea_open 120 24
-  facter >> $HTML 2>&1
-  textarea_close
-else
-  raw_open
-  line "The Puppet 'facter' command is not available on this system."
-  raw_close
-fi
-
-item_title "item_ohai"  "Chef Ohai" "ohai"
-
-if [[ $AVAILABLE_OHAI == "yes" ]]
-then
-  textarea_open 120 24
-  ohai >> $HTML 2>&1
-  ohai >> $FILE_OHAI 2>&1
-  textarea_close
-else
-  raw_open
-  line "The Chef 'ohai' program is not available on this system."
-  raw_close
-fi
-
-section "section_messages" "Console/System Messages"
+section "section_logs" "Console/System Logs"
 
 item_title "item_messages"  "Linux system log" "cat /var/log/messages"
 
@@ -3257,173 +3266,11 @@ then
   journalctl -b >> $FILE_JOURNAL
 
   helpful_tip "Detailed information is available in the <a href=file:${FILE_JOURNAL##${OUTPUT_DIR}/} target=_file_msgs>separate journal file.</a>"
-  helpful_tip "DEBUG: ${FILE_JOURNAL##${OUTPUT_DIR}/}"
 else
   raw_open
   line "This system does not have the journalctl program."
   raw_close
 fi
-
-#--------------------------------------------------------------------------
-#
-# Kernel Configuration
-#
-#--------------------------------------------------------------------------
-
-section "section_kernelcfg" "Kernel Configuration"
-
-item_title "item_kernelsinstalled" "Installed Kernels" "rpm -qa | grep -kernel"
-if [[ $DIST_PACKAGES == "rpm" ]]
-then
-  raw_open
-  rpm -qa | fgrep "kernel-" | grep -v "devel" | grep -v "header" >> $HTML 2>&1
-  raw_close
-elif [[ $DIST_PACKAGES == "dpkg" ]]
-then
-  raw_open
-  # Check to see if any 'linux-image' kernel packages exist
-  if [[ $(dpkg -l | grep linux-image | wc -l) -eq 0 ]]
-  then
-    # didn't find any, is this Google Compute Engine?
-    if [[ $(dpkg -l | grep -i "Compute Engine" | wc -l) -gt 0 ]]
-    then
-      line "No 'linux-image' kernel packages were found."
-      line "These files suggest this is Google Compute Engine"
-      dpkg -l | grep -i "Compute Engine" >> $HTML 2>&1
-    fi
-  else
-    dpkg -l | grep linux-image >> $HTML 2>&1
-  fi
-  raw_close
-elif [[ $DIST_PACKAGES == "zypper" ]]
-then
-  raw_open
-  line "Birdseye needs to be configured to find zypper kernel packages."
-  raw_close
-else
-  raw_open
-  line "Birdseye needs additional functionality to determine ${DIST_NAME}'s installed kernels, Sorry."
-  raw_close
-fi
-
-item_title "item_kerneltaint"   "Kernel Tainted Value" "cat /proc/sys/kernel/tainted"
-raw_open
-cat /proc/sys/kernel/tainted >> $HTML 2>&1
-raw_close
-
-item_title "item_sysrq" "Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
-
-SYSRQ_ENABLE=$(cat /proc/sys/kernel/sysrq)
-raw_open
-if [[ $SYSRQ_ENABLE == "0" ]]
-then
-  line "The Magic SysRq feature is not enabled."
-elif [[ $SYSRQ_ENABLE == "0" ]]
-then
-  line "The Magic SysRq feature is enabled."
-else
-  line "/proc/sys/kernel/sysrq reports $SYSRQ_ENABLE"
-fi
-raw_close
-
-item_title "item_sysctl"  "System Control Parameters" "sysctl"
-
-textarea_open 120 24
-sysctl -a >> $HTML 2>&1
-textarea_close
-
-#item_title "item_systemmap"  "System Map" "cat /boot/System.map.$(uname -r)"
-
-#if [[ -f /boot/System.map-$(uname -r) ]]
-#then
-# textarea_open 120 24
-# cat /boot/System.map-$(uname -r)  >> $HTML 2>&1
-# textarea_close
-#else
-# raw_open
-# line "I cannot find a System.map file for kernel " $(uname -r) " in /boot."
-# raw_close
-#fi
-#--------------------------------------------------------------------------
-#
-# Kernel Configuration
-#
-#--------------------------------------------------------------------------
-
-section "section_kernelcfg" "Kernel Configuration"
-
-item_title "item_kernelsinstalled" "Installed Kernels" "rpm -qa | grep -kernel"
-if [[ $DIST_PACKAGES == "rpm" ]]
-then
-  raw_open
-  rpm -qa | fgrep "kernel-" | grep -v "devel" | grep -v "header" >> $HTML 2>&1
-  raw_close
-elif [[ $DIST_PACKAGES == "dpkg" ]]
-then
-  raw_open
-  # Check to see if any 'linux-image' kernel packages exist
-  if [[ $(dpkg -l | grep linux-image | wc -l) -eq 0 ]]
-  then
-    # didn't find any, is this Google Compute Engine?
-    if [[ $(dpkg -l | grep -i "Compute Engine" | wc -l) -gt 0 ]]
-    then
-      line "No 'linux-image' kernel packages were found."
-      line "These files suggest this is Google Compute Engine"
-      dpkg -l | grep -i "Compute Engine" >> $HTML 2>&1
-    fi
-  else
-    dpkg -l | grep linux-image >> $HTML 2>&1
-  fi
-  raw_close
-elif [[ $DIST_PACKAGES == "zypper" ]]
-then
-  raw_open
-  line "Birdseye needs to be configured to find zypper kernel packages."
-  raw_close
-else
-  raw_open
-  line "Birdseye needs additional functionality to determine ${DIST_NAME}'s installed kernels, Sorry."
-  raw_close
-fi
-
-item_title "item_kerneltaint"   "Kernel Tainted Value" "cat /proc/sys/kernel/tainted"
-raw_open
-cat /proc/sys/kernel/tainted >> $HTML 2>&1
-raw_close
-
-item_title "item_sysrq" "Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
-
-SYSRQ_ENABLE=$(cat /proc/sys/kernel/sysrq)
-raw_open
-if [[ $SYSRQ_ENABLE == "0" ]]
-then
-  line "The Magic SysRq feature is not enabled."
-elif [[ $SYSRQ_ENABLE == "0" ]]
-then
-  line "The Magic SysRq feature is enabled."
-else
-  line "/proc/sys/kernel/sysrq reports $SYSRQ_ENABLE"
-fi
-raw_close
-
-item_title "item_sysctl"  "System Control Parameters" "sysctl"
-
-textarea_open 120 24
-sysctl -a >> $HTML 2>&1
-textarea_close
-
-#item_title "item_systemmap"  "System Map" "cat /boot/System.map.$(uname -r)"
-
-#if [[ -f /boot/System.map-$(uname -r) ]]
-#then
-# textarea_open 120 24
-# cat /boot/System.map-$(uname -r)  >> $HTML 2>&1
-# textarea_close
-#else
-# raw_open
-# line "I cannot find a System.map file for kernel " $(uname -r) " in /boot."
-# raw_close
-#fi
 
 #--------------------------------------------------------------------------
 #
@@ -3486,7 +3333,7 @@ then
 
   if [[ $DEBUG == "yes" ]]
   then
-    echo "EFI Processing: MY_CMDLINE $MY_CMDLINE"
+    echo "DEBUG EFI Processing: MY_CMDLINE $MY_CMDLINE"
     echo
   fi
 
@@ -3497,7 +3344,7 @@ then
 
     if [[ $DEBUG == "yes" ]]
     then
-      echo "EFI Processing: We see a native EFI /proc/cmdline"
+      echo "DEBUG EFI Processing: We see a native EFI /proc/cmdline"
       echo
     fi
 
@@ -3508,7 +3355,7 @@ then
     MY_CMDLINE=${MY_CMDLINE#*:\\}
     if [[ $DEBUG == "yes" ]]
     then
-      echo "EFI Processing: Remove Leading Info $MY_CMDLINE"
+      echo "DEBUG EFI Processing: Remove Leading Info $MY_CMDLINE"
       echo
     fi
 
@@ -3650,7 +3497,7 @@ else
   raw_close
 fi
 
-item_title "item_elilocfg"    "ELILO Config File" "cat elilo.conf"
+item_title "item_elilo"    "ELILO Config File" "cat elilo.conf"
 if [[ $EFI_BOOT == "yes" ]]
 then
   if [[ -f $MY_BOOT_DIR/elilo.conf ]]
@@ -3688,29 +3535,110 @@ fi
 
 #--------------------------------------------------------------------------
 #
-# Security Configuration
+# Kernel Configuration
 #
 #--------------------------------------------------------------------------
-section "section_security" "Security Configuration"
 
-item_title "item_selinux"   "SELinux Configuration" "cat /etc/selinux/config"
+section "section_kernelcfg" "Kernel Configuration"
 
-if [ $PUBLIC_REPORT = "yes" ]
+item_title "item_kernelsinstalled" "Installed Kernels" "rpm -qa | grep -kernel"
+if [[ $DIST_PACKAGES == "rpm" ]]
 then
   raw_open
-  line "This is a public report and no security information is included."
+  rpm -qa | grep -F "kernel-" | grep -v "devel" | grep -v "header" >> $HTML 2>&1
+  raw_close
+elif [[ $DIST_PACKAGES == "dpkg" ]]
+then
+  raw_open
+  # Check to see if any 'linux-image' kernel packages exist
+  if [[ $(dpkg -l | grep linux-image | wc -l) -eq 0 ]]
+  then
+    # didn't find any, is this Google Compute Engine?
+    if [[ $(dpkg -l | grep -i "Compute Engine" | wc -l) -gt 0 ]]
+    then
+      line "No 'linux-image' kernel packages were found."
+      line "These files suggest this is Google Compute Engine"
+      dpkg -l | grep -i "Compute Engine" >> $HTML 2>&1
+    fi
+  else
+    dpkg -l | grep linux-image >> $HTML 2>&1
+  fi
+  raw_close
+elif [[ $DIST_PACKAGES == "zypper" ]]
+then
+  raw_open
+  line "Birdseye needs to be configured to find zypper kernel packages."
   raw_close
 else
-  if [[ -f /etc/selinux/config ]]
+  raw_open
+  line "Birdseye needs additional functionality to determine ${DIST_NAME}'s installed kernels, Sorry."
+  raw_close
+fi
+
+item_title "item_kerneltaint"   "Kernel Tainted Value" "cat /proc/sys/kernel/tainted"
+raw_open
+cat /proc/sys/kernel/tainted >> $HTML 2>&1
+raw_close
+
+item_title "item_kernelvers"      "Kernel Version & GCC Compile Version" "cat /proc/version"
+raw_open
+cat /proc/version >> $HTML 2>&1
+raw_close
+
+item_title "item_sysrq" "Magic SysRq Key Enablement" "cat /proc/sys/kernel/sysrq"
+
+SYSRQ_ENABLE=$(cat /proc/sys/kernel/sysrq)
+raw_open
+if [[ $SYSRQ_ENABLE == "0" ]]
+then
+  line "The Magic SysRq feature is not enabled."
+elif [[ $SYSRQ_ENABLE == "0" ]]
+then
+  line "The Magic SysRq feature is enabled."
+else
+  line "/proc/sys/kernel/sysrq reports $SYSRQ_ENABLE"
+fi
+raw_close
+
+item_title "item_sysctl"  "System Control Parameters" "sysctl"
+
+textarea_open 120 24
+sysctl -a >> $HTML 2>&1
+textarea_close
+
+item_title "item_lsinitrd"    "initrd information" "lsinitrd"
+
+if [[ $DIST_NAME == "Suse" ]]
+then
+  MY_KERNEL=$(uname -a | cut --delimiter=" " -f 3)
+  MY_INITRD="/boot/initrd-$MY_KERNEL"
+fi
+
+if [[ $AVAILABLE_LSINITRD == "yes" ]]
+then
+  # Present the lsinitrd information in an HTML textarea box
+  textarea_open 120 24
+  if [[ $DIST_NAME == "Suse" ]]
   then
-    raw_open
-    cat /etc/selinux/config >> $HTML 2>&1
-    raw_close
+    lsinitrd -l $MY_INITRD >> $HTML 2>&1
   else
-    raw_open
-    line "This system does not have an /etc/selinux/config file."
-    raw_close
+    lsinitrd >> $HTML 2>&1
   fi
+  textarea_close
+
+  # Send the raw output to an ASCII file
+  if [[ $DIST_NAME == "Suse" ]]
+  then
+    lsinitrd -l $MY_INITRD >> $FILE_INITRD 2>&1
+  else
+    lsinitrd >> $FILE_INITRD 2>&1
+  fi
+
+  helpful_tip "Detailed information is available in the <a href=file:${FILE_INITRD##${OUTPUT_DIR}/} target=_file_initrd>separate lsinitrd file.</a>"
+else
+  raw_open
+  line "lsinitrd is not available on this system."
+  raw_close
 fi
 
 #--------------------------------------------------------------------------
@@ -3788,302 +3716,31 @@ fi
 
 #--------------------------------------------------------------------------
 #
-# Network Configuration
+# Processes Running
 #
 #--------------------------------------------------------------------------
 
 section "section_processes" "Processes Running"
 
 item_title "item_processes" "Processes" "ps axf"
-line "The processes shown here were running at the time of this Birdseye report and may not reflect the processes running at an earlier time of importance."
+line "The processes shown here are current as of the time birdseye was run."
 textarea_open 120 24
 ps axf >> $HTML 2>&1
 textarea_close
 
-#--------------------------------------------------------------------------
-#
-# Network Configuration
-#
-#--------------------------------------------------------------------------
-
-section "section_network_cfg" "Network Configuration"
-
-item_title "item_nics_list"   "Network Device List" "nics"
-if [ $PUBLIC_REPORT = "yes" ]
-then
-  raw_open
-  line "This is a public report and no IP network information is included."
-  raw_close
-else
-  raw_open
-  nic_list >> $HTML 2>&1
-  raw_close
-fi
-
-item_title "item_resolv"    "DNS Resolution" "cat /etc/resolv.conf"
-raw_open
-cat /etc/resolv.conf >> $HTML 2>&1
-raw_close
-
-item_title "item_hosts"   "Local Hosts" "cat /etc/hosts"
-# Count the number of lines in output
-HOST_LINES=$(cat /etc/hosts | wc -l)
-
-text_open $HOST_LINES 120 24
-cat /etc/hosts >> $HTML 2>&1
-text_close
-
-item_title "item_nsswitch" "Name Service Switch Config" "cat /etc/nsswitch"
-if [[ -f /etc/nsswitch.conf ]]
-then
-  # Count the number of lines in output
-  NSSWITCH_LINES=$(cat /etc/nsswitch.conf | wc -l)
-
-  text_open $NSSWITCH_LINES 120 24
-  cat /etc/nsswitch.conf >> $HTML 2>&1
-  text_close
-else
-  raw_open
-  line "/etc/nsswitch.conf is not available on this system."
-  raw_close
-fi
-
-
-item_title "item_ifcfg" "Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
-
-if [[ $DIST_SYSCONFIG == "yes" ]]
-then
-  if [[ -f /etc/sysconfig/network ]]
-  then
-    raw_caption "cap_sysconfig_network" "cat /etc/sysconfig/network"
-    raw_open
-    cat /etc/sysconfig/network >> $HTML 2>&1
-    raw_close
-  else
-    raw_open
-    line "There is no /etc/sysconfig/network file available on this system."
-    raw_close
-  fi
-
-  # Do we have a sysconfig network script directory?
-  # like /etc/sysconfig/network-scripts on Red Hat?
-  if [[ -d $DIST_SYSCONFIG_NETDIR ]]
-  then
-
-    # If we are a Suse system and we have a file called 'config'
-    # in the netconfig dir, it has all sorts of interesting information
-    # so let's report on it
-    if [[ $DIST_FAMILY == "Suse" && -f $DIST_SYSCONFIG_NETDIR/config ]]
-    then
-      raw_caption "cap_suse_netdir_config" "Suse: cat $DIST_SYSCONFIG_NETDIR/config"
-      textarea_open 120 24
-      cat $DIST_SYSCONFIG_NETDIR/config >> $HTML 2>&1
-      textarea_close
-    fi
-
-    if [[ $(ls -l ${DIST_SYSCONFIG_NETDIR}/*cfg-* | wc -l) -gt 0 ]]
-    then
-      # Look for ifcfg-eth0, ifcfg-p99p9, br0-cfg, brcfg0 etc
-      for EACH_FILE in ${DIST_SYSCONFIG_NETDIR}/*cfg-*
-      do
-        raw_caption "cap_net_cfgs" "cat $EACH_FILE"
-        raw_open
-        cat $EACH_FILE >> $HTML 2>&1
-        raw_close
-      done
-    else
-      raw_open
-      line "There are no $DIST_SYSCONFIG_NETDIR/*cfg-* files available on this system."
-      raw_close
-    fi
-  else
-    raw_open
-    line "There is no $DIST_SYSCONFIG_NETDIR directory available on this system."
-    raw_close
-  fi
-
-else
-  raw_open
-  line "This information is not available on a non-sysconfig distribution."
-  raw_close 
-fi #endif - report on a sysconfig system.
-
-item_title "item_networks" "Network Configuration (debian)" "cat /etc/network/interfaces"
-if [[ $DIST_SYSCONFIG == "no" ]]
-then
-  if [[ -f /etc/network/interfaces ]]
-  then
-    INTERFACES_LINES=$(cat /etc/network/interfaces | wc -l)
-    text_open $INTERFACES_LINES 120 24
-    cat /etc/network/interfaces >> $HTML 2>&1
-    text_close
-  else
-    raw_open
-    line "There is no /etc/network/interfaces file available on this system."
-    raw_close
-  fi
-else
-  raw_open
-  line "This information is not available on a sysconfig distribution."
-  raw_close 
-fi # endif - report on a debian (non sysconfig) system
-
-item_title "item_iproute"   "Network routing table via ip route" "ip route"
-raw_open
-if [ $PUBLIC_REPORT = "yes" ]
-then
-  line "This is a public report and no routing information is included."
-else
-  ip route  >> $HTML 2>&1
-fi
-raw_close
-
-item_title "item_netstat"   "Network routing table via netstat" "netstat"
-raw_open
-if [ $PUBLIC_REPORT = "yes" ]
-then
-  line "This is a public report and no routing information is included."
-else
-  netstat -nr >> $HTML 2>&1
-fi
-raw_close
-
-item_title "item_firewall"    "Firewall rules" "iptables -L"
-
-if [ $PUBLIC_REPORT = "yes" ]
-then
-  line "This is a public report and no firewall information is included."
-else
-  IPTABLES_LINES=$(iptables -L | wc -l)
-  text_open $IPTABLES_LINES 120 24
-  iptables -L >> $HTML 2>&1
-  text_close
-fi
-
-#--------------------------------------------------------------------------
-#
-# Storage Configuration
-#
-#--------------------------------------------------------------------------
-
-section "section_storage_cfg" "Storage Configuration"
-
-item_title "item_fsblk"   "File System Block Devices" "lsblk -i"
-if [[ $AVAILABLE_LSBLK == "yes" ]]
-then
-  FSBLOCK_LINES=$(lsblk -i | wc -l)
-  text_open $FSBLOCK_LINES 160 24
-  # -i option uses ASCII characters for tree relationships +--^ etc
-  # -f show filesystem information
-  lsblk -i >> $HTML 2>&1
-  text_close  
-fi
-
-item_title "item_fstab" "Filesystem mount table" "fstab"
-raw_open
-cat /etc/fstab >> $HTML 2>&1
-raw_close
-
-item_title "item_mount"   "Mounted filesystems - mount" "mount"
-MOUNT_LINES=$(mount | wc -l)
-text_open $MOUNT_LINES 140 24
-mount >> $HTML 2>&1
-text_close
-
-item_title "item_findmnt"   "Mounted filesystems - findmnt" "findmnt"
-FINDMNT_LINES=$(findmnt | wc -l)
-text_open $FINDMNT_LINES 140 24
-findmnt >> $HTML 2>&1
-text_close
-
-# Enable by default" (most RHEL and Fedora use LVM)
-SHOW_LVM="yes"
-
-if [[ $AVAILABLE_PVSCAN == "yes" ]]
-then
-
-  PV_RESULTS=$(pvscan 2>&1 | grep "  No matching physical volumes found" | wc -l)
-
-  if [ $PV_RESULTS -ge 1 ]
-  then
-    SHOW_LVM="no"
-  fi
-else
-  SHOW_LVM="no"
-fi
-
-item_title "item_pvscan" "LVM2: Physical Volumes" "pvscan"
-# Regardless of whether physical volumes were found above, let pvscan
-# report the status to the user.  Then use the SHOW_LVM variable set above
-# to determine whether volume groups and logical volumes are processed.
-# Skip those commands if no physical volumes are present)
-if [[ $AVAILABLE_PVSCAN == "yes" ]]
-then
-  raw_open
-  pvscan >> $HTML 2>&1
-  raw_close
-else
-  raw_open
-  line "pvscan is not available on this system."
-  raw_close
-fi
-
-item_title "item_pvs" "LVM2: Volume Groups" "pvs"
-raw_open
-
-if [ $SHOW_LVM == "yes" ]
-then
-  pvs >> $HTML 2>&1 
-else
-  line "pvs is not available on this system."
-fi
-raw_close
-
-item_title "item_vgscan" "LVM2: Volume Groups" "vgscan"
-raw_open
-if [ $SHOW_LVM == "yes" ]
-then
-  vgscan >> $HTML 2>&1
-else
-  line "vgscan is not available on this system."
-fi
-raw_close
-
-item_title "item_vgs" "LVM2: Volume Groups" "vgs"
-raw_open
-if [ $SHOW_LVM == "yes" ]
-then
-  vgs >> $HTML 2>&1
-else
-  line "vgs is not available on this system."
-fi
-raw_close
-
-item_title "item_lvscan" "LVM2: Logical Volumes" "lvscan"
-raw_open
-if [ $SHOW_LVM == "yes" ]
-then
-  lvscan >> $HTML 2>&1
-else
-  line "lvscan is not availble on this system."
-fi
-raw_close
-
-item_title "item_lvs" "LVM2: Logical Volumes" "lvs"
-raw_open
-if [ $SHOW_LVM == "yes" ]
-then
-  lvs >> $HTML 2>&1
-else
-  line "lvs is not available on this system."
-fi
-raw_close
+item_title "item_filedesc" "File descriptors" "lsfd"
+line "The file descriptors shown here are current as of the time birdseye was run."
+textarea_open 120 24
+lsfd >> $HTML 2>&1
+textarea_close
 
 #--------------------------------------------------------------------------
 #
 # Services Configuration
 #
 #--------------------------------------------------------------------------
+
+section "section_services" "Services Configuration"
 
 item_title "item_systemctl"   "Systemctl" "systemctl"
 if [[ $AVAILABLE_SYSTEMCTL == "yes" ]]
@@ -4097,7 +3754,6 @@ else
   raw_close
 fi
 
-section "section_services" "Services Configuration"
 item_title "item_chkconfig" "Chkconfig" "chkconfig"
 if [[ $AVAILABLE_CHKCONFIG == "yes" ]]
 then
@@ -4262,6 +3918,48 @@ fi
 
 #--------------------------------------------------------------------------
 #
+# Udev Configuration
+#
+#--------------------------------------------------------------------------
+
+section "section_udev" "Udev Configuration"
+
+item_title "item_udevconf"  "udev configuration" "cat /etc/udev/udev.conf"
+
+declare -i UDEV_LINES
+
+UDEV_LINES=$(wc -l /etc/udev/udev.conf | awk '{print $1}')
+
+text_open $UDEV_LINES 120 24
+cat /etc/udev/udev.conf >> $HTML 2>&1 
+text_close
+
+item_title "item_udevrules" "udev rules" "cat /etc/udev/rules.d/*"
+raw_open
+if [[ -d /etc/udev/rules.d ]]
+then
+  UDEV_RULES_COUNT=$(ls -l /etc/udev/rules.d/ | grep -v total | wc -l)
+  if [[ $UDEV_RULES_COUNT -gt 0 ]]
+  then
+    ls -l /etc/udev/rules.d/* >> $HTML 2>&1
+    echo >> $HTML
+    for EACHFILE in /etc/udev/rules.d/*
+    do
+      echo >> HTML
+      echo "$EACHFILE -------------" >> $HTML
+      echo >> HTML
+      cat $EACHFILE >> $HTML
+    done
+  else
+    line "This system has no udev rule files in /etc/udev/rules.d"
+  fi
+else
+  line "This system does not have a /etc/udev/rules.d directory."
+fi
+raw_close
+
+#--------------------------------------------------------------------------
+#
 # X-Windows Graphics
 #
 #--------------------------------------------------------------------------
@@ -4273,18 +3971,22 @@ section "section_xwindows" "X-Windows"
 # Default to skip - assume we're on a non graphical system
 MY_XDISPLAY=""
 
-# If the user has specified an X display to report on, use that.
-if [[ $DEF_XDISPLAY != "null" ]]
+# If the user specified an XDISPLAY identifier in their config file,
+# use that. Otherwise, we'll use the default display
+if [[ -z $DEF_DISPLAY && $DEF_XDISPLAY != "_null" ]]
 then
-  MY_XDISPLAY="-display $DEF_XDISPLAY"
+  if [[ $DEBUG = "yes" ]]
+  then
+    echo "Setting MY_XDISPLAY TO"
+    echo MY_XDISPLAY="-display $DEF_XDISPLAY"
+    MY_XDISPLAY="-display $DEF_XDISPLAY"
+  fi
 else 
-
   # User hasn't specified a particular X display to use.
 
-  # Is this script running within one?
+  # Is this script running within one? Expect value like ":1" in X.org
   if [[ $DISPLAY != "" ]]
   then
-
     # Empty out MY_XDISPLAY so clients just use the env $DISPLAY setting
     MY_XDISPLAY=""
   else
@@ -4294,9 +3996,17 @@ fi
 
 if [[ $DEBUG = "yes" ]]
 then
-  echo "X-Windows: DISPLAY $DISPLAY"
-  echo "X-Windows: DEF_XDISPLAY $DEF_XDISPLAY"
-  echo "X-Windows: MY_XDISPLAY $MY_XDISPLAY"
+  echo "X-Windows: Environment variable    DISPLAY      $DISPLAY"
+  echo "X-Windows: Loaded from config file DEF_XDISPLAY $DEF_XDISPLAY"
+  echo "X-Windows: Using for reporting     MY_XDISPLAY  $MY_XDISPLAY"
+fi
+
+item_title "item_xrandr_displays"  "Connected X-windows displays" "xrandr | grep 'connected'"
+if [[ $MY_XDISPLAY != "skip" ]]
+then
+  raw_open
+  xrandr | grep -v "disconnected" | grep connected >> $HTML 2>&1
+  raw_close
 fi
 
 item_title "item_xrandr"  "RandR - X Resize, Rotate and Reflect Extension" "xrandr"
@@ -4329,9 +4039,12 @@ item_title "item_xvinfo"  "Xvideo info" "xvinfo"
 
 if [[ $MY_XDISPLAY != "skip" ]]
 then
-  textarea_open 120 24
-  xvinfo $MY_XDISPLAY >> $HTML 2>&1 
-  textarea_close
+  if [[ $AVAILABLE_XVINFO ]]
+  then
+    textarea_open 120 24
+    xvinfo $MY_XDISPLAY >> $HTML 2>&1 
+    textarea_close
+  fi
 else
   raw_open
   line "No X Display is available for reporting."
@@ -4353,7 +4066,331 @@ fi
 
 #--------------------------------------------------------------------------
 #
-# Hardware Summary - 
+# Network Configuration
+#
+#--------------------------------------------------------------------------
+
+section "section_network_cfg" "Network Configuration"
+
+item_title "item_nmcli"   "Network Manager config" "nmcli"
+raw_open
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no routing information is included."
+else
+  nmcli >> $HTML 2>&1
+fi
+raw_close
+
+item_title "item_nics_list"   "Network Device List" "nics"
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  raw_open
+  line "This is a public report and no IP network information is included."
+  raw_close
+else
+  raw_open
+  nic_list >> $HTML 2>&1
+  raw_close
+fi
+
+item_title "item_ifcfg" "Network Configuration (sysconfig)" "cat /etc/sysconfig/network-scripts/*cfg*"
+
+if [[ $DIST_SYSCONFIG == "yes" ]]
+then
+  if [[ -f /etc/sysconfig/network ]]
+  then
+    raw_caption "cap_sysconfig_network" "cat /etc/sysconfig/network"
+    raw_open
+    cat /etc/sysconfig/network >> $HTML 2>&1
+    raw_close
+  else
+    raw_open
+    line "There is no /etc/sysconfig/network file available on this system."
+    raw_close
+  fi
+
+  # Do we have a sysconfig network script directory?
+  # like /etc/sysconfig/network-scripts on Red Hat?
+  if [[ -d $DIST_SYSCONFIG_NETDIR ]]
+  then
+
+    # If we are a Suse system and we have a file called 'config'
+    # in the netconfig dir, it has all sorts of interesting information
+    # so let's report on it
+    if [[ $DIST_FAMILY == "Suse" && -f $DIST_SYSCONFIG_NETDIR/config ]]
+    then
+      raw_caption "cap_suse_netdir_config" "Suse: cat $DIST_SYSCONFIG_NETDIR/config"
+      textarea_open 120 24
+      cat $DIST_SYSCONFIG_NETDIR/config >> $HTML 2>&1
+      textarea_close
+    fi
+
+    if [[ $(ls -l ${DIST_SYSCONFIG_NETDIR}/*cfg-* | wc -l) -gt 0 ]]
+    then
+      # Look for ifcfg-eth0, ifcfg-p99p9, br0-cfg, brcfg0 etc
+      for EACH_FILE in ${DIST_SYSCONFIG_NETDIR}/*cfg-*
+      do
+        raw_caption "cap_net_cfgs" "cat $EACH_FILE"
+        raw_open
+        cat $EACH_FILE >> $HTML 2>&1
+        raw_close
+      done
+    else
+      raw_open
+      line "There are no $DIST_SYSCONFIG_NETDIR/*cfg-* files available on this system."
+      raw_close
+    fi
+  else
+    raw_open
+    line "There is no $DIST_SYSCONFIG_NETDIR directory available on this system."
+    raw_close
+  fi
+
+else
+  raw_open
+  line "This information is not available on a non-sysconfig distribution."
+  raw_close 
+fi #endif - report on a sysconfig system.
+
+item_title "item_resolv"    "DNS Resolution" "cat /etc/resolv.conf"
+raw_open
+cat /etc/resolv.conf >> $HTML 2>&1
+raw_close
+
+item_title "item_resolvectl"    "DNS Resolution - resolvectl" "resolvectl"
+if [[ $AVAILABLE_RESOLVECTL ]]
+then
+  raw_open
+  resolvectl >> $HTML 2>&1
+  raw_close
+else
+  raw_open
+  line "resolvectl is not available on this system."
+  raw_close
+fi
+
+item_title "item_hosts"   "Local Hosts" "cat /etc/hosts"
+# Count the number of lines in output
+HOST_LINES=$(cat /etc/hosts | wc -l)
+
+text_open $HOST_LINES 120 24
+cat /etc/hosts >> $HTML 2>&1
+text_close
+
+item_title "item_nsswitch" "Name Service Switch Config" "cat /etc/nsswitch"
+if [[ -f /etc/nsswitch.conf ]]
+then
+  # Count the number of lines in output
+  NSSWITCH_LINES=$(cat /etc/nsswitch.conf | wc -l)
+
+  text_open $NSSWITCH_LINES 120 24
+  cat /etc/nsswitch.conf >> $HTML 2>&1
+  text_close
+else
+  raw_open
+  line "/etc/nsswitch.conf is not available on this system."
+  raw_close
+fi
+
+
+item_title "item_networks" "Network Configuration (debian)" "cat /etc/network/interfaces"
+if [[ $DIST_SYSCONFIG == "no" ]]
+then
+  if [[ -f /etc/network/interfaces ]]
+  then
+    INTERFACES_LINES=$(cat /etc/network/interfaces | wc -l)
+    text_open $INTERFACES_LINES 120 24
+    cat /etc/network/interfaces >> $HTML 2>&1
+    text_close
+  else
+    raw_open
+    line "There is no /etc/network/interfaces file available on this system."
+    raw_close
+  fi
+else
+  raw_open
+  line "This information is not available on a sysconfig distribution."
+  raw_close 
+fi # endif - report on a debian (non sysconfig) system
+
+item_title "item_iproute"   "Network routing table via ip route" "ip route"
+raw_open
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no routing information is included."
+else
+  ip route  >> $HTML 2>&1
+fi
+raw_close
+
+item_title "item_netstat_route" "Network routing table via netstat" "netstat -nr"
+raw_open
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no routing information is included."
+else
+  netstat -nr >> $HTML 2>&1
+fi
+raw_close
+
+item_title "item_netstat_ss"   "Sockets - ss" "ss"
+SS_LINES= $(ss | wc -l | awk '{print $1}')
+text_open $SS_LINES 160 24
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no routing information is included."
+else
+  ss >> $HTML 2>&1
+fi
+text_close
+
+item_title "item_netstat_sockets"   "Network routing table via netstat" "netstat"
+NETSTAT_LINES= $(netstat | wc -l | awk '{print $1}')
+text_open $NETSTAT_LINES 160 24
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no routing information is included."
+else
+  netstat >> $HTML 2>&1
+fi
+text_close
+
+item_title "item_ss_estab_ssh"   "Sockets established with ssh - ss" "ss -o state established '( dport = :ssh or sport = :ssh )'"
+raw_open
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no routing information is included."
+else
+  ss -o state established '( dport = :ssh or sport = :ssh )' >> $HTML 2>&1
+fi
+raw_close
+
+#--------------------------------------------------------------------------
+#
+# Storage Configuration
+#
+#--------------------------------------------------------------------------
+
+section "section_storage_cfg" "Storage Configuration"
+
+item_title "item_fsblk"   "File System Block Devices" "lsblk -i"
+if [[ $AVAILABLE_LSBLK == "yes" ]]
+then
+  FSBLOCK_LINES=$(lsblk -i | wc -l)
+  text_open $FSBLOCK_LINES 160 24
+  # -i option uses ASCII characters for tree relationships +--^ etc
+  # -f show filesystem information
+  lsblk -i >> $HTML 2>&1
+  text_close  
+fi
+
+item_title "item_fstab" "Filesystem mount table" "fstab"
+raw_open
+cat /etc/fstab >> $HTML 2>&1
+raw_close
+
+item_title "item_mount"   "Mounted filesystems - mount" "mount"
+MOUNT_LINES=$(mount | wc -l)
+text_open $MOUNT_LINES 140 24
+mount >> $HTML 2>&1
+text_close
+
+item_title "item_findmnt"   "Mounted filesystems - findmnt" "findmnt"
+FINDMNT_LINES=$(findmnt | wc -l)
+text_open $FINDMNT_LINES 140 24
+findmnt >> $HTML 2>&1
+text_close
+
+#--------------------------------------------------------------------------
+# LVM RELATED
+
+# Enable by default" (most RHEL and Fedora use LVM)
+SHOW_LVM="yes"
+
+if [[ $AVAILABLE_PVSCAN == "yes" ]]
+then
+
+  PV_RESULTS=$(pvscan 2>&1 | grep "  No matching physical volumes found" | wc -l)
+
+  if [ $PV_RESULTS -ge 1 ]
+  then
+    SHOW_LVM="no"
+  fi
+else
+  SHOW_LVM="no"
+fi
+
+item_title "item_pvscan" "LVM2: Physical Volumes" "pvscan"
+# Regardless of whether physical volumes were found above, let pvscan
+# report the status to the user.  Then use the SHOW_LVM variable set above
+# to determine whether volume groups and logical volumes are processed.
+# Skip those commands if no physical volumes are present)
+if [[ $AVAILABLE_PVSCAN == "yes" ]]
+then
+  raw_open
+  pvscan >> $HTML 2>&1
+  raw_close
+else
+  raw_open
+  line "pvscan is not available on this system."
+  raw_close
+fi
+
+item_title "item_pvs" "LVM2: Volume Groups" "pvs"
+raw_open
+
+if [ $SHOW_LVM == "yes" ]
+then
+  pvs >> $HTML 2>&1 
+else
+  line "pvs is not available on this system."
+fi
+raw_close
+
+item_title "item_vgscan" "LVM2: Volume Groups" "vgscan"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+  vgscan >> $HTML 2>&1
+else
+  line "vgscan is not available on this system."
+fi
+raw_close
+
+item_title "item_vgs" "LVM2: Volume Groups" "vgs"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+  vgs >> $HTML 2>&1
+else
+  line "vgs is not available on this system."
+fi
+raw_close
+
+item_title "item_lvscan" "LVM2: Logical Volumes" "lvscan"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+  lvscan >> $HTML 2>&1
+else
+  line "lvscan is not availble on this system."
+fi
+raw_close
+
+item_title "item_lvs" "LVM2: Logical Volumes" "lvs"
+raw_open
+if [ $SHOW_LVM == "yes" ]
+then
+  lvs >> $HTML 2>&1
+else
+  line "lvs is not available on this system."
+fi
+raw_close
+
+#--------------------------------------------------------------------------
+#
+# Hardware Resources
 #
 #--------------------------------------------------------------------------
 
@@ -4413,41 +4450,6 @@ else
   line "'dmidecode' is not available or does not work on this system."
 fi
 raw_close
-
-item_title "item_lsinitrd"    "initrd information" "lsinitrd"
-
-if [[ $DIST_NAME == "Suse" ]]
-then
-  MY_KERNEL=$(uname -a | cut --delimiter=" " -f 3)
-  MY_INITRD="/boot/initrd-$MY_KERNEL"
-fi
-
-if [[ $AVAILABLE_LSINITRD == "yes" ]]
-then
-  # Present the lsinitrd information in an HTML textarea box
-  textarea_open 120 24
-  if [[ $DIST_NAME == "Suse" ]]
-  then
-    lsinitrd -l $MY_INITRD >> $HTML 2>&1
-  else
-    lsinitrd >> $HTML 2>&1
-  fi
-  textarea_close
-
-  # Send the raw output to an ASCII file
-  if [[ $DIST_NAME == "Suse" ]]
-  then
-    lsinitrd -l $MY_INITRD >> $FILE_INITRD 2>&1
-  else
-    lsinitrd >> $FILE_INITRD 2>&1
-  fi
-
-  helpful_tip "Detailed information is available in the <a href=file:${FILE_INITRD##${OUTPUT_DIR}/} target=_file_initrd>separate lsinitrd file.</a>"
-else
-  raw_open
-  line "lsinitrd is not available on this system."
-  raw_close
-fi
 
 #--------------------------------------------------------------------------
 #
@@ -4971,8 +4973,7 @@ then
   # This is done earlier, but we'll repeat it for safety here.
   FSBLOCK_LINES=$(lsblk -fi | wc -l)
   text_open $FSBLOCK_LINES 160 24
-  # -i option uses ASCII characters for tree relationships +--^ etc
-  lsblk -i >> $HTML 2>&1
+  lsblk >> $HTML 2>&1
   text_close  
 fi
 
@@ -5165,6 +5166,81 @@ else
   raw_open
   line "The lm_sensors package's 'sensors' program is not available on this system."
   raw_close
+fi
+
+#--------------------------------------------------------------------------
+#
+# Configuration Management
+#
+#--------------------------------------------------------------------------
+
+section "section_configmgmt" "Config Mgmt Facts"
+
+item_title "item_facter"  "Puppet Facter" "facter"
+
+if [[ $AVAILABLE_FACTER == "yes" ]]
+then
+  textarea_open 120 24
+  facter >> $HTML 2>&1
+  textarea_close
+else
+  raw_open
+  line "The Puppet 'facter' command is not available on this system."
+  raw_close
+fi
+
+item_title "item_ohai"  "Chef Ohai" "ohai"
+
+if [[ $AVAILABLE_OHAI == "yes" ]]
+then
+  textarea_open 120 24
+  ohai >> $HTML 2>&1
+  ohai >> $FILE_OHAI 2>&1
+  textarea_close
+else
+  raw_open
+  line "The Chef 'ohai' program is not available on this system."
+  raw_close
+fi
+
+
+#--------------------------------------------------------------------------
+#
+# Security Configuration
+#
+#--------------------------------------------------------------------------
+section "section_security" "Security Configuration"
+
+item_title "item_selinux"   "SELinux Configuration" "cat /etc/selinux/config"
+
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  raw_open
+  line "This is a public report and no security information is included."
+  raw_close
+else
+  if [[ -f /etc/selinux/config ]]
+  then
+    raw_open
+    cat /etc/selinux/config >> $HTML 2>&1
+    raw_close
+  else
+    raw_open
+    line "This system does not have an /etc/selinux/config file."
+    raw_close
+  fi
+fi
+
+item_title "item_firewall"    "Firewall rules" "iptables -L"
+
+if [ $PUBLIC_REPORT = "yes" ]
+then
+  line "This is a public report and no firewall information is included."
+else
+  IPTABLES_LINES=$(iptables -L | wc -l)
+  text_open $IPTABLES_LINES 120 24
+  iptables -L >> $HTML 2>&1
+  text_close
 fi
 
 #--------------------------------------------------------------------------
